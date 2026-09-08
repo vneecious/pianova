@@ -1,0 +1,18 @@
+# Artefatos de build — contêm caminhos absolutos da máquina
+.build/
+.swiftpm/
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+.DS_Store
+
+# Contexto de desenvolvimento e anotações pessoais, fora do repositório
+CLAUDE.md
+.claude/
+
+# Material de estudo pessoal, não faz parte do app
+curriculo-musica.md
+
+# Publicado em repositório próprio: github.com/vneecious/piano
+piano.html
