@@ -19,9 +19,10 @@ import Testing
 
 /// Figures order by length, longest last when sorted ascending.
 @Test func figuresOrderByLength() {
+  #expect(NoteValue.sixteenth < NoteValue.eighth)
   #expect(NoteValue.eighth < NoteValue.quarter)
   #expect(NoteValue.quarter < NoteValue.half)
-  #expect(NoteValue.allCases.sorted().first == .eighth)
+  #expect(NoteValue.allCases.sorted().first == .sixteenth)
   #expect(NoteValue.allCases.sorted().last == .whole)
 }
 

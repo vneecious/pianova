@@ -13,6 +13,15 @@ extension MusicXMLImporter {
     var isChord = false
     /// Whether it is tied into what follows.
     var isTiedToNext = false
+    /// When it begins, in divisions from the start of its bar.
+    ///
+    /// Real files do not write a bar in playing order. A piano part writes the
+    /// upper staff, rewinds with `<backup>`, writes the lower one, rewinds
+    /// again for a second voice. Without a cursor those all pile up end to end
+    /// and every bar comes out several times too long.
+    var start = 0
+    /// Which part of the file it came from, for scores split across parts.
+    var part = 0
   }
 
   /// One bar as the file states it.
@@ -44,6 +53,30 @@ extension MusicXMLImporter {
     private var event = RawEvent()
     private var inNote = false
 
+    /// Where in the bar the next note falls, in divisions.
+    private var cursor = 0
+
+    /// Where the note just written began, so a chord can join it.
+    private var lastStart = 0
+
+    /// How many `<part>` elements have been seen.
+    private var partIndex = -1
+
+    /// Bars indexed by part, so parts become staves instead of a longer piece.
+    private(set) var measuresByPart: [Int: [RawMeasure]] = [:]
+
+    /// The name of each part, in the order the file declares them.
+    ///
+    /// What tells a piano score from an orchestral one. Reading the first two
+    /// instruments of an orchestral file as two hands produces a score that
+    /// looks plausible and is nonsense.
+    private(set) var partNames: [String] = []
+    private var inPartList = false
+
+    /// Duration read inside `<backup>` or `<forward>`, which are not notes.
+    private var shiftDivisions = 0
+    private var inShift = false
+
     // The pitch being assembled, since step, alter and octave arrive apart.
     private var step = ""
     private var alter = 0
@@ -71,8 +104,17 @@ extension MusicXMLImporter {
       switch name {
       case "score-partwise":
         sawPartwise = true
+      case "part-list":
+        inPartList = true
+      case "part":
+        if !inPartList { partIndex += 1 }
       case "measure":
         measure = RawMeasure()
+        cursor = 0
+        lastStart = 0
+      case "backup", "forward":
+        inShift = true
+        shiftDivisions = 0
       case "note":
         inNote = true
         event = RawEvent()
@@ -117,6 +159,10 @@ extension MusicXMLImporter {
         if title.isEmpty { title = value }
       case "creator":
         if creatorType == "composer" && composer.isEmpty { composer = value }
+      case "part-name":
+        if inPartList { partNames.append(value) }
+      case "part-list":
+        inPartList = false
       case "step":
         step = value
       case "alter":
@@ -126,16 +172,39 @@ extension MusicXMLImporter {
       case "staff":
         event.staff = Int(value) ?? 1
       case "duration":
-        if inNote { event.divisions = Int(value) ?? 0 }
+        if inNote {
+          event.divisions = Int(value) ?? 0
+        } else if inShift {
+          shiftDivisions = Int(value) ?? 0
+        }
+      case "backup":
+        cursor = max(cursor - shiftDivisions, 0)
+        inShift = false
+      case "forward":
+        cursor += shiftDivisions
+        inShift = false
       case "pitch":
         if let pitch = Self.pitch(step: step, alter: alter, octave: octave) {
           event.pitches = [pitch]
         }
       case "note":
         inNote = false
+        event.part = max(partIndex, 0)
+
+        // A chord shares the moment of the note it hangs off, and does not move
+        // the cursor; anything else starts where the cursor is and advances it.
+        if event.isChord {
+          event.start = lastStart
+        } else {
+          event.start = cursor
+          lastStart = cursor
+          cursor += event.divisions
+        }
+
         measure.events.append(event)
       case "measure":
         measures.append(measure)
+        measuresByPart[max(partIndex, 0), default: []].append(measure)
       default:
         break
       }

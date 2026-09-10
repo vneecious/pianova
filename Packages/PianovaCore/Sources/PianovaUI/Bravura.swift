@@ -43,6 +43,12 @@ public enum Bravura {
     /// Colcheia with the stem down, flag included.
     public static let noteEighthDown = "\u{E1D8}"
 
+    /// Semicolcheia com haste para cima.
+    public static let noteSixteenthUp = "\u{E1D9}"
+
+    /// Semicolcheia com haste para baixo.
+    public static let noteSixteenthDown = "\u{E1DA}"
+
     /// The augmentation dot.
     public static let augmentationDot = "\u{E1E7}"
 
@@ -64,6 +70,7 @@ public enum Bravura {
       case .half: return "\u{E4E4}"
       case .quarter: return "\u{E4E5}"
       case .eighth: return "\u{E4E6}"
+      case .sixteenth: return "\u{E4E7}"
       }
     }
 
@@ -107,6 +114,7 @@ public enum Bravura {
     case .half: return stemUp ? Glyph.noteHalfUp : Glyph.noteHalfDown
     case .quarter: return stemUp ? Glyph.noteQuarterUp : Glyph.noteQuarterDown
     case .eighth: return stemUp ? Glyph.noteEighthUp : Glyph.noteEighthDown
+    case .sixteenth: return stemUp ? Glyph.noteSixteenthUp : Glyph.noteSixteenthDown
     }
   }
 

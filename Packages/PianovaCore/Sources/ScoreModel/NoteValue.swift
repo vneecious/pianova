@@ -11,6 +11,12 @@ public enum NoteValue: String, CaseIterable, Sendable, Comparable {
   case quarter
   /// Colcheia: half a beat.
   case eighth
+  /// Semicolcheia: a quarter of a beat.
+  ///
+  /// Not taught by the course, which stops at the quaver, but real sheet music
+  /// is full of them — a Bach prelude is nothing else — and a figure the model
+  /// cannot represent gets rounded to one it can, which doubles the bar.
+  case sixteenth
 
   /// How many beats the plain figure lasts.
   public var beats: Double {
@@ -19,6 +25,7 @@ public enum NoteValue: String, CaseIterable, Sendable, Comparable {
     case .half: return 2
     case .quarter: return 1
     case .eighth: return 0.5
+    case .sixteenth: return 0.25
     }
   }
 
@@ -29,6 +36,7 @@ public enum NoteValue: String, CaseIterable, Sendable, Comparable {
     case .half: return "mínima"
     case .quarter: return "semínima"
     case .eighth: return "colcheia"
+    case .sixteenth: return "semicolcheia"
     }
   }
 

@@ -113,12 +113,15 @@ private func parsed() throws -> Score {
 
 /// Plain figures map straight across, whatever the file calls a crotchet.
 @Test func plainFiguresMapAtAnyDivision() {
-  for perQuarter in [1, 2, 4, 24, 480] {
+  // Divisões pares só: com uma divisão por semínima o arquivo não consegue
+  // escrever meia semínima, e `perQuarter / 2` daria zero.
+  for perQuarter in [2, 4, 24, 480] {
     #expect(MusicXMLImporter.duration(divisions: perQuarter, perQuarter: perQuarter).beats == 1)
     #expect(MusicXMLImporter.duration(divisions: perQuarter * 4, perQuarter: perQuarter).beats == 4)
     #expect(
       MusicXMLImporter.duration(divisions: perQuarter / 2, perQuarter: perQuarter).beats == 0.5)
   }
+  #expect(MusicXMLImporter.duration(divisions: 1, perQuarter: 1).beats == 1)
 }
 
 /// The lower number of the time signature picks the beat figure.
@@ -170,4 +173,95 @@ private func parsed() throws -> Score {
 /// The measure number reaches the message, so the player knows where to look.
 @Test func aBadNoteSaysWhichBar() {
   #expect(MusicXMLError.noteWithoutDuration(measure: 7).message.contains("7"))
+}
+
+// MARK: - O que arquivos reais quebraram
+
+/// Duas vozes na mesma pauta, escritas com `<backup>` entre elas.
+///
+/// É assim que todo editor escreve piano, e ignorar o `<backup>` empilha as
+/// vozes uma depois da outra: o compasso sai com o dobro da duração.
+private let twoVoices = """
+  <?xml version="1.0"?>
+  <score-partwise>
+    <part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
+    <part id="P1">
+      <measure number="1">
+        <attributes><divisions>4</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>
+        <note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><staff>1</staff></note>
+        <note><pitch><step>D</step><octave>5</octave></pitch><duration>8</duration><staff>1</staff></note>
+        <backup><duration>16</duration></backup>
+        <note><pitch><step>C</step><octave>3</octave></pitch><duration>16</duration><staff>2</staff></note>
+      </measure>
+    </part>
+  </score-partwise>
+  """
+
+/// O compasso fecha apesar das duas vozes sobrepostas.
+@Test func backupKeepsTheBarFromDoubling() throws {
+  let score = try MusicXMLImporter.score(from: Data(twoVoices.utf8))
+
+  #expect(score.isWellFormed, "o compasso deveria fechar em 4 tempos")
+  #expect(score.rightHand.measures.first?.beats == 4)
+}
+
+/// A mão que a `<backup>` reposiciona vira a outra pauta, e soa junto.
+@Test func backupSeparatesTheHands() throws {
+  let score = try MusicXMLImporter.score(from: Data(twoVoices.utf8))
+
+  #expect(score.isTwoHanded)
+  #expect(score.leftHand?.measures.first?.beats == 4)
+  // As duas mãos começam no mesmo instante, então é um evento só.
+  #expect(score.onsets.first?.pitches.count == 2)
+}
+
+/// A semicolcheia existe no modelo.
+///
+/// Sem ela, um prelúdio de Bach — que é só semicolcheia — tinha cada figura
+/// arredondada para colcheia, e todo compasso saía com o dobro do tamanho.
+@Test func sixteenthsAreRepresentable() {
+  #expect(NoteValue.sixteenth.beats == 0.25)
+  #expect(MusicXMLImporter.duration(divisions: 1, perQuarter: 4).value == .sixteenth)
+  #expect(MusicXMLImporter.duration(divisions: 1, perQuarter: 4).beats == 0.25)
+}
+
+/// Cada figura continua valendo metade da anterior, agora até a semicolcheia.
+@Test func theHalvingReachesTheSixteenth() {
+  let ladder: [NoteValue] = [.whole, .half, .quarter, .eighth, .sixteenth]
+
+  for (longer, shorter) in zip(ladder, ladder.dropFirst()) {
+    #expect(longer.beats == shorter.beats * 2, "\(longer.name) não vale o dobro de \(shorter.name)")
+  }
+}
+
+/// Rule 65 — uma partitura de orquestra é recusada, não lida pela metade.
+///
+/// Ler os dois primeiros instrumentos de um arquivo orquestral como duas mãos
+/// produz algo plausível e sem sentido — flauta e oboé viram "piano".
+@Test func anEnsembleScoreIsRefused() {
+  var parts = ""
+  for index in 1...22 {
+    parts += "<score-part id=\"P\(index)\"><part-name>Instr \(index)</part-name></score-part>"
+  }
+  var body = ""
+  for index in 1...22 {
+    body += """
+      <part id="P\(index)"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration></note>
+      </measure></part>
+      """
+  }
+  let data = Data(
+    "<?xml version=\"1.0\"?><score-partwise><part-list>\(parts)</part-list>\(body)</score-partwise>"
+      .utf8)
+
+  #expect(throws: MusicXMLError.notForPiano(instruments: 22)) {
+    try MusicXMLImporter.score(from: data)
+  }
+}
+
+/// A recusa diz quantos instrumentos achou, para o usuário entender o motivo.
+@Test func theRefusalCountsTheInstruments() {
+  #expect(MusicXMLError.notForPiano(instruments: 22).message.contains("22"))
 }

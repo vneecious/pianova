@@ -16,6 +16,8 @@ public enum MusicXMLError: Error, Equatable, Sendable {
   case noteWithoutDuration(measure: Int)
   /// The divisions-per-quarter was missing or nonsense.
   case badDivisions
+  /// The file is for an ensemble, not for a keyboard.
+  case notForPiano(instruments: Int)
 
   /// What to tell the player.
   public var message: String {
@@ -30,6 +32,8 @@ public enum MusicXMLError: Error, Equatable, Sendable {
       return "O compasso \(measure) tem uma nota sem duração."
     case .badDivisions:
       return "O arquivo não diz quantas divisões valem uma semínima."
+    case .notForPiano(let instruments):
+      return "Esta partitura tem \(instruments) instrumentos. Só leio piano."
     }
   }
 }
@@ -72,42 +76,66 @@ public enum MusicXMLImporter {
   private static func build(from parser: Parser) throws -> Score {
     guard parser.divisions > 0 else { throw MusicXMLError.badDivisions }
 
+    // A piano score reaches us one of two ways: one part with two staves, or
+    // two parts with one staff each. Both are common, and the difference is
+    // the publisher's, not the music's.
+    let byPart = parser.measuresByPart
+    let names = parser.partNames
+
+    /// Parts that call themselves a keyboard.
+    let keyboards = names.indices.filter {
+      let lowered = names[$0].lowercased()
+      return ["piano", "keyboard", "harpsichord", "cravo", "teclado"]
+        .contains {
+          lowered.contains($0)
+        }
+    }
+
+    /// Two parts of equal length are the two hands of one piece.
+    func pair(_ a: Int, _ b: Int) -> ([RawMeasure], [RawMeasure])? {
+      guard let first = byPart[a], let second = byPart[b], first.count == second.count,
+        !first.isEmpty
+      else { return nil }
+      return (first, second)
+    }
+
+    let upper: [RawMeasure]
+    let lower: [RawMeasure]
+
+    // Order matters, and getting it wrong is what made a two-part sonatina come
+    // out as one hand: a small file is a piano piece whatever its parts are
+    // called, and only a large one needs the names to pick a keyboard out.
+    if byPart.count <= 1 {
+      upper = parser.measures
+      lower = []
+    } else if byPart.count == 2, let (first, second) = pair(0, 1) {
+      upper = first
+      lower = second
+    } else if keyboards.count >= 2, let (first, second) = pair(keyboards[0], keyboards[1]) {
+      upper = first
+      lower = second
+    } else if let single = keyboards.first, let only = byPart[single] {
+      // One keyboard part inside a larger score: its own two staves are split
+      // out below, by the staff number on each note.
+      upper = only
+      lower = []
+    } else {
+      // Reading the first two instruments of an ensemble as two hands gives a
+      // score that looks plausible and is nonsense. Refuse instead.
+      throw MusicXMLError.notForPiano(instruments: byPart.count)
+    }
+
     var right: [Measure] = []
     var left: [Measure] = []
 
-    for (index, raw) in parser.measures.enumerated() {
-      var top: [ScoreNote] = []
-      var bottom: [ScoreNote] = []
+    for (index, raw) in upper.enumerated() {
+      let staffTwo = lower.isEmpty ? raw.events.filter { $0.staff == 2 } : lower[index].events
+      let staffOne = lower.isEmpty ? raw.events.filter { $0.staff != 2 } : raw.events
 
-      for event in raw.events {
-        guard event.divisions > 0 else {
-          throw MusicXMLError.noteWithoutDuration(measure: index + 1)
-        }
-
-        let note = ScoreNote(
-          pitches: event.pitches,
-          duration: duration(divisions: event.divisions, perQuarter: parser.divisions),
-          isTiedToNext: event.isTiedToNext)
-
-        // A chord shares the previous event's moment rather than following it.
-        if event.isChord, let previous = (event.staff == 2 ? bottom : top).last {
-          let merged = ScoreNote(
-            pitches: previous.pitches + event.pitches,
-            duration: previous.duration,
-            isTiedToNext: previous.isTiedToNext)
-          if event.staff == 2 {
-            bottom[bottom.count - 1] = merged
-          } else {
-            top[top.count - 1] = merged
-          }
-          continue
-        }
-
-        if event.staff == 2 { bottom.append(note) } else { top.append(note) }
+      right.append(try measure(from: staffOne, parser: parser, number: index + 1))
+      if !staffTwo.isEmpty {
+        left.append(try measure(from: staffTwo, parser: parser, number: index + 1))
       }
-
-      right.append(Measure(top))
-      if !bottom.isEmpty { left.append(Measure(bottom)) }
     }
 
     let hasLeft = !left.isEmpty && left.count == right.count
@@ -122,6 +150,58 @@ public enum MusicXMLImporter {
       rightHand: Part(clef: .treble, measures: right),
       leftHand: hasLeft ? Part(clef: .bass, measures: left) : nil,
       hasPickup: isPickup(right.first, parser: parser))
+  }
+
+  /// Builds one bar from events that may overlap and may be out of order.
+  ///
+  /// Several voices can share a staff, each written as its own pass over the
+  /// bar. Rather than try to keep them independent — which this app has nowhere
+  /// to draw — every moment where anything begins becomes one column holding
+  /// whatever starts there, lasting until the next moment.
+  ///
+  /// That is the same shape the rest of the app already uses, it keeps every
+  /// note, and it makes the bar add up by construction.
+  private static func measure(
+    from events: [RawEvent],
+    parser: Parser,
+    number: Int
+  ) throws -> Measure {
+    let sounding = events.filter { !$0.pitches.isEmpty }
+
+    for event in events where event.divisions <= 0 && !event.isChord {
+      throw MusicXMLError.noteWithoutDuration(measure: number)
+    }
+
+    // Every moment anything starts — silences included, or a bar ending in a
+    // rest would simply lose it. A moment where no voice sounds becomes a rest
+    // column; a moment where one voice rests while another plays does not.
+    var moments = Set(events.filter { !$0.isChord }.map(\.start))
+    let barLength =
+      events.map { $0.start + $0.divisions }.max()
+      ?? Int(
+        Double(parser.divisions) * Double(parser.beatsPerBar)
+          * noteValue(forBeatType: parser.beatType).beats)
+
+    // A bar that begins in silence keeps that silence.
+    if let first = moments.min(), first > 0 { moments.insert(0) }
+    if moments.isEmpty { moments.insert(0) }
+
+    let ordered = moments.sorted()
+    var notes: [ScoreNote] = []
+
+    for (index, moment) in ordered.enumerated() {
+      let next = index + 1 < ordered.count ? ordered[index + 1] : barLength
+      let span = max(next - moment, 1)
+      let pitches = sounding.filter { $0.start == moment }.flatMap(\.pitches)
+
+      notes.append(
+        ScoreNote(
+          pitches: Array(Set(pitches)).sorted { $0.midiNoteNumber < $1.midiNoteNumber },
+          duration: duration(divisions: span, perQuarter: parser.divisions),
+          isTiedToNext: sounding.first { $0.start == moment }?.isTiedToNext ?? false))
+    }
+
+    return Measure(notes)
   }
 
   /// Whether the opening bar is short, which is what an upbeat is.

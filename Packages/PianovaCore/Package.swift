@@ -37,6 +37,9 @@ let package = Package(
       name: "PianovaMac",
       dependencies: ["PianovaUI", "ExerciseEngine", "MIDIInput", "ScoreModel"]),
     .executableTarget(
+      name: "PianovaImport",
+      dependencies: ["ScoreModel"]),
+    .executableTarget(
       name: "PianovaPing",
       dependencies: ["MIDIInput", "ScoreModel"]),
     .executableTarget(

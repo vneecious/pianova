@@ -309,6 +309,7 @@ struct ValueTreeView: View {
     case .half: return "\u{E1D3}"
     case .quarter: return "\u{E1D5}"
     case .eighth: return "\u{E1D7}"
+    case .sixteenth: return "\u{E1D9}"
     }
   }
 
