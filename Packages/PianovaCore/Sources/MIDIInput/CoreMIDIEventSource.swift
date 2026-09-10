@@ -67,9 +67,13 @@ public final class CoreMIDIEventSource: MIDIEventSource, @unchecked Sendable {
       MIDIPortConnectSource(port, MIDIGetSource(index), nil)
     }
 
+    // Read the stored handler, never the public accessor: the accessor takes
+    // the same lock, and `NSLock` is not reentrant — locking twice on one
+    // thread deadlocks, which froze the app before it drew a single window.
     lock.lock()
-    let notify = onSetupChanged
+    let notify = setupHandler
     lock.unlock()
+
     notify?()
   }
 
