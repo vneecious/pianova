@@ -78,10 +78,21 @@ struct PlayStepView: View {
     VStack(alignment: .leading, spacing: 18) {
       header
 
-      if isGrandStaff {
+      if let score {
+        // A written piece is laid out as printed music: systems down the page,
+        // scrolled by the cursor and by hand.
+        ScoreSheetView(
+          score: score,
+          states: columnStates,
+          focusColumn: Int(focusColumn),
+          staffSpace: 16
+        )
+        .frame(minHeight: 300)
+        .padding(.horizontal, 8)
+      } else if isGrandStaff {
         GrandStaffView(
           noteGroups: noteGroups,
-          states: controller.itemStates,
+          states: columnStates,
           staffSpace: 16
         )
         .padding(.horizontal, 8)
@@ -90,17 +101,9 @@ struct PlayStepView: View {
           clef: controller.clef,
           noteGroups: noteGroups,
           states: columnStates,
-          durations: durations,
-          staffSpace: 18,
-          timeSignature: score?.timeSignature,
-          key: score?.key ?? .c,
-          barlinesAfter: score?.barlineColumns ?? [],
-          showsFinalBarline: score != nil,
-          scrolls: score != nil,
-          focusColumn: focusColumn
+          staffSpace: 18
         )
         .padding(.horizontal, 8)
-        .animation(.easeOut(duration: 0.28), value: controller.session.cursorIndex)
       }
 
       feedback

@@ -100,6 +100,14 @@ public struct StaffView: View, @MainActor Animatable {
   /// Whether to close with a double bar line.
   public let showsFinalBarline: Bool
 
+  /// Number written above the left end, or `nil` for none.
+  ///
+  /// Printed music numbers the first bar of each system. Here it is more than
+  /// convention: the app talks in bars — "let us retake this bar", "bar 7 has a
+  /// note with no duration" — and without the number there is no way to tell
+  /// which one it means.
+  public let measureNumber: Int?
+
   /// Whether the music keeps a fixed spacing and scrolls under the clef.
   ///
   /// A generated drill is short and always fits, so it does not scroll. A piece
@@ -128,6 +136,7 @@ public struct StaffView: View, @MainActor Animatable {
   ///   - key: The key signature to write.
   ///   - barlinesAfter: Column indices after which a bar line falls.
   ///   - showsFinalBarline: Whether to close with a double bar line.
+  ///   - measureNumber: Number to write above the left end, or `nil`.
   ///   - scrolls: Whether the music keeps a fixed spacing and scrolls.
   ///   - focusColumn: The column to hold at the cursor anchor.
   ///   - onTapStep: Called with the step that was tapped.
@@ -144,6 +153,7 @@ public struct StaffView: View, @MainActor Animatable {
     key: KeySignature = .c,
     barlinesAfter: Set<Int> = [],
     showsFinalBarline: Bool = false,
+    measureNumber: Int? = nil,
     scrolls: Bool = false,
     focusColumn: Double = 0,
     onTapStep: ((Int) -> Void)? = nil
@@ -160,6 +170,7 @@ public struct StaffView: View, @MainActor Animatable {
     self.key = key
     self.barlinesAfter = barlinesAfter
     self.showsFinalBarline = showsFinalBarline
+    self.measureNumber = measureNumber
     self.scrolls = scrolls
     self.focusColumn = focusColumn
     self.onTapStep = onTapStep
@@ -218,6 +229,7 @@ public struct StaffView: View, @MainActor Animatable {
       }
     }
     .frame(height: staffHeight + margin * 2)
+    .overlay(alignment: .topLeading) { measureBadge }
   }
 
   /// With targets on offer only a target counts; otherwise a tap snaps to the
@@ -238,6 +250,17 @@ public struct StaffView: View, @MainActor Animatable {
     else { return }
 
     onTapStep?(step)
+  }
+
+  /// The bar number above the left end of the system.
+  @ViewBuilder
+  private var measureBadge: some View {
+    if let measureNumber, measureNumber > 0 {
+      Text("\(measureNumber)")
+        .font(.system(size: staffSpace * 0.62, weight: .medium, design: .serif))
+        .foregroundStyle(.secondary)
+        .padding(.leading, staffSpace * 0.6)
+    }
   }
 
   private func drawTargets(in context: GraphicsContext, width: CGFloat) {
@@ -375,6 +398,18 @@ public struct StaffView: View, @MainActor Animatable {
     .bass: [2, 5, 1, 4, 0, 3, -1],
   ]
 
+  /// Staff steps a key signature's accidentals are written on.
+  ///
+  /// Shared with the grand staff, which writes the same signature twice — once
+  /// per staff — and must put it in the same conventional places.
+  /// - Parameters:
+  ///   - key: The key signature.
+  ///   - clef: Which staff it is being written on.
+  /// - Returns: The steps, in writing order.
+  static func accidentalSteps(for key: KeySignature, clef: Clef) -> [Int] {
+    (key.usesSharps ? sharpSteps : flatSteps)[clef] ?? []
+  }
+
   /// The across-the-page maths for a given width, in one place.
   private func layout(width: CGFloat) -> StaffLayout {
     StaffLayout(
@@ -455,8 +490,7 @@ public struct StaffView: View, @MainActor Animatable {
     let ink = PlatformColor.staffInk(colorScheme)
     var cursor = startX
 
-    let table = key.usesSharps ? Self.sharpSteps : Self.flatSteps
-    let steps = table[clef] ?? []
+    let steps = Self.accidentalSteps(for: key, clef: clef)
     let glyph = key.usesSharps ? Bravura.Glyph.sharp : Bravura.Glyph.flat
 
     for index in 0..<key.accidentalCount where index < steps.count {

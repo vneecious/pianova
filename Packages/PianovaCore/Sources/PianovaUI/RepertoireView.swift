@@ -81,7 +81,11 @@ struct RepertoireView: View {
           .frame(width: 190)
 
           Button {
-            isImporting = true
+            if FileChooser.opensDirectly {
+              if let url = FileChooser.choose(types: Self.musicXMLTypes) { open(url) }
+            } else {
+              isImporting = true
+            }
           } label: {
             Label("Importar MusicXML", systemImage: "square.and.arrow.down")
               .font(.system(size: 12))
@@ -147,21 +151,28 @@ struct RepertoireView: View {
 
   /// Reads a picked file, or says why it could not.
   private func load(_ result: Result<[URL], Error>) {
+    guard let url = try? result.get().first else {
+      importError = "Não consegui abrir o arquivo."
+      return
+    }
+    open(url)
+  }
+
+  /// Imports one file, reporting the reason when it will not open.
+  private func open(_ url: URL) {
     importError = nil
 
+    // Sandboxed picks arrive as security-scoped URLs and read as empty without
+    // this, which looks exactly like a corrupt file.
+    let scoped = url.startAccessingSecurityScopedResource()
+    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+
     do {
-      guard let url = try result.get().first else { return }
-
-      // Sandboxed picks arrive as security-scoped URLs and read as empty
-      // without this, which looks exactly like a corrupt file.
-      let scoped = url.startAccessingSecurityScopedResource()
-      defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-
       imported.insert(try MusicXMLImporter.score(at: url), at: 0)
     } catch let error as MusicXMLError {
       importError = error.message
     } catch {
-      importError = "Não consegui abrir o arquivo."
+      importError = "Não consegui ler \(url.lastPathComponent)."
     }
   }
 

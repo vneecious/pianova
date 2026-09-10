@@ -36,6 +36,7 @@ public struct RootView: View {
   @State private var lessonController: LessonController?
   @State private var isInstallingBank = false
   @StateObject private var drill = DrillController()
+  @EnvironmentObject private var metronome: Metronome
 
   /// Creates the shell.
   /// - Parameter hub: The shared instrument connection.
@@ -55,6 +56,9 @@ public struct RootView: View {
     }
     .frame(minWidth: 820, minHeight: 620)
     .onAppear {
+      // The sound routing follows the instrument: plug the piano in and the app
+      // starts playing through it without anyone pressing anything.
+      hub.onInstrumentChanged = { tones.connectInstrument() }
       hub.start()
       tones.connectInstrument()
     }
@@ -146,8 +150,16 @@ public struct RootView: View {
           ? "Trilha destravada — todas as lições abertas"
           : "Destravar a trilha inteira, para testar")
 
+      metronomeControl
+
       Button {
-        isInstallingBank = true
+        if FileChooser.opensDirectly {
+          let types = [UTType(filenameExtension: "sf2"), UTType(filenameExtension: "dls")]
+            .compactMap { $0 }
+          if let url = FileChooser.choose(types: types) { try? tones.installBank(from: url) }
+        } else {
+          isInstallingBank = true
+        }
       } label: {
         Image(systemName: "waveform")
           .foregroundStyle(tones.loadedBankName == nil ? .secondary : ItemState.done.color)
@@ -180,6 +192,51 @@ public struct RootView: View {
     }
     .padding(.horizontal, 32)
     .padding(.vertical, 20)
+  }
+
+  /// The metronome: a switch, and its dial once it is running.
+  ///
+  /// Kept in the top bar rather than inside an exercise, because it is the
+  /// player's own pulse and has to survive changing screens.
+  @ViewBuilder
+  private var metronomeControl: some View {
+    HStack(spacing: 6) {
+      Button {
+        metronome.toggle()
+      } label: {
+        Image(systemName: "metronome")
+          .foregroundStyle(metronome.isOn ? ItemState.current.color : .secondary)
+      }
+      .buttonStyle(.borderless)
+      .help(metronome.isOn ? "Desligar o metrônomo" : "Ligar o metrônomo")
+
+      if metronome.isOn {
+        Button {
+          metronome.tempo -= 4
+        } label: {
+          Image(systemName: "minus")
+        }
+        .buttonStyle(.borderless)
+
+        Text("\(Int(metronome.tempo))")
+          .font(.system(size: 12, weight: .medium, design: .rounded))
+          .monospacedDigit()
+          .frame(width: 26)
+
+        Button {
+          metronome.tempo += 4
+        } label: {
+          Image(systemName: "plus")
+        }
+        .buttonStyle(.borderless)
+
+        Picker("", selection: metronome.beatsPerBarBinding) {
+          ForEach([2, 3, 4, 6], id: \.self) { Text("\($0)/4").tag($0) }
+        }
+        .labelsHidden()
+        .frame(width: 72)
+      }
+    }
   }
 
   private var instrumentLine: String {

@@ -28,7 +28,14 @@ public final class CoreMIDIEventSource: MIDIEventSource, @unchecked Sendable {
     self.handler = handler
     lock.unlock()
 
-    let clientStatus = MIDIClientCreate("Pianova" as CFString, nil, nil, &client)
+    // A block, not `nil`: with no notification callback the app enumerates
+    // devices once at launch and never learns anything again. Plug the piano in
+    // after opening the app and it would simply never be noticed.
+    let clientStatus = MIDIClientCreateWithBlock("Pianova" as CFString, &client) {
+      [weak self] notification in
+      guard notification.pointee.messageID == .msgSetupChanged else { return }
+      self?.connectEverySource()
+    }
     guard clientStatus == noErr else {
       throw MIDIInputError.clientCreationFailed(clientStatus)
     }
@@ -41,14 +48,38 @@ public final class CoreMIDIEventSource: MIDIEventSource, @unchecked Sendable {
       throw MIDIInputError.portCreationFailed(portStatus)
     }
 
-    let sourceCount = MIDIGetNumberOfSources()
-    guard sourceCount > 0 else {
+    connectEverySource()
+
+    guard MIDIGetNumberOfSources() > 0 else {
       throw MIDIInputError.noSourcesAvailable
     }
-    for index in 0..<sourceCount {
+  }
+
+  /// Connects the port to every source Core MIDI can currently see.
+  ///
+  /// Run again whenever the setup changes, so an instrument connected after the
+  /// app opened is picked up without anyone pressing anything. Connecting a
+  /// source twice is harmless.
+  private func connectEverySource() {
+    guard port != 0 else { return }
+
+    for index in 0..<MIDIGetNumberOfSources() {
       MIDIPortConnectSource(port, MIDIGetSource(index), nil)
     }
+
+    lock.lock()
+    let notify = onSetupChanged
+    lock.unlock()
+    notify?()
   }
+
+  /// Called when instruments appear or disappear, so the screen can catch up.
+  public var onSetupChanged: (@Sendable () -> Void)? {
+    get { lock.withLock { setupHandler } }
+    set { lock.withLock { setupHandler = newValue } }
+  }
+
+  private var setupHandler: (@Sendable () -> Void)?
 
   /// Stops delivering events and disposes of the Core MIDI resources.
   public func stop() {

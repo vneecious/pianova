@@ -174,6 +174,7 @@ final class RhythmRoundController: ObservableObject {
 /// The rhythmic exercise screen.
 struct RhythmStepView: View {
   @EnvironmentObject private var tones: TonePlayer
+  @EnvironmentObject private var metronome: Metronome
   @ObservedObject var hub: MIDIHub
   @StateObject private var controller: RhythmRoundController
 
@@ -224,8 +225,12 @@ struct RhythmStepView: View {
     .onAppear {
       controller.onFinished = onFinished
       hub.setListener(owner: controller) { [controller] in controller.handle($0) }
+      // This exercise counts itself in. Two pulses at once is noise, and the
+      // one being judged against is this one.
+      metronome.suspend()
     }
     .onDisappear {
+      metronome.resume()
       hub.clearListener(owner: controller)
       controller.stop()
     }

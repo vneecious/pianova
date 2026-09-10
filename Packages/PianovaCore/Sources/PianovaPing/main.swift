@@ -9,6 +9,17 @@ import Foundation
 import MIDIInput
 import ScoreModel
 
+// Entrada primeiro: é o que decide se o app "reconhece" o piano.
+let input = CoreMIDIEventSource()
+print("Fontes visíveis: \(input.sourceNames)")
+do {
+  try input.start { _ in }
+  print("Entrada: abriu ✓")
+  input.stop()
+} catch {
+  print("Entrada: FALHOU — \(error)")
+}
+
 let output = MIDIOutput()
 
 print("Destinos visíveis: \(output.destinationNames)")

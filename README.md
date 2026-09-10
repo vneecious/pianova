@@ -343,6 +343,42 @@ cordas com ressonância simpática, ruído de martelo e comportamento de abafado
 67. Existe um **preview**: o app toca a peça sozinho, para servir de referência
     de como deveria soar. O preview nunca avalia nada.
 
+### Sistemas, não uma faixa infinita
+
+Uma peça inteira numa única linha que rola para o lado é ilegível quando tem
+545 notas, e não é como ninguém lê música. Papel quebra em **sistemas**, e a
+quebra é o que dá descanso ao olho e ensina o movimento real da leitura:
+esquerda para direita, depois desce.
+
+68. A partitura é quebrada em **sistemas** empilhados verticalmente, cada um
+    ocupando a largura disponível.
+69. A quebra acontece **sempre numa barra de compasso**, nunca no meio de um.
+70. Cada sistema repete **clave e armadura**; a fórmula de compasso aparece
+    só no primeiro, como em partitura impressa.
+71. A rolagem vertical **acompanha o cursor** sozinha, mantendo visível o
+    sistema que está sendo tocado.
+72. O usuário pode **rolar à mão** a qualquer momento, para olhar adiante ou
+    conferir o que passou.
+73. Cada sistema mostra o **número do primeiro compasso** dele, como em edição
+    impressa. Não é enfeite: o app fala em compassos — "vamos refazer este
+    compasso", "o compasso 7 tem uma nota sem duração" — e sem numeração não
+    há como saber qual.
+74. A **anacruse não é numerada**. O primeiro compasso completo é o número 1,
+    que é a convenção de qualquer editora.
+
+### Metrônomo
+
+75. O metrônomo pode ficar **ligado o tempo todo**, em qualquer tela, com
+    andamento e compasso ajustáveis.
+76. O **primeiro tempo do compasso é acentuado**. Um clique sem acento marca
+    pulso mas não marca compasso, e é o compasso que se está aprendendo a
+    sentir.
+77. O metrônomo **não deriva**: cada clique é agendado contra o instante de
+    início, nunca somando esperas — somar acumula erro, e um metrônomo que
+    atrasa é pior que nenhum.
+78. Um exercício que traz o próprio pulso **silencia o metrônomo global**
+    enquanto roda, e o devolve ao terminar. Dois pulsos ao mesmo tempo é ruído.
+
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o
 > OpenSheetMusicDisplay (TypeScript num `WKWebView`). Ambas entregam o layout

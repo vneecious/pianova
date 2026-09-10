@@ -12,14 +12,22 @@ import SwiftUI
 @main
 struct PianovaApp: App {
   @StateObject private var hub = MIDIHub(source: CoreMIDIEventSource())
-  @StateObject private var tones = TonePlayer()
+  @StateObject private var tones: TonePlayer
   @StateObject private var profile = ProfileController()
+  @StateObject private var metronome: Metronome
+
+  init() {
+    let tones = TonePlayer()
+    _tones = StateObject(wrappedValue: tones)
+    _metronome = StateObject(wrappedValue: Metronome(tones: tones))
+  }
 
   var body: some Scene {
     WindowGroup {
       RootView(hub: hub)
         .environmentObject(tones)
         .environmentObject(profile)
+        .environmentObject(metronome)
     }
   }
 }

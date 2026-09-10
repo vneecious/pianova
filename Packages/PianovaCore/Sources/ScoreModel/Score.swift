@@ -314,6 +314,17 @@ public struct Score: Equatable, Sendable {
     return result
   }
 
+  /// Which bar a column falls in, counting as an editor would.
+  ///
+  /// An upbeat is not numbered: the first complete bar is number 1, which is
+  /// what every publisher does and what a teacher will say out loud.
+  /// - Parameter column: Index into ``columns``.
+  /// - Returns: The bar number, or `0` for a column in the upbeat.
+  public func measureNumber(atColumn column: Int) -> Int {
+    let ended = barlineColumns.filter { $0 < column }.count
+    return hasPickup ? ended : ended + 1
+  }
+
   /// Bars that do not hold what the time signature asks.
   ///
   /// A pickup bar is excused, and only the first one: a short bar anywhere else

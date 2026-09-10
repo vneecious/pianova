@@ -36,6 +36,22 @@ public final class MIDIHub: ObservableObject {
   /// Opens the connection.
   ///
   /// Safe to call again to retry after plugging the instrument in.
+  /// Re-reads what is connected, without tearing the stream down.
+  ///
+  /// Called from the Core MIDI notification, so the header and the sound
+  /// routing catch up on their own.
+  public func refreshSources() {
+    guard let coreMIDI = source as? CoreMIDIEventSource else { return }
+
+    sourceNames = coreMIDI.sourceNames
+    connectionError = sourceNames.isEmpty ? "Nenhum instrumento conectado" : nil
+    onInstrumentChanged?()
+  }
+
+  /// Called when the set of connected instruments changes.
+  public var onInstrumentChanged: (() -> Void)?
+
+  /// Opens the instrument stream, replacing any already open.
   public func start() {
     source.stop()
 
@@ -47,6 +63,13 @@ public final class MIDIHub: ObservableObject {
       }
       if let coreMIDI = source as? CoreMIDIEventSource {
         sourceNames = coreMIDI.sourceNames
+
+        // Core MIDI tells us when instruments come and go. Without this the app
+        // enumerates once at launch and never notices a piano plugged in after,
+        // which reads as "it stopped recognising my piano".
+        coreMIDI.onSetupChanged = { [weak self] in
+          Task { @MainActor in self?.refreshSources() }
+        }
       }
       connectionError = nil
     } catch MIDIInputError.noSourcesAvailable {
