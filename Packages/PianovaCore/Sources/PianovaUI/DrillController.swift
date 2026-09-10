@@ -12,6 +12,28 @@ import SwiftUI
 /// all covered by tests.
 @MainActor
 public final class DrillController: ObservableObject {
+  /// When the current prompt was put on screen.
+  private var askedAt: Date?
+
+  /// The notes answered slowest, worst first, for the generator to lean on.
+  ///
+  /// Read fresh on every prompt so the focus follows the hesitation around
+  /// rather than fixing on whatever was hard at the start of the session.
+  private var hesitatedPitches: [Pitch] {
+    guard let timing = stats.timings[settings.style] ?? stats.timings.values.first else {
+      return []
+    }
+    return timing.hesitations().map(\.pitch)
+  }
+
+  /// The typical answer time for the style being drilled, if measured yet.
+  public var median: TimeInterval? { stats.timings[settings.style]?.median }
+
+  /// The notes to study, slowest first.
+  public var hesitations: [(pitch: Pitch, median: TimeInterval)] {
+    (stats.timings[settings.style] ?? stats.timings.values.first)?.hesitations() ?? []
+  }
+
   /// What the drill draws from.
   ///
   /// Changing it starts a fresh prompt.
@@ -43,7 +65,9 @@ public final class DrillController: ObservableObject {
   /// - Parameter settings: What to draw from.
   public init(settings: DrillSettings = DrillSettings()) {
     var generator = SystemRandomNumberGenerator()
+    // No hesitations to lean on yet: nothing has been answered.
     let first = DrillGenerator.next(settings: settings, using: &generator)
+    askedAt = Date()
 
     self.settings = settings
     prompt = first
@@ -104,14 +128,22 @@ public final class DrillController: ObservableObject {
       lastWrong = pitch
     case .finished:
       lastWrong = nil
-      stats.record(wasClean: session.mistakeCount == 0)
+      // Only a clean answer is timed, and only the first note of the prompt is
+      // credited: it is the one that was read cold, and the rest ride on it.
+      stats.record(
+        wasClean: session.mistakeCount == 0,
+        seconds: askedAt.map { Date().timeIntervalSince($0) },
+        style: prompt.style,
+        pitch: prompt.pitches.first)
       newPrompt()
     }
   }
 
   private func newPrompt() {
     var generator = SystemRandomNumberGenerator()
-    let next = DrillGenerator.next(settings: settings, using: &generator)
+    let next = DrillGenerator.next(
+      settings: settings, hesitations: hesitatedPitches, using: &generator)
+    askedAt = Date()
 
     prompt = next
     session = ExerciseSession(exercise: Self.exercise(for: next))

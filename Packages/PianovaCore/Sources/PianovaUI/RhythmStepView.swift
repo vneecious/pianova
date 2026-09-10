@@ -13,6 +13,8 @@ final class RhythmRoundController: ObservableObject {
     case ready
     /// Counting the bar in, with the beat number shown.
     case countIn(Int)
+    /// Stopped on a mistake, about to retake the bar.
+    case recovering
     /// Under way.
     case playing
     /// Every note played.
@@ -41,6 +43,26 @@ final class RhythmRoundController: ObservableObject {
   /// Beat the playhead is on, counting from 1.
   var currentBeat: Int { Int(elapsed / session.beatDuration) + 1 }
 
+  /// Which note the guide line has reached, and how far past it.
+  ///
+  /// Time is what the run measures, but the staff is laid out in columns, so
+  /// the clock has to be converted into a column before anything is drawn.
+  var playheadPosition: (column: Int, progress: Double) {
+    let notes = session.notes
+    guard !notes.isEmpty else { return (0, 0) }
+
+    for index in notes.indices {
+      let start = session.onset(of: index)
+      let end = session.onset(of: index + 1)
+      if elapsed < end {
+        let span = end - start
+        return (index, span > 0 ? min(max((elapsed - start) / span, 0), 1) : 0)
+      }
+    }
+
+    return (notes.count, 0)
+  }
+
   /// How far through the run, from 0 to 1.
   var fraction: Double {
     guard session.totalDuration > 0 else { return 0 }
@@ -53,7 +75,36 @@ final class RhythmRoundController: ObservableObject {
 
     session = RhythmSession(notes: session.notes, tempo: session.tempo)
     lastJudgement = nil
-    elapsed = 0
+    start(from: 0)
+  }
+
+  /// Goes back to the bar the mistake happened in and retakes it.
+  ///
+  /// Letting the music carry on after an error is the worst of both worlds: the
+  /// pulse is lost and the rest is played wrong anyway. Going back a bar is
+  /// what anyone practising actually does.
+  private func recover() {
+    let landing = session.firstNote(
+      ofBarContaining: session.index, beatsPerBar: beatsPerBar)
+
+    ticker?.cancel()
+    ticker = nil
+    phase = .recovering
+
+    ticker = Task { [weak self] in
+      guard let self else { return }
+      // A beat of silence so the mistake registers before the count starts.
+      try? await Task.sleep(for: .seconds(session.beatDuration))
+      if Task.isCancelled { return }
+      session.rewind(to: landing)
+      start(from: landing)
+    }
+  }
+
+  /// Counts in, then runs the clock from a given note.
+  private func start(from noteIndex: Int) {
+    let resumeAt = session.onset(of: noteIndex)
+    elapsed = resumeAt
 
     ticker?.cancel()
     ticker = Task { [weak self] in
@@ -61,7 +112,8 @@ final class RhythmRoundController: ObservableObject {
       let beat = session.beatDuration
 
       // A bar of clicks before anything counts: rhythm cannot be judged
-      // against a pulse the player has not heard yet.
+      // against a pulse the player has not heard yet. It happens again on
+      // every retake, for the same reason.
       for count in 1...beatsPerBar {
         phase = .countIn(count)
         tones.click(isAccent: count == 1)
@@ -70,7 +122,8 @@ final class RhythmRoundController: ObservableObject {
       }
 
       phase = .playing
-      startedAt = Date()
+      // Wound back so the clock reads as if the run had reached this note.
+      startedAt = Date().addingTimeInterval(-resumeAt)
 
       while !Task.isCancelled, phase == .playing {
         if let startedAt {
@@ -103,7 +156,11 @@ final class RhythmRoundController: ObservableObject {
     let judgement = session.press([pitch], at: Date().timeIntervalSince(startedAt))
     lastJudgement = judgement
 
-    if judgement.isFinished { finish() }
+    if judgement.isFinished {
+      finish()
+    } else if judgement.verdict != .onTime {
+      recover()
+    }
   }
 
   private func finish() {
@@ -195,15 +252,25 @@ struct RhythmStepView: View {
 
   /// A line sweeping across the staff at the written tempo.
   ///
-  /// Reading rhythm is reading time as space; the playhead makes that literal.
+  /// Reading rhythm is reading time as space, and the guide line makes that
+  /// literal. Positioned through ``StaffLayout``, the same arithmetic that
+  /// places the note heads: sweeping the view width instead starts the line at
+  /// the far left edge — before the clef — so it points at nothing and reads as
+  /// running ahead of the music.
   @ViewBuilder
   private var playhead: some View {
     if controller.phase == .playing {
       GeometryReader { proxy in
+        let layout = StaffLayout(
+          staffSpace: 20, width: proxy.size.width,
+          columnCount: controller.session.notes.count)
+        let position = controller.playheadPosition
+
         Rectangle()
           .fill(ItemState.current.color.opacity(0.55))
           .frame(width: 2)
-          .offset(x: proxy.size.width * controller.fraction)
+          .offset(
+            x: layout.playheadX(column: position.column, progress: position.progress))
       }
     }
   }
@@ -232,6 +299,7 @@ struct RhythmStepView: View {
     switch controller.phase {
     case .ready: return ItemState.pending.color
     case .countIn: return ItemState.current.color
+    case .recovering: return ItemState.failed.color
     case .finished: return ItemState.done.color
     case .playing:
       switch controller.lastJudgement?.verdict {
@@ -247,6 +315,8 @@ struct RhythmStepView: View {
       return "Ouça a contagem e entre no primeiro tempo"
     case .countIn(let beat):
       return String(repeating: "• ", count: beat).trimmingCharacters(in: .whitespaces)
+    case .recovering:
+      return "Vamos refazer este compasso"
     case .finished:
       return summary
     case .playing:

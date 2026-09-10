@@ -146,6 +146,46 @@ public struct RhythmSession {
   /// How long the whole run lasts, in seconds.
   public var totalDuration: TimeInterval { onset(of: notes.count) }
 
+  /// Which bar a note falls in, counting from zero.
+  /// - Parameters:
+  ///   - noteIndex: Position in the sequence.
+  ///   - beatsPerBar: Beats to the bar.
+  /// - Returns: The bar number, from zero.
+  public func bar(of noteIndex: Int, beatsPerBar: Int) -> Int {
+    guard beatsPerBar > 0 else { return 0 }
+    let beats = onset(of: noteIndex) / beatDuration
+    return Int((beats / Double(beatsPerBar)).rounded(.down))
+  }
+
+  /// The first note of the bar a given note sits in.
+  ///
+  /// Where a mistake sends you back to: an error is undone by retaking the bar
+  /// it happened in, not by restarting the whole piece.
+  /// - Parameters:
+  ///   - noteIndex: Position in the sequence.
+  ///   - beatsPerBar: Beats to the bar.
+  /// - Returns: The index of the first note of that bar.
+  public func firstNote(ofBarContaining noteIndex: Int, beatsPerBar: Int) -> Int {
+    let target = bar(of: noteIndex, beatsPerBar: beatsPerBar)
+    for candidate in 0...max(noteIndex, 0)
+    where bar(of: candidate, beatsPerBar: beatsPerBar) == target {
+      return candidate
+    }
+    return 0
+  }
+
+  /// Goes back to a note, forgetting how everything from there on turned out.
+  ///
+  /// Verdicts already earned before that point are kept: retaking a bar should
+  /// not erase the bars that went right.
+  /// - Parameter target: The note to resume from.
+  public mutating func rewind(to target: Int) {
+    let safe = min(max(target, 0), notes.count)
+    index = safe
+
+    for position in safe..<outcomes.count { outcomes[position] = nil }
+  }
+
   /// Lets the music move on without the player.
   ///
   /// Reading is continuous: you do not stop and wait at each note, and an

@@ -194,3 +194,22 @@ private func prompts(_ settings: DrillSettings, count: Int = 40, seed: UInt64 = 
 
   #expect(stats.accuracy == 0.5)
 }
+
+/// Everything the drill can ask has a key on the on-screen keyboard.
+///
+/// Without a real instrument the screen keyboard is the only way to answer, so
+/// a prompt outside its span is a dead end: the exercise cannot be completed at
+/// all. This caught the drill asking for Si 2 on a keyboard starting at Dó 3.
+@Test func everyDrillNoteExistsOnTheScreenKeyboard() {
+  let keys = KeyboardLayout.standard.range
+
+  for difficulty in DrillDifficulty.allCases {
+    for clef in [Clef.treble, .bass] {
+      let asked = DrillSettings(difficulty: difficulty).range(for: clef)
+
+      #expect(
+        keys.contains(asked.lowerBound) && keys.contains(asked.upperBound),
+        "\(difficulty.rawValue)/\(clef) pede \(asked), fora do teclado \(keys)")
+    }
+  }
+}

@@ -20,13 +20,14 @@ struct DrillView: View {
   let onExit: () -> Void
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 20) {
+    VStack(alignment: .leading, spacing: 16) {
       settingsBar
       Divider()
       tally
+      hesitationPanel
 
       prompt
-        .frame(maxWidth: .infinity, minHeight: 190, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
 
       feedback
 
@@ -69,10 +70,12 @@ struct DrillView: View {
       .labelsHidden()
       .frame(width: 270)
 
+      // `.button` rather than `.checkbox`: the checkbox style is macOS only, and
+      // this view has to compile for the iPad too.
       Toggle("Sol", isOn: $controller.settings.usesTreble)
-        .toggleStyle(.checkbox)
+        .toggleStyle(.button)
       Toggle("Fá", isOn: $controller.settings.usesBass)
-        .toggleStyle(.checkbox)
+        .toggleStyle(.button)
 
       Spacer()
 
@@ -99,7 +102,51 @@ struct DrillView: View {
       if controller.stats.answered > 0 {
         stat("Precisão", "\(Int(controller.stats.accuracy * 100))%")
       }
+      // Accuracy saturates within weeks; time goes on moving for years, and it
+      // is the number that separates working a note out from recognising it.
+      if let median = controller.median {
+        stat("Tempo típico", String(format: "%.1fs", median))
+      }
       Spacer()
+    }
+  }
+
+  /// The notes answered slowest, which is the study list.
+  ///
+  /// A median says how you are doing. This says what to work on tomorrow — and
+  /// the drill is already leaning on these notes on its own.
+  @ViewBuilder
+  private var hesitationPanel: some View {
+    let worst = controller.hesitations.prefix(5)
+
+    if !worst.isEmpty {
+      VStack(alignment: .leading, spacing: 6) {
+        Text("Onde você mais hesita")
+          .font(.system(size: 11, weight: .medium))
+          .foregroundStyle(.secondary)
+          .textCase(.uppercase)
+
+        HStack(spacing: 8) {
+          ForEach(Array(worst.enumerated()), id: \.offset) { _, entry in
+            VStack(spacing: 2) {
+              Text(entry.pitch.solfegeWithOctave)
+                .font(.system(size: 13, weight: .semibold))
+              Text(String(format: "%.1fs", entry.median))
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(ItemState.failed.color.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+          }
+          Spacer(minLength: 0)
+        }
+
+        Text("O treino já está perguntando mais sobre estas.")
+          .font(.system(size: 11))
+          .foregroundStyle(.secondary)
+      }
     }
   }
 
@@ -209,12 +256,8 @@ struct DrillView: View {
   }
 
   private var keyboard: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      Text(hub.connectionError ?? "Sem instrumento — toque aqui")
-        .font(.system(size: 11))
-        .foregroundStyle(.secondary)
-
-      PianoKeyboardView(onPress: { controller.playPitch($0) })
-    }
+    // Sem legenda: o cabeçalho já informa que não há instrumento, e repetir a
+    // mesma frase duas vezes na tela é ruído, não clareza.
+    PianoKeyboardView(onPress: { controller.playPitch($0) })
   }
 }
