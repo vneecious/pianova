@@ -39,6 +39,7 @@ struct PieceView: View {
           beatsPerBar: score.timeSignature.beatsPerBar,
           hub: hub,
           tones: tones,
+          score: score,
           onFinished: onFinished)
       }
     }

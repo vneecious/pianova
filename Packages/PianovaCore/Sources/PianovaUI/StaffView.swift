@@ -100,6 +100,17 @@ public struct StaffView: View, @MainActor Animatable {
   /// Whether to close with a double bar line.
   public let showsFinalBarline: Bool
 
+  /// Where the moving guide line is, or `nil` when nothing is playing.
+  ///
+  /// Given in this staff's own columns, so a system knows nothing about the
+  /// systems around it.
+  public let playhead: PlayheadPosition?
+
+  /// Whether this line is stretched to fill the width.
+  ///
+  /// Every system except the last, as printed music does.
+  public let justifies: Bool
+
   /// Number written above the left end, or `nil` for none.
   ///
   /// Printed music numbers the first bar of each system. Here it is more than
@@ -137,6 +148,8 @@ public struct StaffView: View, @MainActor Animatable {
   ///   - barlinesAfter: Column indices after which a bar line falls.
   ///   - showsFinalBarline: Whether to close with a double bar line.
   ///   - measureNumber: Number to write above the left end, or `nil`.
+  ///   - playhead: Where the guide line is, or `nil` when nothing plays.
+  ///   - justifies: Whether the line is stretched to fill the width.
   ///   - scrolls: Whether the music keeps a fixed spacing and scrolls.
   ///   - focusColumn: The column to hold at the cursor anchor.
   ///   - onTapStep: Called with the step that was tapped.
@@ -154,6 +167,8 @@ public struct StaffView: View, @MainActor Animatable {
     barlinesAfter: Set<Int> = [],
     showsFinalBarline: Bool = false,
     measureNumber: Int? = nil,
+    playhead: PlayheadPosition? = nil,
+    justifies: Bool = false,
     scrolls: Bool = false,
     focusColumn: Double = 0,
     onTapStep: ((Int) -> Void)? = nil
@@ -171,6 +186,8 @@ public struct StaffView: View, @MainActor Animatable {
     self.barlinesAfter = barlinesAfter
     self.showsFinalBarline = showsFinalBarline
     self.measureNumber = measureNumber
+    self.playhead = playhead
+    self.justifies = justifies
     self.scrolls = scrolls
     self.focusColumn = focusColumn
     self.onTapStep = onTapStep
@@ -222,6 +239,7 @@ public struct StaffView: View, @MainActor Animatable {
         drawBarlines(in: context, size: size, bottomLineY: bottomLineY)
         drawTargets(in: context, width: size.width)
         drawGlyphs(in: context, size: size, bottomLineY: bottomLineY)
+        drawPlayhead(in: context, size: size)
       }
       .contentShape(Rectangle())
       .onTapGesture(coordinateSpace: .local) { location in
@@ -414,7 +432,8 @@ public struct StaffView: View, @MainActor Animatable {
   private func layout(width: CGFloat) -> StaffLayout {
     StaffLayout(
       staffSpace: staffSpace, width: width, columnCount: noteGroups.count,
-      preamble: preambleWidth, scrolls: scrolls, durations: durations)
+      preamble: preambleWidth, scrolls: scrolls, durations: durations,
+      justifies: justifies)
   }
 
   /// How much room the clef, key and time signature take before the first note.
@@ -428,6 +447,25 @@ public struct StaffView: View, @MainActor Animatable {
   /// Drawn whether or not anything has been played yet: having to hunt for
   /// where you are is the thing that breaks the flow of reading, and it costs
   /// nothing to say it outright.
+  /// The moving guide line, placed by the same arithmetic as the note heads.
+  private func drawPlayhead(in context: GraphicsContext, size: CGSize) {
+    guard let playhead else { return }
+
+    let bottomLineY = margin + staffHeight
+
+    let layout = layout(width: size.width)
+    let positionX =
+      layout.playheadX(column: playhead.column, progress: playhead.progress)
+      - layout.offset(focusing: focusColumn)
+
+    guard positionX >= layout.noteAreaStart - staffSpace, positionX <= size.width else { return }
+
+    var path = Path()
+    path.move(to: CGPoint(x: positionX, y: bottomLineY - staffHeight - staffSpace))
+    path.addLine(to: CGPoint(x: positionX, y: bottomLineY + staffSpace))
+    context.stroke(path, with: .color(ItemState.current.color.opacity(0.7)), lineWidth: 2)
+  }
+
   private func drawCursorBand(in context: GraphicsContext, size: CGSize, bottomLineY: CGFloat) {
     guard scrolls, noteGroups.count > 0 else { return }
 

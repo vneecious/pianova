@@ -13,6 +13,9 @@ struct ScoreSheetView: View {
   let focusColumn: Int
   let staffSpace: CGFloat
 
+  /// Where the moving guide line is, or `nil` when nothing is playing.
+  var playhead: PlayheadPosition? = nil
+
   /// Vertical room between systems.
   private let systemGap: CGFloat = 18
 
@@ -65,14 +68,16 @@ struct ScoreSheetView: View {
         durations: durations,
         timeSignature: range.lowerBound == 0 ? score.timeSignature : nil,
         key: score.key, barlinesAfter: bars, showsFinalBarline: isLast,
-        measureNumber: number)
+        measureNumber: number, playhead: playhead?.within(range),
+        justifies: !isLast)
     } else {
       StaffView(
         clef: score.clef, noteGroups: groups, states: slice, durations: durations,
         staffSpace: staffSpace,
         timeSignature: range.lowerBound == 0 ? score.timeSignature : nil,
         key: score.key, barlinesAfter: bars, showsFinalBarline: isLast,
-        measureNumber: number)
+        measureNumber: number, playhead: playhead?.within(range),
+        justifies: !isLast)
     }
   }
 

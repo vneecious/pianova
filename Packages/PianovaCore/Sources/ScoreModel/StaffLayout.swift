@@ -37,6 +37,13 @@ public struct StaffLayout: Equatable, Sendable {
   /// Whether the columns keep a fixed width and the music scrolls.
   public let scrolls: Bool
 
+  /// Whether the line is stretched to fill the width.
+  ///
+  /// Printed music justifies every system except the last, which keeps its
+  /// natural width and leaves paper to the right. Justifying the last one too
+  /// is what makes four final notes sprawl across the page.
+  public let justifies: Bool
+
   /// Written duration of each column, when the music has rhythm.
   ///
   /// Empty for a reading drill, where nothing is written and every column is
@@ -51,13 +58,15 @@ public struct StaffLayout: Equatable, Sendable {
   ///   - preamble: Room reserved for the key and time signatures.
   ///   - scrolls: Whether columns keep a fixed width and the music scrolls.
   ///   - durations: Written duration per column, or empty for equal columns.
+  ///   - justifies: Whether the line is stretched to fill the width.
   public init(
     staffSpace: CGFloat,
     width: CGFloat,
     columnCount: Int,
     preamble: CGFloat = 0,
     scrolls: Bool = false,
-    durations: [Duration] = []
+    durations: [Duration] = [],
+    justifies: Bool = false
   ) {
     self.staffSpace = staffSpace
     self.width = width
@@ -65,6 +74,7 @@ public struct StaffLayout: Equatable, Sendable {
     self.preamble = max(preamble, 0)
     self.scrolls = scrolls
     self.durations = durations
+    self.justifies = justifies
   }
 
   /// How wide one column is.
@@ -78,10 +88,40 @@ public struct StaffLayout: Equatable, Sendable {
   /// - Parameter column: Which column, counting from zero.
   /// - Returns: Its width in points.
   public func width(ofColumn column: Int) -> CGFloat {
-    guard scrolls, durations.indices.contains(column) else { return spacing }
+    naturalWidth(ofColumn: column) * justificationScale
+  }
 
-    let quarters = CGFloat(durations[column].beats)
-    return max(spacing * quarters, Self.minimumSpacing * staffSpace * 0.6)
+  /// How wide a column wants to be before the line is stretched.
+  private func naturalWidth(ofColumn column: Int) -> CGFloat {
+    guard durations.indices.contains(column) else { return spacing }
+    return proportionalBase * CGFloat(durations[column].beats)
+  }
+
+  /// Points per crotchet, chosen so the shortest figure present is legible.
+  ///
+  /// A floor applied per column would guarantee legibility and destroy the
+  /// proportions doing it: a quaver clamped up to the floor stops being half a
+  /// crotchet, and the spacing stops telling the truth about time. Scaling
+  /// everything from the shortest figure keeps the ratios exact and still
+  /// leaves the smallest note room to be drawn.
+  private var proportionalBase: CGFloat {
+    let shortest = durations.map { CGFloat($0.beats) }.min() ?? 1
+    let smallestReadable = Self.minimumSpacing * staffSpace * 0.6
+
+    return max(Self.minimumSpacing * staffSpace, smallestReadable / max(shortest, 0.01))
+  }
+
+  /// How much the line is stretched so it fills the width.
+  ///
+  /// Applied to every column equally, so stretching a system never changes
+  /// which note looks longer than which — the proportions are the reading.
+  private var justificationScale: CGFloat {
+    guard justifies, columnCount > 0 else { return 1 }
+
+    let natural = (0..<columnCount).reduce(0) { $0 + naturalWidth(ofColumn: $1) }
+    guard natural > 0, natural < noteAreaWidth else { return 1 }
+
+    return noteAreaWidth / natural
   }
 
   /// Left edge of a column, measured from the start of the note area.
@@ -120,7 +160,9 @@ public struct StaffLayout: Equatable, Sendable {
 
   /// How wide the music is, which may be far wider than the view.
   public var contentWidth: CGFloat {
-    guard scrolls, !durations.isEmpty else { return spacing * CGFloat(columnCount) }
+    // Written rhythm decides the width whenever there is any; only a drill with
+    // no figures falls back to dividing the line equally.
+    guard !durations.isEmpty else { return spacing * CGFloat(columnCount) }
     return start(ofColumn: columnCount)
   }
 

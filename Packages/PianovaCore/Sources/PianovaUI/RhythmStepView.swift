@@ -181,6 +181,13 @@ struct RhythmStepView: View {
   private let clef: Clef
   private let onFinished: () -> Void
 
+  /// The written piece behind the rhythm, when there is one.
+  ///
+  /// With it the exercise is drawn exactly like the free mode — systems, bar
+  /// numbers, signatures — because the same piece read two ways should not
+  /// look like two different things.
+  private let score: Score?
+
   init(
     notes: [RhythmicNote],
     clef: Clef,
@@ -188,8 +195,10 @@ struct RhythmStepView: View {
     beatsPerBar: Int,
     hub: MIDIHub,
     tones: TonePlayer,
+    score: Score? = nil,
     onFinished: @escaping () -> Void
   ) {
+    self.score = score
     _controller = StateObject(
       wrappedValue: RhythmRoundController(
         notes: notes, tempo: tempo, beatsPerBar: beatsPerBar, tones: tones))
@@ -202,17 +211,33 @@ struct RhythmStepView: View {
     VStack(alignment: .leading, spacing: 18) {
       header
 
-      ZStack(alignment: .topLeading) {
-        StaffView(
-          clef: clef,
-          noteGroups: controller.session.notes.map { Array($0.pitches) },
+      if let score {
+        ScoreSheetView(
+          score: score,
           states: states,
-          durations: controller.session.notes.map(\.duration),
-          staffSpace: 20)
+          focusColumn: controller.session.index,
+          staffSpace: 16,
+          playhead: controller.phase == .playing
+            ? PlayheadPosition(
+              column: controller.playheadPosition.column,
+              progress: controller.playheadPosition.progress)
+            : nil
+        )
+        .frame(minHeight: 260)
+        .padding(.horizontal, 8)
+      } else {
+        ZStack(alignment: .topLeading) {
+          StaffView(
+            clef: clef,
+            noteGroups: controller.session.notes.map { Array($0.pitches) },
+            states: states,
+            durations: controller.session.notes.map(\.duration),
+            staffSpace: 20)
 
-        playhead
+          playhead
+        }
+        .padding(.horizontal, 8)
       }
-      .padding(.horizontal, 8)
 
       feedback
 

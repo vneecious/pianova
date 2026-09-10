@@ -112,3 +112,30 @@ private let everyFourBars: Set<Int> = [3, 7, 11, 15]
 
   #expect(systems == [0..<4, 4..<8])
 }
+
+// MARK: - A linha-guia dentro de um sistema
+
+/// A guide line in a later system is reported in that system's own columns.
+///
+/// Each system draws itself and knows nothing about the ones around it, so the
+/// position has to be translated or the line lands in the wrong place.
+@Test func thePlayheadIsTranslatedIntoTheSystem() {
+  let position = PlayheadPosition(column: 9, progress: 0.5)
+
+  let local = position.within(8..<16)
+  #expect(local?.column == 1, "coluna 9 é a segunda de um sistema que começa em 8")
+  #expect(local?.progress == 0.5, "a fração não muda ao trocar de sistema")
+}
+
+/// A system the line has not reached, or has already left, draws none.
+@Test func aSystemWithoutTheLineDrawsNone() {
+  let position = PlayheadPosition(column: 9, progress: 0.25)
+
+  #expect(position.within(0..<8) == nil, "o sistema anterior não deveria mostrar a linha")
+  #expect(position.within(16..<24) == nil, "nem o seguinte")
+}
+
+/// The first column of the first system needs no translating.
+@Test func theFirstColumnStaysWhereItIs() {
+  #expect(PlayheadPosition(column: 0, progress: 0).within(0..<8)?.column == 0)
+}

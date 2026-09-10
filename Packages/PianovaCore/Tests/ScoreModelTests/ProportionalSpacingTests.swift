@@ -126,3 +126,55 @@ private func mixed(width: CGFloat = 900) -> StaffLayout {
 
   #expect(acrossWhole > acrossQuaver * 4, "a semibreve deveria levar muito mais espaço")
 }
+
+// MARK: - Justificação
+
+/// Um sistema com sobra é esticado para preencher a linha.
+@Test func aJustifiedLineFillsTheWidth() {
+  let layout = StaffLayout(
+    staffSpace: 18, width: 900, columnCount: 4,
+    durations: Array(repeating: Duration(.quarter), count: 4), justifies: true)
+
+  #expect(abs(layout.contentWidth - layout.noteAreaWidth) < 0.001)
+}
+
+/// Esticar não muda qual nota parece mais longa que qual.
+///
+/// A proporção é a leitura: se justificar embaralhasse as larguras, o olho
+/// perderia a pista de duração que o espaçamento proporcional existe para dar.
+@Test func justifyingKeepsTheProportions() {
+  let durations = [Duration(.whole), Duration(.quarter), Duration(.quarter)]
+
+  let natural = StaffLayout(
+    staffSpace: 18, width: 900, columnCount: 3, scrolls: true, durations: durations)
+  let stretched = StaffLayout(
+    staffSpace: 18, width: 900, columnCount: 3, durations: durations, justifies: true)
+
+  let naturalRatio = natural.width(ofColumn: 0) / natural.width(ofColumn: 1)
+  let stretchedRatio = stretched.width(ofColumn: 0) / stretched.width(ofColumn: 1)
+
+  #expect(abs(naturalRatio - stretchedRatio) < 0.001)
+}
+
+/// O último sistema fica no tamanho natural e deixa papel à direita.
+///
+/// Justificar o último é o que faz quatro notas finais se espalharem pela
+/// página inteira, que é exatamente o que parecia errado na tela.
+@Test func theLastLineIsNotStretched() {
+  let durations = Array(repeating: Duration(.quarter), count: 4)
+
+  let last = StaffLayout(
+    staffSpace: 18, width: 900, columnCount: 4, durations: durations, justifies: false)
+
+  #expect(last.contentWidth < last.noteAreaWidth, "deveria sobrar espaço à direita")
+}
+
+/// Uma linha que já transborda não é encolhida para caber.
+@Test func anOverfullLineIsNotSqueezed() {
+  let durations = Array(repeating: Duration(.quarter), count: 40)
+
+  let layout = StaffLayout(
+    staffSpace: 18, width: 400, columnCount: 40, durations: durations, justifies: true)
+
+  #expect(layout.contentWidth > layout.noteAreaWidth, "justificar nunca comprime")
+}

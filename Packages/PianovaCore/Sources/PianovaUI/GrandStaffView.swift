@@ -38,6 +38,17 @@ public struct GrandStaffView: View, @MainActor Animatable {
   /// Whether to close with a double bar line.
   public let showsFinalBarline: Bool
 
+  /// Where the moving guide line is, or `nil` when nothing is playing.
+  ///
+  /// Given in this staff's own columns, so a system knows nothing about the
+  /// systems around it.
+  public let playhead: PlayheadPosition?
+
+  /// Whether this line is stretched to fill the width.
+  ///
+  /// Every system except the last, as printed music does.
+  public let justifies: Bool
+
   /// Number written above the left end, or `nil` for none.
   ///
   /// Printed music numbers the first bar of each system. Here it is more than
@@ -63,6 +74,8 @@ public struct GrandStaffView: View, @MainActor Animatable {
   ///   - barlinesAfter: Column indices after which a bar line falls.
   ///   - showsFinalBarline: Whether to close with a double bar line.
   ///   - measureNumber: Number to write above the left end, or `nil`.
+  ///   - playhead: Where the guide line is, or `nil` when nothing plays.
+  ///   - justifies: Whether the line is stretched to fill the width.
   ///   - scrolls: Whether the music keeps a fixed spacing and scrolls.
   ///   - focusColumn: The column to hold at the cursor anchor.
   public init(
@@ -75,6 +88,8 @@ public struct GrandStaffView: View, @MainActor Animatable {
     barlinesAfter: Set<Int> = [],
     showsFinalBarline: Bool = false,
     measureNumber: Int? = nil,
+    playhead: PlayheadPosition? = nil,
+    justifies: Bool = false,
     scrolls: Bool = false,
     focusColumn: Double = 0
   ) {
@@ -87,6 +102,8 @@ public struct GrandStaffView: View, @MainActor Animatable {
     self.barlinesAfter = barlinesAfter
     self.showsFinalBarline = showsFinalBarline
     self.measureNumber = measureNumber
+    self.playhead = playhead
+    self.justifies = justifies
     self.scrolls = scrolls
     self.focusColumn = focusColumn
   }
@@ -108,7 +125,8 @@ public struct GrandStaffView: View, @MainActor Animatable {
   private func layout(width: CGFloat) -> StaffLayout {
     StaffLayout(
       staffSpace: staffSpace, width: width, columnCount: noteGroups.count,
-      preamble: preambleWidth, scrolls: scrolls, durations: durations)
+      preamble: preambleWidth, scrolls: scrolls, durations: durations,
+      justifies: justifies)
   }
 
   /// Headroom kept above and below for ledger lines.
@@ -142,6 +160,7 @@ public struct GrandStaffView: View, @MainActor Animatable {
       drawBrace(in: context)
       drawBarlines(in: context, size: size)
       drawGlyphs(in: context, size: size)
+      drawPlayhead(in: context, size: size)
     }
     .frame(height: totalHeight)
     .overlay(alignment: .topLeading) { measureBadge }
@@ -179,8 +198,26 @@ public struct GrandStaffView: View, @MainActor Animatable {
     context.stroke(path, with: .color(.primary.opacity(0.55)), lineWidth: 2)
   }
 
-  /// A soft band behind the column the cursor is on, so where you are is never
-  /// something to hunt for.
+  /// A soft band behind the column the cursor is on.
+  ///
+  /// Where you are should never be something to hunt for.
+  /// The moving guide line, placed by the same arithmetic as the note heads.
+  private func drawPlayhead(in context: GraphicsContext, size: CGSize) {
+    guard let playhead else { return }
+
+    let layout = layout(width: size.width)
+    let positionX =
+      layout.playheadX(column: playhead.column, progress: playhead.progress)
+      - layout.offset(focusing: focusColumn)
+
+    guard positionX >= layout.noteAreaStart - staffSpace, positionX <= size.width else { return }
+
+    var path = Path()
+    path.move(to: CGPoint(x: positionX, y: margin - staffSpace))
+    path.addLine(to: CGPoint(x: positionX, y: bassBottomLineY + staffSpace))
+    context.stroke(path, with: .color(ItemState.current.color.opacity(0.7)), lineWidth: 2)
+  }
+
   private func drawCursorBand(in context: GraphicsContext, size: CGSize) {
     guard scrolls, !noteGroups.isEmpty else { return }
 
