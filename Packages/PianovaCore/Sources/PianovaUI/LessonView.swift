@@ -166,6 +166,14 @@ public struct LessonView: View {
         clef: song.clef,
         title: "\(song.title) — \(song.composer)",
         hub: hub,
+        score: song,
+        onFinished: { controller.completeStep() })
+
+    case .technique(let exercise):
+      TechniqueStepView(
+        exercise: exercise,
+        hub: hub,
+        tones: tones,
         onFinished: { controller.completeStep() })
     }
   }
@@ -192,15 +200,13 @@ public struct LessonView: View {
       using: &generator)
   }
 
-  /// A two-handed piece pairs each melody note with the left hand note beside
-  /// it, so both sound together.
-  private static func exercise(for song: Song) -> Exercise {
-    guard song.isTwoHanded else {
-      return Exercise(items: song.notes.map { ExerciseItem($0) })
-    }
-
-    let pairs = zip(song.notes, song.leftHandNotes)
-    return Exercise(items: pairs.map { ExerciseItem(pitches: [$0, $1]) })
+  /// A piece becomes one item per onset.
+  ///
+  /// Pairing the hands note for note only worked while neither had rhythm. With
+  /// real figures a held bass note spans several melody notes, so the merge has
+  /// to be by the moment each event begins.
+  private static func exercise(for score: Score) -> Exercise {
+    Exercise(items: score.onsets.map { ExerciseItem(pitches: Set($0.pitches)) })
   }
 
   private static func harmony(

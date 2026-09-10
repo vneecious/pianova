@@ -97,6 +97,14 @@ public struct TimeSignature: Equatable, Sendable {
   /// Three beats to the bar.
   public static let threeFour = TimeSignature(beatsPerBar: 3)
 
+  /// How much a whole bar holds, in crotchet units.
+  ///
+  /// The unit matters: `beatsPerBar` counts beats, but a beat is not always a
+  /// crotchet. A 6/8 bar is six beats and three crotchets.
+  public var barBeats: Double {
+    Double(beatsPerBar) * beatValue.beats
+  }
+
   /// How it is written, as in `4/4`.
   public var label: String {
     let lower = Int((4 / beatValue.beats).rounded())

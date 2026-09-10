@@ -123,20 +123,20 @@ import Testing
 
 /// Songs are melodies, not empty placeholders.
 @Test func songsHaveNotes() {
-  #expect(Songs.odeToJoy.notes.count > 20)
-  #expect(Songs.twinkle.notes.isEmpty == false)
-  #expect(Songs.frereJacques.notes.isEmpty == false)
+  #expect(Songs.odeToJoy.melody.count > 20)
+  #expect(Songs.twinkle.melody.isEmpty == false)
+  #expect(Songs.frereJacques.melody.isEmpty == false)
 }
 
 /// Ode to Joy opens on its familiar repeated E.
 @Test func odeToJoyOpensOnRepeatedE() {
-  #expect(Songs.odeToJoy.notes.prefix(4).map(\.midiNoteNumber) == [64, 64, 65, 67])
+  #expect(Songs.odeToJoy.melody.prefix(4).map(\.midiNoteNumber) == [64, 64, 65, 67])
 }
 
 /// Beginner songs stay inside a five-finger position from middle C.
 @Test func beginnerSongsStayInFiveFingerPosition() {
   for song in [Songs.twinkle, Songs.frereJacques] {
-    #expect(song.notes.allSatisfy { $0.midiNoteNumber >= 60 })
+    #expect(song.melody.allSatisfy { $0.midiNoteNumber >= 60 })
   }
-  #expect(Songs.frereJacques.notes.allSatisfy { $0.midiNoteNumber <= 67 })
+  #expect(Songs.frereJacques.melody.allSatisfy { $0.midiNoteNumber <= 67 })
 }

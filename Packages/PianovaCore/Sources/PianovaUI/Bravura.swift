@@ -48,6 +48,32 @@ public enum Bravura {
 
     /// Sharp sign.
     public static let sharp = "\u{E262}"
+
+    /// Flat sign, for key signatures.
+    public static let flat = "\u{E260}"
+
+    /// The rest matching a written figure.
+    ///
+    /// A silence has to be drawn, not left as a gap: a gap is indistinguishable
+    /// from the piece simply having fewer notes.
+    /// - Parameter value: The figure the silence lasts.
+    /// - Returns: Its code point.
+    public static func rest(for value: NoteValue) -> String {
+      switch value {
+      case .whole: return "\u{E4E3}"
+      case .half: return "\u{E4E4}"
+      case .quarter: return "\u{E4E5}"
+      case .eighth: return "\u{E4E6}"
+      }
+    }
+
+    /// A time signature digit.
+    /// - Parameter value: The digit, 0 to 9.
+    /// - Returns: Its code point, or `0` for anything out of range.
+    public static func timeSignatureDigit(_ value: Int) -> String {
+      guard (0...9).contains(value) else { return "\u{E080}" }
+      return String(UnicodeScalar(0xE080 + value) ?? "0")
+    }
   }
 
   /// One em equals this many staff spaces, per the SMuFL specification.

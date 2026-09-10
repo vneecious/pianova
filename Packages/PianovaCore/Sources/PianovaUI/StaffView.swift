@@ -39,7 +39,7 @@ public enum ItemState: Equatable, Sendable {
 /// Vertical placement comes from ``Pitch/staffStep(in:)``, which is pure logic
 /// covered by tests. This view only turns steps into points, and knows nothing
 /// about exercises or quizzes.
-public struct StaffView: View {
+public struct StaffView: View, @MainActor Animatable {
   @Environment(\.colorScheme) private var colorScheme
 
   /// The clef to draw and to place the pitches against.
@@ -85,6 +85,35 @@ public struct StaffView: View {
   /// Leave `nil` for a staff that only displays.
   public let onTapStep: ((Int) -> Void)?
 
+  /// The time signature to write after the clef, or `nil` for none.
+  public let timeSignature: TimeSignature?
+
+  /// The key signature to write after the clef.
+  public let key: KeySignature
+
+  /// Column indices after which a bar line falls.
+  ///
+  /// Given as indices rather than derived here, because where a bar ends is a
+  /// fact about the music and this view only draws.
+  public let barlinesAfter: Set<Int>
+
+  /// Whether to close with a double bar line.
+  public let showsFinalBarline: Bool
+
+  /// Whether the music keeps a fixed spacing and scrolls under the clef.
+  ///
+  /// A generated drill is short and always fits, so it does not scroll. A piece
+  /// is as long as it is, and squeezing it into the width makes a line nobody
+  /// can read.
+  public let scrolls: Bool
+
+  /// The column to hold at the cursor anchor while scrolling.
+  ///
+  /// Fractional and `var` so SwiftUI can interpolate it: an `Int` can only
+  /// jump, and the stave snapping from note to note is what makes following it
+  /// feel like work.
+  public var focusColumn: Double
+
   /// Creates a staff view.
   /// - Parameters:
   ///   - clef: The clef to draw.
@@ -95,6 +124,12 @@ public struct StaffView: View {
   ///   - showsLedgerGuides: Whether to draw faint guides outside the staff.
   ///   - tapTargets: Steps offered as tap targets, ascending.
   ///   - staffSpace: Distance between two staff lines, in points.
+  ///   - timeSignature: The time signature to write, or `nil` for none.
+  ///   - key: The key signature to write.
+  ///   - barlinesAfter: Column indices after which a bar line falls.
+  ///   - showsFinalBarline: Whether to close with a double bar line.
+  ///   - scrolls: Whether the music keeps a fixed spacing and scrolls.
+  ///   - focusColumn: The column to hold at the cursor anchor.
   ///   - onTapStep: Called with the step that was tapped.
   public init(
     clef: Clef,
@@ -105,6 +140,12 @@ public struct StaffView: View {
     showsLedgerGuides: Bool = false,
     tapTargets: [Int] = [],
     staffSpace: CGFloat = 16,
+    timeSignature: TimeSignature? = nil,
+    key: KeySignature = .c,
+    barlinesAfter: Set<Int> = [],
+    showsFinalBarline: Bool = false,
+    scrolls: Bool = false,
+    focusColumn: Double = 0,
     onTapStep: ((Int) -> Void)? = nil
   ) {
     self.clef = clef
@@ -115,7 +156,22 @@ public struct StaffView: View {
     self.showsLedgerGuides = showsLedgerGuides
     self.tapTargets = tapTargets
     self.staffSpace = staffSpace
+    self.timeSignature = timeSignature
+    self.key = key
+    self.barlinesAfter = barlinesAfter
+    self.showsFinalBarline = showsFinalBarline
+    self.scrolls = scrolls
+    self.focusColumn = focusColumn
     self.onTapStep = onTapStep
+  }
+
+  /// What SwiftUI interpolates when the cursor moves.
+  ///
+  /// Without this the whole staff is simply redrawn at the new position, which
+  /// reads as a jump however long the animation is asked to last.
+  public var animatableData: Double {
+    get { focusColumn }
+    set { focusColumn = newValue }
   }
 
   /// Smallest comfortable distance between two touch targets.
@@ -150,7 +206,9 @@ public struct StaffView: View {
         if showsLedgerGuides {
           drawLedgerGuides(in: context, width: size.width, bottomLineY: bottomLineY)
         }
+        drawCursorBand(in: context, size: size, bottomLineY: bottomLineY)
         drawStaffLines(in: context, width: size.width, bottomLineY: bottomLineY)
+        drawBarlines(in: context, size: size, bottomLineY: bottomLineY)
         drawTargets(in: context, width: size.width)
         drawGlyphs(in: context, size: size, bottomLineY: bottomLineY)
       }
@@ -236,8 +294,8 @@ public struct StaffView: View {
     let font = Bravura.font(staffSpace: staffSpace)
     // One source of truth for the across-the-page maths, shared with anything
     // that has to line up with the note heads.
-    let layout = StaffLayout(
-      staffSpace: staffSpace, width: size.width, columnCount: noteGroups.count)
+    let layout = layout(width: size.width)
+    let shift = layout.offset(focusing: focusColumn)
     let clefX = layout.clefX
     let clefBaseline = y(step: clef == .treble ? 2 : 6, bottomLineY: bottomLineY)
     let firstNoteX = layout.noteAreaStart
@@ -254,9 +312,35 @@ public struct StaffView: View {
         canvasHeight: size.height,
         centered: false)
 
+      drawPreamble(
+        in: cgContext, startX: layout.preambleStart, bottomLineY: bottomLineY,
+        font: font, canvasHeight: size.height)
+
+      // Clipped to the note area so the music slides *under* the clef and the
+      // signatures instead of over them.
+      cgContext.saveGState()
+      cgContext.clip(
+        to: CGRect(
+          x: firstNoteX, y: 0,
+          width: max(size.width - firstNoteX, 0), height: size.height))
+
       for (index, group) in noteGroups.enumerated() {
         let state = index < states.count ? states[index] : .pending
-        let noteX = firstNoteX + spacing * (CGFloat(index) + 0.5)
+        let noteX = layout.x(ofColumn: index) - shift
+        let room = layout.width(ofColumn: index)
+        guard noteX > firstNoteX - room, noteX < size.width + room else { continue }
+        // An empty group is a rest: drawn on the middle line, in its own
+        // figure, so a silence reads as a silence and not as a missing note.
+        if group.isEmpty {
+          let value = durations.indices.contains(index) ? durations[index].value : .quarter
+          draw(
+            Bravura.Glyph.rest(for: value),
+            at: CGPoint(x: noteX, y: y(step: 4, bottomLineY: bottomLineY)),
+            color: PlatformColor.ink(for: state, in: colorScheme),
+            font: font, in: cgContext, canvasHeight: size.height, centered: true)
+          continue
+        }
+
         for pitch in group.sorted(by: { $0.midiNoteNumber < $1.midiNoteNumber }) {
           drawNote(
             pitch, state: state,
@@ -266,9 +350,133 @@ public struct StaffView: View {
         }
       }
 
+      cgContext.restoreGState()
+
       drawMarks(
         in: cgContext, firstNoteX: firstNoteX, available: available,
         bottomLineY: bottomLineY, font: font, canvasHeight: size.height)
+    }
+  }
+
+  // MARK: - Bar lines, time signature, key signature
+
+  /// Staff steps the key signature accidentals are written on.
+  ///
+  /// The order and the octave are fixed by convention and never vary, so they
+  /// are a table rather than a calculation. Bass clef sits two steps lower than
+  /// treble, which is exactly the interval between the two clefs.
+  private static let sharpSteps: [Clef: [Int]] = [
+    .treble: [8, 5, 9, 6, 3, 7, 4],
+    .bass: [6, 3, 7, 4, 1, 5, 2],
+  ]
+
+  private static let flatSteps: [Clef: [Int]] = [
+    .treble: [4, 7, 3, 6, 2, 5, 1],
+    .bass: [2, 5, 1, 4, 0, 3, -1],
+  ]
+
+  /// The across-the-page maths for a given width, in one place.
+  private func layout(width: CGFloat) -> StaffLayout {
+    StaffLayout(
+      staffSpace: staffSpace, width: width, columnCount: noteGroups.count,
+      preamble: preambleWidth, scrolls: scrolls, durations: durations)
+  }
+
+  /// How much room the clef, key and time signature take before the first note.
+  private var preambleWidth: CGFloat {
+    CGFloat(key.accidentalCount) * staffSpace * 0.9
+      + (timeSignature == nil ? 0 : staffSpace * 2.2)
+  }
+
+  /// A soft band behind the note the cursor is on.
+  ///
+  /// Drawn whether or not anything has been played yet: having to hunt for
+  /// where you are is the thing that breaks the flow of reading, and it costs
+  /// nothing to say it outright.
+  private func drawCursorBand(in context: GraphicsContext, size: CGSize, bottomLineY: CGFloat) {
+    guard scrolls, noteGroups.count > 0 else { return }
+
+    let layout = layout(width: size.width)
+    let column = Int(focusColumn.rounded())
+    guard column < noteGroups.count else { return }
+
+    let shift = layout.offset(focusing: focusColumn)
+    let room = layout.width(ofColumn: column)
+    let left = layout.noteAreaStart + layout.start(ofColumn: column) - shift
+
+    let band = CGRect(
+      x: left, y: bottomLineY - staffHeight - staffSpace,
+      width: room, height: staffHeight + staffSpace * 2)
+
+    guard band.maxX > layout.noteAreaStart else { return }
+
+    context.fill(
+      Path(roundedRect: band, cornerRadius: staffSpace * 0.4),
+      with: .color(ItemState.current.color.opacity(0.10)))
+  }
+
+  /// A bar line between two columns, and the double bar that closes the piece.
+  private func drawBarlines(in context: GraphicsContext, size: CGSize, bottomLineY: CGFloat) {
+    guard !barlinesAfter.isEmpty || showsFinalBarline else { return }
+
+    let layout = layout(width: size.width)
+    let shift = layout.offset(focusing: focusColumn)
+    let visible = layout.noteAreaStart...(layout.noteAreaStart + layout.noteAreaWidth)
+    let top = bottomLineY - staffHeight
+    let ink = PlatformColor.staffInk(colorScheme)
+
+    func line(at positionX: CGFloat, thick: Bool) {
+      guard visible.contains(positionX) else { return }
+      var path = Path()
+      path.move(to: CGPoint(x: positionX, y: top))
+      path.addLine(to: CGPoint(x: positionX, y: bottomLineY))
+      context.stroke(path, with: .color(Color(ink)), lineWidth: thick ? 3 : 1)
+    }
+
+    for index in barlinesAfter where index < noteGroups.count - 1 {
+      line(at: layout.noteAreaStart + layout.start(ofColumn: index + 1) - shift, thick: false)
+    }
+
+    if showsFinalBarline {
+      let end = layout.noteAreaStart + layout.contentWidth - shift
+      line(at: end - staffSpace * 0.5, thick: false)
+      line(at: end, thick: true)
+    }
+  }
+
+  /// The key signature and the time signature, written between clef and notes.
+  private func drawPreamble(
+    in cgContext: CGContext,
+    startX: CGFloat,
+    bottomLineY: CGFloat,
+    font: CTFont,
+    canvasHeight: CGFloat
+  ) {
+    let ink = PlatformColor.staffInk(colorScheme)
+    var cursor = startX
+
+    let table = key.usesSharps ? Self.sharpSteps : Self.flatSteps
+    let steps = table[clef] ?? []
+    let glyph = key.usesSharps ? Bravura.Glyph.sharp : Bravura.Glyph.flat
+
+    for index in 0..<key.accidentalCount where index < steps.count {
+      draw(
+        glyph,
+        at: CGPoint(x: cursor, y: y(step: steps[index], bottomLineY: bottomLineY)),
+        color: ink, font: font, in: cgContext, canvasHeight: canvasHeight, centered: false)
+      cursor += staffSpace * 0.9
+    }
+
+    guard let time = timeSignature else { return }
+
+    // Upper number sits on the fourth step, lower on the first: the two digits
+    // straddle the middle line, which is how a time signature is engraved.
+    let lower = Int((4 / time.beatValue.beats).rounded())
+    for (digit, step) in [(time.beatsPerBar, 5), (lower, 1)] {
+      draw(
+        Bravura.Glyph.timeSignatureDigit(digit),
+        at: CGPoint(x: cursor + staffSpace * 0.4, y: y(step: step, bottomLineY: bottomLineY)),
+        color: ink, font: font, in: cgContext, canvasHeight: canvasHeight, centered: false)
     }
   }
 
