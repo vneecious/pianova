@@ -1,0 +1,294 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 60;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		19474765D1D531B11C408371 /* ScoreModel in Frameworks */ = {isa = PBXBuildFile; productRef = 3BF29AAB4C4714776F7E7A16 /* ScoreModel */; };
+		2D39F07BB4F8D98CEF27FADD /* MIDIInput in Frameworks */ = {isa = PBXBuildFile; productRef = D83D30D53A62A7527A4DCB28 /* MIDIInput */; };
+		3CF9B73B38E75FBAA0C83767 /* PianovaUI in Frameworks */ = {isa = PBXBuildFile; productRef = D865B90016D3FC78C4D09CCD /* PianovaUI */; };
+		5A6BFF4F76B7F3C39BCD2305 /* Course in Frameworks */ = {isa = PBXBuildFile; productRef = F01653B789EB3F22B880EDCB /* Course */; };
+		649404DEE637E4612341D66F /* Sound in Frameworks */ = {isa = PBXBuildFile; productRef = 0F7133BC89BFD4FCB8366A1B /* Sound */; };
+		6911F7CFCBF52565FC5C4477 /* PianovaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049449ABB884E3391B0552F0 /* PianovaApp.swift */; };
+		8C33BE3F4BB34956E6508147 /* Progress in Frameworks */ = {isa = PBXBuildFile; productRef = C2ACA18C19FDC14E1C6F2058 /* Progress */; };
+		AEAB722CA30C727EA59782C8 /* ExerciseEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 382AAE16610AE5BE62A1C8C8 /* ExerciseEngine */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		049449ABB884E3391B0552F0 /* PianovaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PianovaApp.swift; sourceTree = "<group>"; };
+		BFB533D0BE2E3514E642598C /* Pianova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pianova.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A11CF61D0000000000000001 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		9C7D1AFBA45BCA6596AADA3A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3CF9B73B38E75FBAA0C83767 /* PianovaUI in Frameworks */,
+				2D39F07BB4F8D98CEF27FADD /* MIDIInput in Frameworks */,
+				649404DEE637E4612341D66F /* Sound in Frameworks */,
+				8C33BE3F4BB34956E6508147 /* Progress in Frameworks */,
+				5A6BFF4F76B7F3C39BCD2305 /* Course in Frameworks */,
+				AEAB722CA30C727EA59782C8 /* ExerciseEngine in Frameworks */,
+				19474765D1D531B11C408371 /* ScoreModel in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4AD74E790D77F8EBFB28F548 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BFB533D0BE2E3514E642598C /* Pianova.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5841390E1D21B48EC9646194 = {
+			isa = PBXGroup;
+			children = (
+				A11CF61D0000000000000001 /* Local.xcconfig */,
+				9BF13CC3A1BDAC6D0F89AD62 /* PianovaApp */,
+				4AD74E790D77F8EBFB28F548 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9BF13CC3A1BDAC6D0F89AD62 /* PianovaApp */ = {
+			isa = PBXGroup;
+			children = (
+				049449ABB884E3391B0552F0 /* PianovaApp.swift */,
+			);
+			path = PianovaApp;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0E8A3AD980EC179856012B7E /* Pianova */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1622EE8E68A7CA368064CD07 /* Build configuration list for PBXNativeTarget "Pianova" */;
+			buildPhases = (
+				940CC6738CB196509F13BB08 /* Sources */,
+				9C7D1AFBA45BCA6596AADA3A /* Frameworks */,
+				B1180918D96EB95C39962927 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Pianova;
+			packageProductDependencies = (
+				D865B90016D3FC78C4D09CCD /* PianovaUI */,
+				D83D30D53A62A7527A4DCB28 /* MIDIInput */,
+				0F7133BC89BFD4FCB8366A1B /* Sound */,
+				C2ACA18C19FDC14E1C6F2058 /* Progress */,
+				F01653B789EB3F22B880EDCB /* Course */,
+				382AAE16610AE5BE62A1C8C8 /* ExerciseEngine */,
+				3BF29AAB4C4714776F7E7A16 /* ScoreModel */,
+			);
+			productName = Pianova;
+			productReference = BFB533D0BE2E3514E642598C /* Pianova.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		98F54143AB4E86B28C3AFEE0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					0E8A3AD980EC179856012B7E = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 5636BA33F8A7B513012B9728 /* Build configuration list for PBXProject "Pianova" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 5841390E1D21B48EC9646194;
+			packageReferences = (
+				4FF15B936B8851E2CAA578B9 /* XCLocalSwiftPackageReference "../Packages/PianovaCore" */,
+			);
+			productRefGroup = 4AD74E790D77F8EBFB28F548 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0E8A3AD980EC179856012B7E /* Pianova */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B1180918D96EB95C39962927 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		940CC6738CB196509F13BB08 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6911F7CFCBF52565FC5C4477 /* PianovaApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		145643D6968836C6B947237C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A11CF61D0000000000000001 /* Local.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Pianova;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pianova.app;
+				PRODUCT_NAME = Pianova;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Debug;
+		};
+		CE4152414BC35EABF72CB823 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A11CF61D0000000000000001 /* Local.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		E676B8928E9F6625B4D15328 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A11CF61D0000000000000001 /* Local.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Pianova;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pianova.app;
+				PRODUCT_NAME = Pianova;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+			};
+			name = Release;
+		};
+		F7E59806D25AA00CDCA39E60 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A11CF61D0000000000000001 /* Local.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1622EE8E68A7CA368064CD07 /* Build configuration list for PBXNativeTarget "Pianova" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				145643D6968836C6B947237C /* Debug */,
+				E676B8928E9F6625B4D15328 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5636BA33F8A7B513012B9728 /* Build configuration list for PBXProject "Pianova" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F7E59806D25AA00CDCA39E60 /* Debug */,
+				CE4152414BC35EABF72CB823 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		4FF15B936B8851E2CAA578B9 /* XCLocalSwiftPackageReference "../Packages/PianovaCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Packages/PianovaCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0F7133BC89BFD4FCB8366A1B /* Sound */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Sound;
+		};
+		382AAE16610AE5BE62A1C8C8 /* ExerciseEngine */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ExerciseEngine;
+		};
+		3BF29AAB4C4714776F7E7A16 /* ScoreModel */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ScoreModel;
+		};
+		C2ACA18C19FDC14E1C6F2058 /* Progress */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Progress;
+		};
+		D83D30D53A62A7527A4DCB28 /* MIDIInput */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MIDIInput;
+		};
+		D865B90016D3FC78C4D09CCD /* PianovaUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PianovaUI;
+		};
+		F01653B789EB3F22B880EDCB /* Course */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Course;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 98F54143AB4E86B28C3AFEE0 /* Project object */;
+}

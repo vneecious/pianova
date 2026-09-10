@@ -21,3 +21,6 @@ piano.html
 # Bancos de som instalados localmente (arquivos grandes, licença do usuário)
 *.sf2
 *.dls
+
+# Ajustes da máquina de quem compila — contém o Team ID da conta Apple
+App/Local.xcconfig
