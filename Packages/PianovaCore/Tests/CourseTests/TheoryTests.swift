@@ -129,13 +129,15 @@ import Testing
   }
 }
 
-/// A lesson only reads pages from its own block.
-@Test func lessonsOnlyReadTheirOwnBlock() {
-  for lesson in Course.lessons {
-    for id in lesson.readingIDs {
-      #expect(TheoryNotes.note(id)?.topic == lesson.block, "\(lesson.id) lê outro bloco")
-    }
-  }
+/// No teaching page is read twice by two different lessons.
+///
+/// A page shown again as if it were new tells the player they forgot something
+/// they were never taught twice. Review happens through the questions, which
+/// keep drawing on every page already read.
+@Test func noTeachingPageIsReadTwice() {
+  let ids = Course.lessons.flatMap(\.readingIDs)
+
+  #expect(Set(ids).count == ids.count, "há página ensinada em duas lições")
 }
 
 /// Explanation comes before examination: in any lesson that has both, the

@@ -75,8 +75,9 @@ struct ReadingStepView: View {
           glyphRow(note.glyphs)
         }
 
-        if let example = note.example {
-          staffExample(example)
+        ForEach(Array(note.illustrations.enumerated()), id: \.offset) { _, illustration in
+          IllustrationView(illustration: illustration)
+            .padding(.top, 6)
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)

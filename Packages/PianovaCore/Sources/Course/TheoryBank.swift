@@ -35,6 +35,68 @@ public enum TheoryBank {
 
   private static let notation: [TheoryQuestion] = [
     TheoryQuestion(
+      id: "a-kb1", topic: .notation, noteID: "n-keyboard",
+      prompt: "O Dó é a tecla branca imediatamente à esquerda de qual grupo?",
+      options: ["Do grupo de duas pretas", "Do grupo de três pretas", "De qualquer grupo"],
+      correctIndex: 0,
+      explanation: "Duas pretas à direita do Dó: é o marco que acha o Dó em qualquer oitava."),
+    TheoryQuestion(
+      id: "a-kb2", topic: .notation, noteID: "n-keyboard",
+      prompt: "Onde fica o Fá em relação às teclas pretas?",
+      options: [
+        "À esquerda do grupo de duas pretas", "À esquerda do grupo de três pretas",
+        "À direita do grupo de três pretas",
+      ], correctIndex: 1,
+      explanation: "O Fá abre o grupo de três, assim como o Dó abre o de duas."),
+    TheoryQuestion(
+      id: "a-kb3", topic: .notation, noteID: "n-keyboard",
+      prompt: "De quantas em quantas teclas brancas o padrão do teclado se repete?",
+      options: ["Cinco", "Sete", "Oito"], correctIndex: 1,
+      explanation: "Sete teclas brancas — as sete notas — e o desenho recomeça na oitava."),
+    TheoryQuestion(
+      id: "a-fg1", topic: .notation, noteID: "n-fingers",
+      prompt: "Qual é o dedo número 1?",
+      options: ["O polegar", "O indicador", "O mínimo"], correctIndex: 0,
+      explanation: "Nas duas mãos a contagem começa no polegar."),
+    TheoryQuestion(
+      id: "a-fg2", topic: .notation, noteID: "n-fingers",
+      prompt: "Por que um número de dedo não significa nada sozinho?",
+      options: [
+        "Porque a numeração é espelhada entre as mãos", "Porque muda conforme a clave",
+        "Porque depende do andamento",
+      ], correctIndex: 0,
+      explanation: "Dedo 3 da direita e dedo 3 da esquerda apontam para lados opostos."),
+    TheoryQuestion(
+      id: "a-fg3", topic: .notation, noteID: "n-fingers",
+      prompt: "Para que serve o dedilhado escrito na partitura?",
+      options: [
+        "Para a mão alcançar a nota seguinte sem torcer", "Para indicar a intensidade",
+        "Para marcar onde respirar",
+      ], correctIndex: 0,
+      explanation: "O dedilhado é planejamento de trajeto: ele resolve o compasso seguinte."),
+    TheoryQuestion(
+      id: "a-ar1", topic: .notation, noteID: "n-articulation",
+      prompt: "O que é tocar legato?",
+      options: [
+        "Soltar cada tecla só quando a próxima é tocada", "Tocar cada nota bem curta",
+        "Tocar mais forte a cada nota",
+      ], correctIndex: 0,
+      explanation: "O som não pode ter buraco entre uma nota e a seguinte."),
+    TheoryQuestion(
+      id: "a-ar2", topic: .notation, noteID: "n-articulation",
+      prompt: "Como se marca o staccato?",
+      options: [
+        "Com um ponto acima ou abaixo da nota", "Com um ponto à direita da nota",
+        "Com uma linha sobre a nota",
+      ], correctIndex: 0,
+      explanation: "À direita seria ponto de aumento, que muda a duração — coisa diferente."),
+    TheoryQuestion(
+      id: "a-ar3", topic: .notation, noteID: "n-articulation",
+      prompt: "O staccato adianta a entrada da nota seguinte?",
+      options: ["Não, o pulso não muda", "Sim, sempre", "Só em compasso ternário"],
+      correctIndex: 0,
+      explanation: "Encurta o som, não o tempo: o silêncio fica no fim da nota destacada."),
+    TheoryQuestion(
       id: "a1", topic: .notation, noteID: "n-staff",
       prompt: "Quantas linhas tem a pauta?",
       options: ["4", "5", "6"], correctIndex: 1,

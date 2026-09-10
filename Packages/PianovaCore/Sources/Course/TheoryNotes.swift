@@ -42,6 +42,72 @@ public enum TheoryNotes {
 
   private static let notation: [TheoryNote] = [
     TheoryNote(
+      id: "n-keyboard", topic: .notation,
+      title: "A geografia do teclado",
+      body: [
+        "As teclas pretas são o mapa. Elas se repetem em grupos de duas e de "
+          + "três, e é esse desenho que permite achar qualquer nota sem olhar "
+          + "para o teclado nota por nota.",
+        "O Dó é sempre a tecla branca imediatamente à esquerda de um grupo de "
+          + "duas pretas. O Fá é sempre a branca imediatamente à esquerda de um "
+          + "grupo de três. Achando esses dois, o resto se conta.",
+        "O padrão inteiro se repete a cada sete teclas brancas. Uma nota e a "
+          + "seguinte de mesmo nome estão a uma oitava de distância, e soam "
+          + "como a mesma nota mais aguda ou mais grave.",
+      ],
+      illustrations: [
+        .keyboard(
+          KeyboardDiagram(
+            range: 48...72,
+            marks: [
+              KeyMark(Pitch(48), label: "Dó", emphasis: .secondary),
+              KeyMark(Pitch(53), label: "Fá", emphasis: .secondary),
+              KeyMark(Pitch(60), label: "Dó"),
+              KeyMark(Pitch(65), label: "Fá"),
+              KeyMark(Pitch(72), label: "Dó", emphasis: .secondary),
+            ],
+            brackets: [
+              KeyBracket(61...63, label: "duas"),
+              KeyBracket(66...70, label: "três"),
+            ],
+            caption: "O Dó abre o grupo de duas; o Fá abre o de três"))
+      ]),
+
+    TheoryNote(
+      id: "n-fingers", topic: .notation,
+      title: "Números dos dedos",
+      body: [
+        "Os dedos são numerados de 1 a 5 nas duas mãos, começando pelo "
+          + "polegar. Polegar 1, indicador 2, médio 3, anelar 4, mínimo 5.",
+        "A numeração é espelhada: o dedo 1 das duas mãos são os dois polegares, "
+          + "que ficam voltados um para o outro no centro do teclado. Por isso "
+          + "um número de dedo só faz sentido junto com a mão.",
+        "O dedilhado escrito na partitura não é sugestão. Ele existe para que a "
+          + "mão chegue à próxima nota sem torcer nem saltar — tocar com outro "
+          + "dedo costuma funcionar uma vez e travar no compasso seguinte.",
+      ],
+      illustrations: [
+        .hands(
+          HandDiagram(
+            caption: "Os dois polegares são o dedo 1, e ficam voltados um para o outro"))
+      ]),
+
+    TheoryNote(
+      id: "n-articulation", topic: .notation,
+      title: "Legato e staccato",
+      body: [
+        "Ligado (legato) é tocar sem cortar o som: cada tecla só é solta no "
+          + "momento em que a seguinte é tocada. É o modo padrão, e é o que a "
+          + "ligadura de frase pede.",
+        "Destacado (staccato) é o oposto: a tecla é solta logo depois de tocada "
+          + "e a nota soa mais curta que o valor escrito. Marca-se com um ponto "
+          + "acima ou abaixo da cabeça da nota.",
+        "O staccato encurta o som, não o tempo. A nota seguinte continua "
+          + "entrando exatamente no pulso onde entraria — o silêncio fica no "
+          + "fim da nota destacada, e não empurra o compasso.",
+      ]),
+
+    TheoryNote(
       id: "n-staff", topic: .notation,
       title: "A pauta",
       body: [
@@ -92,7 +158,15 @@ public enum TheoryNotes {
       example: StaffExample(
         clef: .treble,
         pitches: [Pitch(60)],
-        caption: "Dó central, na primeira linha suplementar abaixo")),
+        caption: "Dó central, na primeira linha suplementar abaixo"),
+      illustrations: [
+        .keyboard(
+          KeyboardDiagram(
+            range: 48...72,
+            marks: [KeyMark(Pitch(60), label: "Dó central")],
+            brackets: [KeyBracket(61...63, label: "duas")],
+            caption: "No teclado é uma tecla só, logo à esquerda do grupo de duas"))
+      ]),
 
     TheoryNote(
       id: "n-values", topic: .notation,
@@ -111,6 +185,10 @@ public enum TheoryNotes {
         GlyphLabel(glyph: Glyph.halfNote, caption: "Mínima", detail: "2 tempos"),
         GlyphLabel(glyph: Glyph.quarterNote, caption: "Semínima", detail: "1 tempo"),
         GlyphLabel(glyph: Glyph.eighthNote, caption: "Colcheia", detail: "½ tempo"),
+      ],
+      illustrations: [
+        .valueTree(
+          ValueTree(caption: "Cada linha divide a de cima em duas partes iguais"))
       ]),
 
     TheoryNote(
@@ -213,6 +291,25 @@ public enum TheoryNotes {
           + "tom. As exceções são Mi–Fá e Si–Dó: ali as brancas são vizinhas "
           + "diretas, e a distância é de apenas meio tom. Essas duas exceções "
           + "explicam o formato do teclado.",
+      ],
+      illustrations: [
+        .keyboard(
+          KeyboardDiagram(
+            range: 60...72,
+            marks: [
+              KeyMark(Pitch(60), label: "Dó"),
+              KeyMark(Pitch(62), label: "Ré"),
+              KeyMark(Pitch(64), label: "Mi"),
+              KeyMark(Pitch(65), label: "Fá"),
+              KeyMark(Pitch(71), label: "Si"),
+              KeyMark(Pitch(72), label: "Dó"),
+            ],
+            brackets: [
+              KeyBracket(60...62, label: "tom"),
+              KeyBracket(64...65, label: "semitom"),
+              KeyBracket(71...72, label: "semitom"),
+            ],
+            caption: "Mi–Fá e Si–Dó são vizinhas diretas: só aí não há tecla preta no meio"))
       ]),
 
     TheoryNote(
@@ -259,6 +356,26 @@ public enum TheoryNotes {
           + "semitons naturais Mi–Fá e Si–Dó estão justo nesses lugares. Em "
           + "qualquer outra tonalidade é preciso alterar notas para manter a "
           + "mesma fórmula.",
+      ],
+      illustrations: [
+        .keyboard(
+          KeyboardDiagram(
+            range: 60...72,
+            marks: [
+              KeyMark(Pitch(60), label: "1"),
+              KeyMark(Pitch(62), label: "2"),
+              KeyMark(Pitch(64), label: "3"),
+              KeyMark(Pitch(65), label: "4"),
+              KeyMark(Pitch(67), label: "5"),
+              KeyMark(Pitch(69), label: "6"),
+              KeyMark(Pitch(71), label: "7"),
+              KeyMark(Pitch(72), label: "8"),
+            ],
+            brackets: [
+              KeyBracket(64...65, label: "semitom"),
+              KeyBracket(71...72, label: "semitom"),
+            ],
+            caption: "Os dois semitons da escala maior caem entre 3–4 e entre 7–8"))
       ]),
 
     TheoryNote(
@@ -290,6 +407,19 @@ public enum TheoryNotes {
         GlyphLabel(glyph: Glyph.sharp, caption: "Sustenido", detail: "sobe ½ tom"),
         GlyphLabel(glyph: Glyph.flat, caption: "Bemol", detail: "desce ½ tom"),
         GlyphLabel(glyph: Glyph.natural, caption: "Bequadro", detail: "desfaz"),
+      ],
+      illustrations: [
+        .keyboard(
+          KeyboardDiagram(
+            range: 60...72,
+            marks: [
+              KeyMark(Pitch(60), label: "Dó"),
+              KeyMark(Pitch(61), label: "Dó♯"),
+              KeyMark(Pitch(62), label: "Ré"),
+              KeyMark(Pitch(64), label: "Mi", emphasis: .secondary),
+              KeyMark(Pitch(65), label: "Mi♯ = Fá", emphasis: .secondary),
+            ],
+            caption: "Dó♯ é a preta à direita do Dó; Mi♯ não tem preta, e cai no Fá"))
       ]),
 
     TheoryNote(
