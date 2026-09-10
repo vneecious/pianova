@@ -20,7 +20,12 @@ let package = Package(
     .target(name: "MIDIInput", dependencies: ["ScoreModel"]),
     .target(name: "NoteQuiz", dependencies: ["ScoreModel"]),
     .target(name: "Course", dependencies: ["ScoreModel"]),
-    .target(name: "Sound", dependencies: ["ScoreModel"]),
+    .target(
+      name: "Sound",
+      dependencies: ["MIDIInput", "ScoreModel"],
+      // Copied as a folder so a clone without any bank still builds: the app
+      // simply finds nothing and falls back to the synthesiser.
+      resources: [.copy("SoundBanks")]),
     .target(name: "Progress", dependencies: ["ScoreModel"]),
     .target(
       name: "PianovaUI",
@@ -31,6 +36,9 @@ let package = Package(
     .executableTarget(
       name: "PianovaMac",
       dependencies: ["PianovaUI", "ExerciseEngine", "MIDIInput", "ScoreModel"]),
+    .executableTarget(
+      name: "PianovaPing",
+      dependencies: ["MIDIInput", "ScoreModel"]),
     .executableTarget(
       name: "PianovaCLI",
       dependencies: ["ExerciseEngine", "MIDIInput", "ScoreModel"]),

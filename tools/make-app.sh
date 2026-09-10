@@ -17,7 +17,13 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp "$BUILD/PianovaMac" "$APP/Contents/MacOS/Pianova"
-cp -R "$BUILD/PianovaCore_PianovaUI.bundle" "$APP/Contents/Resources/"
+# Every resource bundle the package produced, not just the UI one: the sound
+# bank lives in the Sound target, and copying only the UI bundle left the Mac
+# build with no piano samples while the iPad build had them.
+for bundle in "$BUILD"/PianovaCore_*.bundle; do
+  [ -e "$bundle" ] || continue
+  cp -R "$bundle" "$APP/Contents/Resources/"
+done
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
