@@ -32,8 +32,8 @@ public struct CourseTrailView: View {
           if index > 0 {
             connector(to: index)
           }
-          if index == 0 || Course.lessons[index - 1].block != lesson.block {
-            blockHeader(lesson.block)
+          if index == 0 || Course.lessons[index - 1].unit != lesson.unit {
+            unitHeader(lesson.unit)
           }
           stop(lesson, at: index)
         }
@@ -54,23 +54,35 @@ public struct CourseTrailView: View {
     }
   }
 
-  /// The syllabus block a stretch of the trail belongs to.
-  private func blockHeader(_ block: TheoryTopic) -> some View {
-    HStack(spacing: 8) {
-      Text(block.letter)
-        .font(.system(size: 12, weight: .bold, design: .rounded))
-        .foregroundStyle(.white)
-        .frame(width: 22, height: 22)
-        .background(Color.primary.opacity(0.35), in: Circle())
+  /// The unit a stretch of the trail belongs to.
+  ///
+  /// The concept line matters as much as the title: it is what tells the player
+  /// why this stretch of the trail exists at all.
+  @ViewBuilder
+  private func unitHeader(_ number: Int) -> some View {
+    if let unit = CourseUnits.unit(number) {
+      HStack(alignment: .top, spacing: 10) {
+        Text("\(unit.number)")
+          .font(.system(size: 13, weight: .bold, design: .rounded))
+          .foregroundStyle(.white)
+          .frame(width: 24, height: 24)
+          .background(Color.primary.opacity(0.35), in: Circle())
 
-      Text(block.title)
-        .font(.system(size: 15, weight: .semibold))
+        VStack(alignment: .leading, spacing: 3) {
+          Text(unit.title)
+            .font(.system(size: 15, weight: .semibold))
+          Text(unit.concept)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
 
-      Spacer()
+        Spacer(minLength: 0)
+      }
+      .frame(maxWidth: 320, alignment: .leading)
+      .padding(.top, 22)
+      .padding(.bottom, 14)
     }
-    .frame(maxWidth: 320, alignment: .leading)
-    .padding(.top, 22)
-    .padding(.bottom, 14)
   }
 
   private func connector(to index: Int) -> some View {

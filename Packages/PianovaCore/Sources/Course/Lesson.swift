@@ -1,50 +1,5 @@
 import ScoreModel
 
-/// A piece to play, stored as its melody.
-public struct Song: Equatable, Sendable {
-  /// The title shown to the player.
-  public let title: String
-
-  /// Who wrote it.
-  public let composer: String
-
-  /// The clef it is written in.
-  public let clef: Clef
-
-  /// The melody, in playing order.
-  public let notes: [Pitch]
-
-  /// The left hand part, note for note against `notes`.
-  ///
-  /// Empty for a one-handed piece. When present it is played on a grand staff,
-  /// each left hand note sounding with the melody note beside it.
-  public let leftHandNotes: [Pitch]
-
-  /// Creates a song.
-  /// - Parameters:
-  ///   - title: The title shown to the player.
-  ///   - composer: Who wrote it.
-  ///   - clef: The clef it is written in.
-  ///   - notes: The melody, in playing order.
-  ///   - leftHandNotes: The left hand part, note for note. Empty for one hand.
-  public init(
-    title: String,
-    composer: String,
-    clef: Clef,
-    notes: [Pitch],
-    leftHandNotes: [Pitch] = []
-  ) {
-    self.title = title
-    self.composer = composer
-    self.clef = clef
-    self.notes = notes
-    self.leftHandNotes = leftHandNotes
-  }
-
-  /// Whether the piece needs both hands, and so a grand staff.
-  public var isTwoHanded: Bool { !leftHandNotes.isEmpty }
-}
-
 /// One note of a written rhythm: which key, and how long it lasts.
 ///
 /// Kept in the course data so a lesson can spell out its own rhythm rather than
@@ -108,7 +63,10 @@ public enum LessonStep: Equatable, Sendable {
   case bothHands(rightRange: ClosedRange<UInt8>, leftRange: ClosedRange<UInt8>, length: Int)
 
   /// A piece to play from start to end.
-  case song(Song)
+  case song(Score)
+
+  /// A guided technique drill: goal and instructions first, then the notes.
+  case technique(TechniqueExercise)
 }
 
 /// One stop on the course: a short run of mixed activities.
@@ -116,8 +74,8 @@ public struct Lesson: Equatable, Sendable, Identifiable {
   /// Stable identifier, used to record completion.
   public let id: String
 
-  /// Which block of the syllabus the lesson belongs to.
-  public let block: TheoryTopic
+  /// Which of the sixteen units the lesson belongs to.
+  public let unit: Int
 
   /// Short title shown on the trail.
   public let title: String
@@ -131,19 +89,19 @@ public struct Lesson: Equatable, Sendable, Identifiable {
   /// Creates a lesson.
   /// - Parameters:
   ///   - id: Stable identifier, used to record completion.
-  ///   - block: Which block of the syllabus it belongs to.
+  ///   - unit: Which of the sixteen units it belongs to.
   ///   - title: Short title shown on the trail.
   ///   - subtitle: One line on what the lesson covers.
   ///   - steps: The activities, in order.
   public init(
     id: String,
-    block: TheoryTopic,
+    unit: Int,
     title: String,
     subtitle: String,
     steps: [LessonStep]
   ) {
     self.id = id
-    self.block = block
+    self.unit = unit
     self.title = title
     self.subtitle = subtitle
     self.steps = steps
@@ -172,6 +130,14 @@ public struct Lesson: Equatable, Sendable, Identifiable {
     steps.contains {
       guard case .song = $0 else { return false }
       return true
+    }
+  }
+
+  /// The guided technique drills the lesson runs.
+  public var techniqueExercises: [TechniqueExercise] {
+    steps.compactMap { step in
+      guard case .technique(let exercise) = step else { return nil }
+      return exercise
     }
   }
 }

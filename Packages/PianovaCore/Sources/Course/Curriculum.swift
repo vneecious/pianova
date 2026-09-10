@@ -1,29 +1,58 @@
 import ScoreModel
 
-/// The ordered course.
+/// The ordered course: sixteen units, each closing on technique and theory.
 ///
-/// The spine is the four-block syllabus of Med's *Introdução à Teoria da
-/// Música* — **A** notação, **B** intervalos, **C** escalas, **D** acordes —
-/// and every block is worked at the instrument, not only on paper. A block
-/// opens with what the thing *is*, then reads it on the staff, then plays it,
-/// and closes on a piece that uses it.
+/// The spine is the unit sequence of an established adult piano method — which
+/// concept arrives when, and in which order. That sequence is the pedagogy, and
+/// it is worth following: pentascales before scales, both clefs before any
+/// accidental, intervals secure before chords, chords before lead sheets.
 ///
 /// Two honest boundaries:
 ///
-/// - The four blocks and their order come from the book. The lessons inside
-///   each block are written here, from standard theory, not lifted from it.
-/// - Note values, rests and time signatures are taught as **theory** only. The
-///   engine checks which key was played, never when, so rhythm cannot yet be
-///   graded at the instrument.
+/// - The order of the units and the concept each one introduces follow the
+///   method. Everything written here — the melodies, the exercises, the
+///   wording — is public domain or original to this repository. No arrangement
+///   or copyrighted piece is reproduced.
+/// - Where the method uses a piece still in copyright, the trail substitutes a
+///   public domain piece of the same difficulty.
 public enum Course {
   /// The lessons, first to last.
-  public static let lessons: [Lesson] = blockA + blockB + blockC + blockD
+  public static let lessons: [Lesson] =
+    unit1 + unit2 + unit3 + unit4 + unit5 + unit6 + unit7 + unit8
+    + unit9 + unit10 + unit11 + unit12 + unit13 + unit14 + unit15 + unit16
 
-  /// Lessons of one block, in order.
-  /// - Parameter block: The block to list.
+  /// Lessons of one unit, in order.
+  /// - Parameter unit: The unit number, 1 to 16.
   /// - Returns: Its lessons.
-  public static func lessons(in block: TheoryTopic) -> [Lesson] {
-    lessons.filter { $0.block == block }
+  public static func lessons(in unit: Int) -> [Lesson] {
+    lessons.filter { $0.unit == unit }
+  }
+
+  /// Which unit a piece first appears in, or `nil` if the course never uses it.
+  ///
+  /// This is what tells the repertoire screen how hard a piece is: its place in
+  /// the course *is* its difficulty, and no separate grading is needed.
+  /// - Parameter score: The piece to look for.
+  /// - Returns: The unit number, or `nil` if it is not in the course.
+  public static func unit(playing score: Score) -> Int? {
+    for lesson in lessons {
+      for step in lesson.steps {
+        guard case .song(let scheduled) = step, scheduled.title == score.title else { continue }
+        return lesson.unit
+      }
+    }
+    return nil
+  }
+
+  /// Every piece the course schedules, easiest first.
+  ///
+  /// Ordered by the unit that introduces each one, which is the order the
+  /// course itself considers to run from simple to hard.
+  public static var repertoire: [Score] {
+    Songs.all
+      .map { (score: $0, unit: unit(playing: $0) ?? Int.max) }
+      .sorted { ($0.unit, $0.score.title) < ($1.unit, $1.score.title) }
+      .map(\.score)
   }
 
   /// Teaching pages read by the time a lesson runs, including its own.
@@ -52,360 +81,483 @@ public enum Course {
       + eligible.filter { !own.contains($0.noteID) }
   }
 
-  // MARK: - A. Notação musical
+  // MARK: - Unit 1. Introdução ao teclado
 
-  private static let blockA: [Lesson] = [
+  private static let unit1: [Lesson] = [
     Lesson(
-      id: "a-staff", block: .notation,
+      id: "u1-keyboard", unit: 1,
+      title: "Achar-se no teclado",
+      subtitle: "Os grupos de duas e três teclas pretas",
+      steps: [
+        .reading(noteIDs: ["n-keyboard"]),
+        .theory(count: 3),
+      ]),
+    Lesson(
+      id: "u1-fingers", unit: 1,
+      title: "Os cinco dedos",
+      subtitle: "Numeração e a posição de Dó nas duas mãos",
+      steps: [
+        .reading(noteIDs: ["n-fingers"]),
+        .theory(count: 3),
+        .play(clef: .treble, range: 60...67, length: 6),
+        .play(clef: .bass, range: 53...60, length: 6),
+      ]),
+    Lesson(
+      id: "u1-close", unit: 1,
+      title: "Segundas e terças",
+      subtitle: "Mão redonda, apoiada na ponta do dedo",
+      steps: [
+        .song(Songs.auClairDeLaLune),
+        .song(Songs.maryHadALittleLamb),
+        .technique(Technique.roundHand),
+        .theory(count: 4),
+      ]),
+  ]
+
+  // MARK: - Unit 2. Orientação na pauta
+
+  private static let unit2: [Lesson] = [
+    Lesson(
+      id: "u2-staff", unit: 2,
       title: "A pauta",
       subtitle: "Cinco linhas e quatro espaços",
       steps: [
         .reading(noteIDs: ["n-staff"]),
         .theory(count: 4),
-        .cards(clef: .treble, range: 60...62, count: 6),
-        .cards(clef: .bass, range: 59...60, count: 6),
+        .cards(clef: .treble, range: 60...65, count: 6),
+        .cards(clef: .bass, range: 57...60, count: 6),
       ]),
     Lesson(
-      id: "a-clefs", block: .notation,
+      id: "u2-clefs", unit: 2,
       title: "As claves",
       subtitle: "Quem decide qual nota é qual",
       steps: [
         .reading(noteIDs: ["n-clefs"]),
-        .theory(count: 5),
-        .cards(clef: .bass, range: 59...60, count: 6),
+        .theory(count: 4),
+        .cards(clef: .bass, range: 55...60, count: 8),
       ]),
     Lesson(
-      id: "a-middle-c", block: .notation,
+      id: "u2-middle-c", unit: 2,
       title: "O Dó central",
       subtitle: "A mesma tecla, nas duas claves",
       steps: [
         .reading(noteIDs: ["n-middle-c"]),
-        .theory(count: 5),
-        .cards(clef: .treble, range: 60...64, count: 8),
-        .cards(clef: .bass, range: 57...60, count: 8),
-        .play(clef: .treble, range: 60...64, length: 6),
+        .theory(count: 4),
+        .cards(clef: .treble, range: 60...65, count: 8),
+        .play(clef: .bass, range: 55...60, length: 6),
       ]),
     Lesson(
-      id: "a-note-values", block: .notation,
-      title: "Figuras e valores",
-      subtitle: "Semibreve, mínima, semínima, colcheia",
-      steps: [
-        .reading(noteIDs: ["n-values"]),
-        .theory(count: 6),
-        .play(clef: .bass, range: 57...60, length: 6),
-      ]),
-    Lesson(
-      id: "a-five-fingers", block: .notation,
-      title: "Cinco dedos",
-      subtitle: "Dó a Sol na direita, Fá a Dó na esquerda",
-      steps: [
-        .cards(clef: .treble, range: 60...67, count: 10),
-        .cards(clef: .bass, range: 53...60, count: 10),
-        .play(clef: .treble, range: 60...67, length: 8),
-        .song(Songs.frereJacques),
-      ]),
-    Lesson(
-      id: "a-rhythm-quarters", block: .notation,
-      title: "Tocar no tempo",
-      subtitle: "Semínimas, uma por pulso",
-      steps: [
-        .rhythm(
-          clef: .treble,
-          pattern: [
-            RhythmStepNote(Pitch(60), .quarter), RhythmStepNote(Pitch(62), .quarter),
-            RhythmStepNote(Pitch(64), .quarter), RhythmStepNote(Pitch(62), .quarter),
-            RhythmStepNote(Pitch(60), .quarter), RhythmStepNote(Pitch(62), .quarter),
-            RhythmStepNote(Pitch(64), .quarter), RhythmStepNote(Pitch(60), .quarter),
-          ],
-          tempo: 60, beatsPerBar: 4)
-      ]),
-    Lesson(
-      id: "a-rests", block: .notation,
-      title: "Pausas",
-      subtitle: "O silêncio também tem duração",
-      steps: [
-        .reading(noteIDs: ["n-rests"]),
-        .theory(count: 5),
-        .play(clef: .treble, range: 60...64, length: 8),
-        .play(clef: .bass, range: 53...60, length: 8),
-      ]),
-    Lesson(
-      id: "a-dot-tie", block: .notation,
-      title: "Ponto e ligadura",
-      subtitle: "Como se escreve uma duração maior",
-      steps: [
-        .reading(noteIDs: ["n-dot-tie"]),
-        .theory(count: 5),
-        .song(Songs.auClairDeLaLune),
-      ]),
-    Lesson(
-      id: "a-bars", block: .notation,
-      title: "Compasso",
-      subtitle: "Linhas divisórias e unidade de tempo",
+      id: "u2-close", unit: 2,
+      title: "Compasso e ligadura",
+      subtitle: "Contar antes de tocar",
       steps: [
         .reading(noteIDs: ["n-bars"]),
-        .theory(count: 6),
-        .cards(clef: .bass, range: 48...60, count: 10),
-        .song(Songs.auClairDeLaLuneBass),
-      ]),
-    Lesson(
-      id: "a-rhythm-mixed", block: .notation,
-      title: "Misturando figuras",
-      subtitle: "Semibreve, mínima e semínima no mesmo trecho",
-      steps: [
-        .rhythm(
-          clef: .treble,
-          pattern: [
-            RhythmStepNote(Pitch(60), .half), RhythmStepNote(Pitch(64), .half),
-            RhythmStepNote(Pitch(62), .quarter), RhythmStepNote(Pitch(64), .quarter),
-            RhythmStepNote(Pitch(65), .half),
-            RhythmStepNote(Pitch(60), .whole),
-          ],
-          tempo: 60, beatsPerBar: 4),
-        .rhythm(
-          clef: .bass,
-          pattern: [
-            RhythmStepNote(Pitch(53), .half, dotted: true),
-            RhythmStepNote(Pitch(55), .quarter),
-            RhythmStepNote(Pitch(57), .half),
-            RhythmStepNote(Pitch(60), .half),
-          ],
-          tempo: 60, beatsPerBar: 4),
-      ]),
-    Lesson(
-      id: "a-ear-first", block: .notation,
-      title: "Ouvir a nota",
-      subtitle: "Reconhecer o som, sem nada escrito",
-      steps: [
-        .ear(clef: .treble, range: 60...64, count: 8),
-        .play(clef: .treble, range: 60...64, length: 8),
-      ]),
-    Lesson(
-      id: "a-treble-staff", block: .notation,
-      title: "Dentro da pauta de sol",
-      subtitle: "As cinco linhas da clave de sol",
-      steps: [
-        .cards(clef: .treble, range: 64...77, count: 12),
-        .play(clef: .treble, range: 64...77, length: 8),
-        .song(Songs.maryHadALittleLamb),
-      ]),
-    Lesson(
-      id: "a-bass-staff", block: .notation,
-      title: "Dentro da pauta de fá",
-      subtitle: "As cinco linhas da clave de fá",
-      steps: [
-        .cards(clef: .bass, range: 43...57, count: 12),
-        .play(clef: .bass, range: 43...57, length: 8),
-      ]),
-    Lesson(
-      id: "a-ledger", block: .notation,
-      title: "Linhas suplementares",
-      subtitle: "Escrever fora da pauta, nos dois lados",
-      steps: [
-        .reading(noteIDs: ["n-ledger"]),
+        .cards(clef: .bass, range: 55...60, count: 6),
+        .song(Songs.lightlyRow),
+        .technique(Technique.walkingFingers),
         .theory(count: 5),
-        .cards(clef: .treble, range: 60...81, count: 10),
-        .cards(clef: .bass, range: 41...60, count: 10),
       ]),
   ]
 
-  // MARK: - B. Intervalos
+  // MARK: - Unit 3. Reforço de leitura
 
-  private static let blockB: [Lesson] = [
+  private static let unit3: [Lesson] = [
     Lesson(
-      id: "b-what", block: .intervals,
-      title: "O que é intervalo",
-      subtitle: "A distância entre duas notas",
+      id: "u3-treble-g", unit: 3,
+      title: "O Sol da clave de sol",
+      subtitle: "A linha que dá nome à clave",
+      steps: [
+        .cards(clef: .treble, range: 60...67, count: 10),
+        .ear(clef: .treble, range: 60...67, count: 6),
+        .play(clef: .treble, range: 60...67, length: 8),
+      ]),
+    Lesson(
+      id: "u3-close", unit: 3,
+      title: "Sol e Fá na clave de fá",
+      subtitle: "Descendo a partir do Dó central",
+      steps: [
+        .reading(noteIDs: ["n-ledger"]),
+        .cards(clef: .bass, range: 53...60, count: 10),
+        .song(Songs.odeToJoy),
+        .technique(Technique.threeTempos),
+        .theory(count: 4),
+      ]),
+  ]
+
+  // MARK: - Unit 4. Mais leitura na pauta
+
+  private static let unit4: [Lesson] = [
+    Lesson(
+      id: "u4-thirds", unit: 4,
+      title: "Terças na pauta",
+      subtitle: "Linha para linha, espaço para espaço",
+      steps: [
+        .cards(clef: .treble, range: 60...69, count: 10),
+        .cards(clef: .bass, range: 53...60, count: 8),
+        .harmony(clef: .treble, range: 60...69, length: 6, voices: 2),
+      ]),
+    Lesson(
+      id: "u4-values", unit: 4,
+      title: "Figuras",
+      subtitle: "Semibreve, mínima, semínima",
+      steps: [
+        .reading(noteIDs: ["n-values"]),
+        .theory(count: 5),
+        .play(clef: .bass, range: 53...60, length: 6),
+      ]),
+    Lesson(
+      id: "u4-rests", unit: 4,
+      title: "Pausas",
+      subtitle: "O silêncio também se escreve",
+      steps: [
+        .reading(noteIDs: ["n-rests"]),
+        .theory(count: 5),
+      ]),
+    Lesson(
+      id: "u4-close", unit: 4,
+      title: "O acorde de Dó",
+      subtitle: "Três notas de uma vez",
+      steps: [
+        .harmony(clef: .bass, range: 48...60, length: 5, voices: 3),
+        .song(Songs.newWorldTheme),
+        .technique(Technique.brokenThirds),
+        .theory(count: 4),
+      ]),
+  ]
+
+  // MARK: - Unit 5. Mais clave de fá
+
+  private static let unit5: [Lesson] = [
+    Lesson(
+      id: "u5-bass-cde", unit: 5,
+      title: "Dó, Ré e Mi graves",
+      subtitle: "A mão esquerda ganha sua própria região",
+      steps: [
+        .cards(clef: .bass, range: 48...55, count: 10),
+        .ear(clef: .bass, range: 48...55, count: 6),
+        .song(Songs.rowYourBoat),
+      ]),
+    Lesson(
+      id: "u5-close", unit: 5,
+      title: "Ligado e destacado",
+      subtitle: "Staccato encurta o som, não o tempo",
+      steps: [
+        .reading(noteIDs: ["n-articulation"]),
+        .play(clef: .bass, range: 48...60, length: 8),
+        .song(Songs.londonBridge),
+        .technique(Technique.contraryMotion),
+        .theory(count: 5),
+      ]),
+  ]
+
+  // MARK: - Unit 6. Colcheias
+
+  private static let unit6: [Lesson] = [
+    Lesson(
+      id: "u6-eighths", unit: 6,
+      title: "A colcheia",
+      subtitle: "Duas para cada tempo",
+      steps: [
+        .reading(noteIDs: ["n-dot-tie"]),
+        .theory(count: 5),
+        .rhythm(
+          clef: .treble,
+          pattern: [
+            RhythmStepNote(Pitch(60), .eighth), RhythmStepNote(Pitch(62), .eighth),
+            RhythmStepNote(Pitch(64), .quarter), RhythmStepNote(Pitch(65), .quarter),
+            RhythmStepNote(Pitch(67), .quarter),
+            RhythmStepNote(Pitch(67), .eighth), RhythmStepNote(Pitch(65), .eighth),
+            RhythmStepNote(Pitch(64), .quarter), RhythmStepNote(Pitch(62), .quarter),
+            RhythmStepNote(Pitch(60), .quarter),
+          ],
+          tempo: 66, beatsPerBar: 4),
+      ]),
+    Lesson(
+      id: "u6-anacrusis", unit: 6,
+      title: "Anacruse e fermata",
+      subtitle: "Quando a música começa antes do compasso",
+      steps: [
+        .cards(clef: .bass, range: 48...55, count: 8),
+        .song(Songs.happyBirthday),
+        .song(Songs.taps),
+      ]),
+    Lesson(
+      id: "u6-close", unit: 6,
+      title: "Frase e crescendo",
+      subtitle: "A música respira",
+      steps: [
+        .play(clef: .bass, range: 48...60, length: 8),
+        .technique(Technique.eighthNoteDrill),
+        .theory(count: 5),
+      ]),
+  ]
+
+  // MARK: - Unit 7. Os espaços da clave de sol
+
+  private static let unit7: [Lesson] = [
+    Lesson(
+      id: "u7-face", unit: 7,
+      title: "F-A-C-E",
+      subtitle: "Os quatro espaços da clave de sol",
+      steps: [
+        .cards(clef: .treble, range: 65...72, count: 12),
+        .ear(clef: .treble, range: 65...72, count: 6),
+        .cards(clef: .bass, range: 48...57, count: 8),
+      ]),
+    Lesson(
+      id: "u7-close", unit: 7,
+      title: "Arpejo e cruzamento",
+      subtitle: "O acorde apresentado no tempo",
+      steps: [
+        .reading(noteIDs: ["c-arpeggio"]),
+        .song(Songs.reveille),
+        .song(Songs.auraLee),
+        .technique(Technique.crossHandArpeggio),
+        .theory(count: 4),
+      ]),
+  ]
+
+  // MARK: - Unit 8. Pentascale de Dó agudo
+
+  private static let unit8: [Lesson] = [
+    Lesson(
+      id: "u8-upper-c", unit: 8,
+      title: "Dó a Sol, uma oitava acima",
+      subtitle: "A mesma forma, lida mais alto",
+      steps: [
+        .cards(clef: .treble, range: 72...79, count: 10),
+        .cards(clef: .bass, range: 48...57, count: 8),
+        .song(Songs.whenTheSaints),
+      ]),
+    Lesson(
+      id: "u8-close", unit: 8,
+      title: "Imitação e ritardando",
+      subtitle: "Uma mão responde à outra",
       steps: [
         .reading(noteIDs: ["i-what"]),
-        .theory(count: 5),
-        .play(clef: .treble, range: 60...72, length: 8),
+        .song(Songs.michaelRow),
+        .technique(Technique.imitation),
+        .theory(count: 4),
+      ]),
+  ]
+
+  // MARK: - Unit 9. Pentascale de Sol
+
+  private static let unit9: [Lesson] = [
+    Lesson(
+      id: "u9-g-pentascale", unit: 9,
+      title: "A posição de Sol",
+      subtitle: "A mesma mão, cinco teclas adiante",
+      steps: [
+        .cards(clef: .treble, range: 67...74, count: 10),
+        .cards(clef: .bass, range: 48...60, count: 8),
+        .song(Songs.twinkleInG),
+      ]),
+    Lesson(
+      id: "u9-close", unit: 9,
+      title: "Transpor",
+      subtitle: "A melodia não muda, a leitura muda",
+      steps: [
+        .reading(noteIDs: ["s-what"]),
         .play(clef: .bass, range: 48...60, length: 8),
+        .song(Songs.odeToJoyInG),
+        .technique(Technique.fingerFanfare),
+        .theory(count: 4),
       ]),
+  ]
+
+  // MARK: - Unit 10. Sustenidos e bemóis
+
+  private static let unit10: [Lesson] = [
     Lesson(
-      id: "b-melodic-harmonic", block: .intervals,
-      title: "Melódico e harmônico",
-      subtitle: "Um depois do outro, ou os dois juntos",
-      steps: [
-        .reading(noteIDs: ["i-melodic-harmonic"]),
-        .theory(count: 5),
-        .play(clef: .treble, range: 60...72, length: 8),
-        .harmony(clef: .bass, range: 43...60, length: 6, voices: 2),
-      ]),
-    Lesson(
-      id: "b-seconds-thirds", block: .intervals,
-      title: "Segundas e terças",
-      subtitle: "Vizinhas e saltos de uma",
-      steps: [
-        .reading(noteIDs: ["i-quality"]),
-        .theory(count: 5),
-        .harmony(clef: .treble, range: 60...77, length: 8, voices: 2),
-        .harmony(clef: .bass, range: 43...60, length: 6, voices: 2),
-      ]),
-    Lesson(
-      id: "b-fourths-fifths", block: .intervals,
-      title: "Quartas e quintas",
-      subtitle: "Os saltos que sustentam a harmonia",
-      steps: [
-        .theory(count: 5),
-        .cards(clef: .bass, range: 43...57, count: 8),
-        .play(clef: .treble, range: 60...69, length: 9),
-        .song(Songs.twinkle),
-      ]),
-    Lesson(
-      id: "b-both-clefs", block: .intervals,
-      title: "Intervalos nas duas claves",
-      subtitle: "O mesmo salto, lido dos dois lados",
-      steps: [
-        .harmony(clef: .bass, range: 43...60, length: 8, voices: 2),
-        .cards(clef: .treble, range: 64...77, count: 8),
-        .cards(clef: .bass, range: 43...57, count: 8),
-      ]),
-    Lesson(
-      id: "b-ear-steps", block: .intervals,
-      title: "Ouvir a distância",
-      subtitle: "Reconhecer de ouvido dentro da posição de cinco dedos",
-      steps: [
-        .ear(clef: .treble, range: 60...67, count: 10),
-        .ear(clef: .bass, range: 53...60, count: 8),
-      ]),
-    Lesson(
-      id: "b-tone-semitone", block: .intervals,
+      id: "u10-half-steps", unit: 10,
       title: "Tom e semitom",
       subtitle: "A menor distância do teclado",
       steps: [
         .reading(noteIDs: ["i-tone-semitone"]),
         .theory(count: 5),
-        .chromatic(clef: .treble, range: 60...72, length: 10),
-        .chromatic(clef: .bass, range: 48...60, length: 10),
-      ]),
-  ]
-
-  // MARK: - C. Escalas
-
-  private static let blockC: [Lesson] = [
-    Lesson(
-      id: "c-what", block: .scales,
-      title: "O que é escala",
-      subtitle: "Notas em ordem de altura",
-      steps: [
-        .reading(noteIDs: ["s-what"]),
-        .theory(count: 5),
-        .play(clef: .treble, range: 60...72, length: 10),
+        .chromatic(clef: .treble, range: 60...72, length: 6),
       ]),
     Lesson(
-      id: "c-major", block: .scales,
-      title: "A escala maior",
-      subtitle: "Onde caem os semitons",
-      steps: [
-        .reading(noteIDs: ["s-major"]),
-        .theory(count: 5),
-        .play(clef: .bass, range: 48...60, length: 10),
-      ]),
-    Lesson(
-      id: "c-degrees", block: .scales,
-      title: "Graus da escala",
-      subtitle: "Tônica, dominante e o resto",
-      steps: [
-        .reading(noteIDs: ["s-degrees"]),
-        .theory(count: 5),
-        .play(clef: .treble, range: 60...72, length: 10),
-        .song(Songs.jingleBells),
-      ]),
-    Lesson(
-      id: "c-accidentals", block: .scales,
-      title: "Sustenido, bemol, bequadro",
-      subtitle: "As alterações e as teclas pretas",
+      id: "u10-accidentals", unit: 10,
+      title: "Sustenido, bemol e bequadro",
+      subtitle: "Os sinais que alteram a nota",
       steps: [
         .reading(noteIDs: ["s-accidentals"]),
         .theory(count: 5),
-        .chromatic(clef: .treble, range: 60...72, length: 12),
+        .chromatic(clef: .bass, range: 48...60, length: 6),
+        .song(Songs.greensleeves),
       ]),
     Lesson(
-      id: "c-key-signature", block: .scales,
-      title: "Armadura de clave",
-      subtitle: "As alterações escritas uma vez só",
+      id: "u10-close", unit: 10,
+      title: "O desenho do pentascale maior",
+      subtitle: "Tom, tom, semitom, tom",
       steps: [
-        .reading(noteIDs: ["s-key-signature"]),
+        .chromatic(clef: .treble, range: 62...74, length: 8),
+        .technique(Technique.wholeAndHalfSteps),
         .theory(count: 5),
-        .chromatic(clef: .bass, range: 48...60, length: 10),
-      ]),
-    Lesson(
-      id: "c-wide", block: .scales,
-      title: "Leitura ampla",
-      subtitle: "Toda a extensão aprendida",
-      steps: [
-        .cards(clef: .treble, range: 60...84, count: 12),
-        .cards(clef: .bass, range: 36...60, count: 12),
-        .play(clef: .treble, range: 60...84, length: 12),
-        .play(clef: .bass, range: 36...60, length: 12),
       ]),
   ]
 
-  // MARK: - D. Acordes
+  // MARK: - Unit 11. Intervalos: 4ªs, 5ªs e 6ªs
 
-  private static let blockD: [Lesson] = [
+  private static let unit11: [Lesson] = [
     Lesson(
-      id: "d-what", block: .chords,
-      title: "O que é acorde",
-      subtitle: "Três sons ao mesmo tempo",
+      id: "u11-fourths-fifths", unit: 11,
+      title: "Quartas e quintas",
+      subtitle: "Saltos que a mão alcança sem se mexer",
+      steps: [
+        .reading(noteIDs: ["i-melodic-harmonic"]),
+        .theory(count: 5),
+        .harmony(clef: .treble, range: 60...72, length: 6, voices: 2),
+        .ear(clef: .bass, range: 48...60, count: 6),
+        .song(Songs.nobodyKnows),
+      ]),
+    Lesson(
+      id: "u11-close", unit: 11,
+      title: "Sextas",
+      subtitle: "O intervalo que abre a mão",
+      steps: [
+        .reading(noteIDs: ["i-quality"]),
+        .harmony(clef: .bass, range: 48...60, length: 6, voices: 2),
+        .song(Songs.promenade),
+        .technique(Technique.intervalStudy),
+        .theory(count: 5),
+      ]),
+  ]
+
+  // MARK: - Unit 12. Escala de Dó maior
+
+  private static let unit12: [Lesson] = [
+    Lesson(
+      id: "u12-scale", unit: 12,
+      title: "A escala de Dó maior",
+      subtitle: "Oito notas e a passagem do polegar",
+      steps: [
+        .reading(noteIDs: ["s-major"]),
+        .theory(count: 5),
+        .play(clef: .treble, range: 60...72, length: 8),
+        .play(clef: .bass, range: 48...60, length: 8),
+      ]),
+    Lesson(
+      id: "u12-close", unit: 12,
+      title: "Tônica, dominante, sensível",
+      subtitle: "Os graus que dão direção à escala",
+      steps: [
+        .reading(noteIDs: ["s-degrees"]),
+        .bothHands(rightRange: 60...72, leftRange: 48...60, length: 6),
+        .technique(Technique.cScale),
+        .theory(count: 5),
+      ]),
+  ]
+
+  // MARK: - Unit 13. O acorde de Sol7
+
+  private static let unit13: [Lesson] = [
+    Lesson(
+      id: "u13-seventh", unit: 13,
+      title: "O acorde de Sol7",
+      subtitle: "O acorde que pede resolução",
       steps: [
         .reading(noteIDs: ["c-what"]),
         .theory(count: 5),
-        .harmony(clef: .treble, range: 60...77, length: 8, voices: 3),
+        .harmony(clef: .treble, range: 59...67, length: 6, voices: 3),
+        .harmony(clef: .bass, range: 47...60, length: 5, voices: 3),
       ]),
     Lesson(
-      id: "d-building", block: .chords,
-      title: "Como se monta uma tríade",
-      subtitle: "Terças empilhadas",
+      id: "u13-close", unit: 13,
+      title: "Substituição de dedo",
+      subtitle: "Trocar de dedo sem soltar a tecla",
+      steps: [
+        .song(Songs.trumpetVoluntary),
+        .technique(Technique.chordWarmup),
+        .theory(count: 5),
+      ]),
+  ]
+
+  // MARK: - Unit 14. Acordes primários em Dó
+
+  private static let unit14: [Lesson] = [
+    Lesson(
+      id: "u14-primary", unit: 14,
+      title: "I, IV e V7",
+      subtitle: "Os três acordes que harmonizam quase tudo",
       steps: [
         .reading(noteIDs: ["c-building"]),
         .theory(count: 5),
-        .harmony(clef: .treble, range: 60...72, length: 8, voices: 3),
+        .harmony(clef: .bass, range: 47...60, length: 6, voices: 3),
       ]),
     Lesson(
-      id: "d-triads", block: .chords,
-      title: "Tríades maiores e menores",
-      subtitle: "O que muda é a terça",
+      id: "u14-inversion", unit: 14,
+      title: "Inversão",
+      subtitle: "O mesmo acorde, outro baixo",
       steps: [
         .reading(noteIDs: ["c-major-minor"]),
         .theory(count: 5),
-        .harmony(clef: .bass, range: 43...60, length: 8, voices: 3),
-      ]),
-    Lesson(
-      id: "d-arpeggio", block: .chords,
-      title: "Arpejo",
-      subtitle: "O mesmo acorde, uma nota de cada vez",
-      steps: [
-        .reading(noteIDs: ["c-arpeggio"]),
-        .theory(count: 5),
-        .play(clef: .treble, range: 60...77, length: 10),
         .harmony(clef: .treble, range: 60...72, length: 6, voices: 3),
       ]),
     Lesson(
-      id: "d-both-hands", block: .chords,
-      title: "As duas mãos juntas",
-      subtitle: "Grande pauta: ler os dois lados de uma vez",
+      id: "u14-close", unit: 14,
+      title: "Ler uma cifra",
+      subtitle: "A melodia escrita, a harmonia nomeada",
       steps: [
-        .bothHands(rightRange: 60...67, leftRange: 48...55, length: 8),
-        .bothHands(rightRange: 60...72, leftRange: 43...55, length: 10),
+        .song(Songs.homeOnTheRange),
+        .technique(Technique.chordEtude),
+        .theory(count: 5),
+      ]),
+  ]
+
+  // MARK: - Unit 15. Escala de Sol maior
+
+  private static let unit15: [Lesson] = [
+    Lesson(
+      id: "u15-key-signature", unit: 15,
+      title: "Armadura de clave",
+      subtitle: "O sustenido escrito uma vez, valendo sempre",
+      steps: [
+        .reading(noteIDs: ["s-key-signature"]),
+        .theory(count: 5),
+        .chromatic(clef: .treble, range: 67...79, length: 8),
+        .chromatic(clef: .bass, range: 48...60, length: 6),
       ]),
     Lesson(
-      id: "d-two-handed-piece", block: .chords,
-      title: "Uma peça a duas mãos",
-      subtitle: "Melodia na direita, baixo na esquerda",
+      id: "u15-close", unit: 15,
+      title: "Minueto em Sol",
+      subtitle: "A primeira peça com armadura",
       steps: [
-        .bothHands(rightRange: 60...64, leftRange: 43...48, length: 8),
-        .song(Songs.auClairDeLaLuneTwoHands),
+        .song(Songs.minuetInG),
+        .technique(Technique.gScaleDivided),
+        .theory(count: 5),
+      ]),
+  ]
+
+  // MARK: - Unit 16. Acordes primários em Sol
+
+  private static let unit16: [Lesson] = [
+    Lesson(
+      id: "u16-d-seventh", unit: 16,
+      title: "O acorde de Ré7",
+      subtitle: "A dominante de Sol",
+      steps: [
+        .harmony(clef: .treble, range: 62...74, length: 6, voices: 3),
+        .song(Songs.amazingGrace),
       ]),
     Lesson(
-      id: "d-ode-to-joy", block: .chords,
-      title: "Hino à Alegria",
-      subtitle: "Beethoven, e o fim desta trilha",
+      id: "u16-lead-sheet", unit: 16,
+      title: "Cifra em Sol",
+      subtitle: "Construir a harmonia a partir do nome",
       steps: [
+        .bothHands(rightRange: 67...79, leftRange: 48...60, length: 8),
+        .song(Songs.jollyGoodFellow),
+      ]),
+    Lesson(
+      id: "u16-close", unit: 16,
+      title: "O Carnaval de Veneza",
+      subtitle: "A peça de revisão: tudo que o curso construiu",
+      steps: [
+        .song(Songs.carnivalOfVenice),
+        .technique(Technique.musicBoxEtude),
         .theory(count: 6),
-        .play(clef: .treble, range: 60...67, length: 10),
-        .song(Songs.odeToJoy),
       ]),
   ]
 }
