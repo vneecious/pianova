@@ -105,8 +105,13 @@ mistura as duas direções para que não dê para entrar em piloto automático.
 
 ### As duas claves desde o começo
 
-15. **A clave de fá entra na primeira lição**, junto com a de sol. O curso
-    nunca ensina uma clave inteira antes de apresentar a outra.
+15. **As duas claves entram juntas.** A primeira lição que lê a pauta apresenta
+    a clave de sol e a de fá ao mesmo tempo, e o curso nunca ensina uma clave
+    inteira antes de apresentar a outra.
+
+> A redação anterior dizia "na primeira lição do curso". Não sobreviveu à ordem
+> do método: a unidade 1 é orientação ao teclado e não lê pauta nenhuma. O que
+> importa é que nenhuma clave chegue depois da outra, e isso continua valendo.
 
 O motivo é o do método adotado: quem aprende todas as notas na clave de sol
 primeiro precisa depois *rememorizar* tudo na clave de fá, e as duas leituras
@@ -137,6 +142,214 @@ música de iniciante fica em posição de cinco dedos.
 
 > Uma progressão anterior, por níveis, ensinava a clave de sol inteira antes de
 > apresentar a de fá. Foi removida por contradizer a regra 15.
+
+### A ordem do curso: 16 unidades
+
+A trilha segue a **sequência pedagógica de um método adulto consagrado** — 16
+unidades, cada uma introduzindo um conceito novo e revisando os anteriores.
+
+20. O curso tem **exatamente 16 unidades**, na ordem fixa abaixo. Uma unidade só
+    abre quando a anterior é concluída.
+21. Cada unidade **introduz pelo menos um conceito que nenhuma anterior
+    introduziu**. Nenhum conceito é ensinado duas vezes como novidade.
+22. Toda unidade termina com duas atividades, nesta ordem: **técnica guiada** e
+    **teoria**. É o fecho que o método usa, e o app não o dispensa.
+23. Uma unidade **nunca pede uma nota, figura ou símbolo que nenhuma unidade
+    até ela tenha apresentado.**
+
+| # | Unidade | Conceito que estreia |
+|---|---|---|
+| 1 | Introdução ao teclado | Postura, dedilhado, pentascale de Dó e Sol, 2ªs e 3ªs |
+| 2 | Orientação na pauta | Pauta, claves, fórmula de compasso, ligadura, legato |
+| 3 | Reforço de leitura | Sol na clave de sol; Sol e Fá na clave de fá; coda |
+| 4 | Mais leitura na pauta | 3ªs na pauta, pausas, D.C. al Fine, acorde de Dó |
+| 5 | Mais clave de fá | Dó-Ré-Mi graves, hastes, staccato, casas 1 e 2 |
+| 6 | Colcheias | Colcheia, frase, crescendo, fermata, anacruse |
+| 7 | Espaços da clave de sol | F-A-C-E, cruzamento de mãos, arpejo |
+| 8 | Pentascale de Dó agudo | Dó-Sol agudos, imitação, ritardando |
+| 9 | Pentascale de Sol | Sol em três posições, acorde de Sol |
+| 10 | Sustenidos e bemóis | Semitom, tom, sustenido, bemol, bequadro |
+| 11 | Intervalos: 4ªs, 5ªs, 6ªs | Quarta, quinta e sexta |
+| 12 | Escala de Dó maior | Escala completa, tônica, dominante, sensível |
+| 13 | O acorde de Sol7 | V7, substituição de dedo |
+| 14 | Acordes primários em Dó | I-IV-V7, inversão, cifra |
+| 15 | Escala de Sol maior | Armadura de clave |
+| 16 | Acordes primários em Sol | I-IV-V7 em Sol, Ré7 |
+
+> **Origem e limite.** A ordem das unidades e os conceitos de cada uma seguem o
+> método. As melodias são de **domínio público**, escritas neste repositório, e
+> os exercícios de técnica são originais: nenhum arranjo, texto ou peça
+> protegida é reproduzido. Onde o método usa uma peça ainda em direito autoral,
+> a trilha põe uma equivalente de domínio público no mesmo nível.
+
+### Exercícios de técnica guiados
+
+24. Um exercício de técnica é **guiado**: antes de tocar, o app mostra o
+    **objetivo** e as **instruções de execução**, uma por linha.
+25. Todo exercício de técnica declara **qual dedo toca cada nota**, e o
+    dedilhado é mostrado nota a nota sob a pauta, com a mão indicada.
+26. Um exercício de técnica é **percutido antes de ser tocado**: primeiro o
+    ritmo, contando em voz alta; só depois as notas.
+27. O exercício é validado **com ritmo**, não só por altura — a tolerância é a
+    do modo de leitura, generosa por decisão pedagógica.
+
+### Ilustração antes de descrição
+
+Um método de piano é um livro ilustrado, e não por enfeite: teclado, mãos e
+duração são coisas **espaciais**. Descrever em palavras onde fica o Dó custa um
+parágrafo e ainda sai ambíguo; um teclado desenhado com a tecla marcada resolve
+sem texto nenhum.
+
+28. Toda página que ensina algo que **se vê** mostra a coisa desenhada, e não
+    apenas descrita. São quatro tipos de figura: **teclado**, **mãos com os
+    dedos numerados**, **árvore de valores** e **exemplo em pauta**.
+29. Num diagrama de teclado, tudo que for marcado ou colchetado fica **dentro
+    da extensão desenhada** — um diagrama não aponta para fora de si.
+30. Toda figura tem **legenda**. Uma figura sem legenda obriga a voltar ao texto
+    para descobrir o que ela quer dizer, e aí ela não substituiu nada.
+
+### Partitura de verdade
+
+Uma peça não é uma fila de notas. Uma primeira versão guardava só as alturas, e
+o resultado desenhado não era uma partitura pobre — era uma sequência de
+cabeças de nota sobre cinco linhas, sem ritmo, sem compasso, sem armadura. Não
+dá para aprender a ler numa coisa dessas.
+
+31. Toda peça declara **fórmula de compasso** e **armadura de clave**.
+32. Toda nota declara sua **figura**. Uma peça sem ritmo escrito não é peça.
+33. Os compassos **fecham**: a soma das figuras de cada compasso é exatamente o
+    que a fórmula manda. A única exceção é a **anacruse**, que é o primeiro
+    compasso e é incompleta por definição.
+34. A pauta desenha **fórmula de compasso, barras de compasso e armadura**.
+    Barra dupla no fim.
+35. Pausas são escritas e desenhadas como pausas — nunca como um buraco.
+
+### Importar partituras
+
+36. O formato de entrada é **MusicXML** (`.musicxml`, e `.mxl` comprimido), que
+    é o que todo editor exporta e o que o IMSLP e o MuseScore distribuem.
+37. O que o importador não souber ler ele **recusa com uma mensagem**, em vez de
+    importar pela metade e produzir uma partitura silenciosamente errada.
+
+### A pauta rola, não encolhe
+
+Espremer a peça inteira na largura da tela dá uma linha ilegível: as cabeças de
+nota se sobrepõem e as hastes colidem. Uma partitura tem a largura que precisa
+ter, e quem se move é a janela.
+
+38. As notas têm **espaçamento mínimo fixo**. A pauta nunca comprime a peça para
+    caber na largura disponível.
+39. A pauta **rola conforme o cursor avança**, mantendo a nota atual **à
+    esquerda do centro** — com mais música visível à frente do que atrás.
+    Ler adiante é a habilidade; uma nota centralizada esconde metade dela.
+40. **Clave, armadura e fórmula de compasso ficam fixas** na borda esquerda
+    enquanto a música rola por baixo. Elas valem para o trecho inteiro, então
+    sair de vista seria perder a referência.
+41. A rolagem **para nas pontas**: nunca antes da primeira nota, nunca depois de
+    a última entrar na janela.
+
+### Errar no exercício de tempo
+
+Deixar a música seguir depois do erro é o pior dos dois mundos: você perde o
+pulso e continua tocando errado até o fim. Quem estuda de verdade volta ao
+início do compasso e retoma.
+
+42. Um erro **interrompe a passagem**. O exercício volta ao **início do compasso**
+    onde o erro aconteceu — não ao começo da peça.
+43. Antes de retomar, a **contagem de entrada acontece de novo**. Retomar sem
+    ouvir o pulso é recomeçar sem referência.
+44. O que foi tocado certo **antes** do compasso do erro permanece certo. Só o
+    compasso refeito volta a ser avaliado.
+45. A linha-guia é posicionada pela **mesma aritmética das cabeças de nota**.
+    Ela nunca varre a largura da tela, ou aponta para um lugar onde não há nota.
+
+### Repertório
+
+Uma peça presa dentro da lição que a usa só pode ser tocada refazendo a lição
+inteira. Mas tocar música é o motivo de estudar piano, e querer sentar e tocar
+uma peça conhecida não é desvio do curso — é o ponto dele.
+
+46. Existe uma tela de **repertório** que lista **todas as peças do app**, e
+    qualquer uma pode ser tocada direto, sem passar por lição nenhuma.
+47. Cada peça mostra **compositor, tonalidade, compasso e a unidade** em que
+    aparece no curso — que é o que indica o quão difícil ela é.
+48. O repertório **não mexe na trilha**. Tocar uma peça ali não conclui lição,
+    não destrava nada e não altera o progresso.
+49. A lista é ordenada pela **ordem do curso**, da mais simples à mais difícil,
+    porque essa é a informação que ajuda a escolher.
+
+### Espaço é tempo
+
+50. A largura de cada nota é **proporcional à sua duração**. Uma semibreve ocupa
+    quatro vezes o espaço de uma semínima; uma colcheia, metade.
+
+Gravação profissional usa uma escala comprimida, para economizar página. Aqui
+não há página para economizar, e há uma linha-guia andando em velocidade
+constante: com espaço proporcional ao tempo, **a linha e as notas se movem na
+mesma escala**, e seguir a música vira uma coisa só em vez de duas. O olho
+também passa a ler duração como distância, antes de ler a figura.
+
+51. Há uma **largura mínima** por nota. Proporcional não pode significar
+    ilegível quando a peça mistura semibreves e colcheias.
+
+### Seguir sem esforço
+
+52. A rolagem é **contínua e animada**, nunca um salto. A pauta desliza entre
+    uma nota e a seguinte.
+53. O ponto onde a música está agora é marcado na pauta **mesmo antes de tocar**,
+    para que nunca seja preciso procurar onde se está.
+54. A nota atual é distinguível **de relance**, sem comparar com as vizinhas.
+
+### O Treino mede tempo, não só acerto
+
+Acerto satura. Um iniciante chega a 95% em poucas semanas e o número para de se
+mexer — justo quando a evolução real começa. **Tempo continua se movendo por
+anos**, e é o que separa quem calcula a nota de quem a reconhece.
+
+55. O Treino cronometra cada resposta e reporta a **mediana**, nunca a média.
+    Uma distração no meio da rodada destrói uma média e não move uma mediana.
+56. A estatística é **por estilo de pergunta**. Cronometrar reconhecimento
+    auditivo mede outra habilidade que não cronometrar leitura de pauta, e num
+    exercício de ouvido velocidade **não é o objetivo** — ali vale o acerto.
+57. O Treino mostra **em quais notas se hesita mais**, ordenadas pela demora.
+    Uma mediana diz como você está; a lista diz o que estudar amanhã.
+58. As notas hesitadas **realimentam o gerador**: o Treino passa a perguntar
+    mais sobre elas, sem que seja preciso ler painel nem decidir nada.
+59. Só conta para a estatística a resposta dada **sem erro**. Cronometrar uma
+    tentativa que já falhou mede a digitação, não o reconhecimento.
+
+### O som
+
+Síntese aditiva não soa como piano, e não vai soar: o timbre vem de centenas de
+cordas com ressonância simpática, ruído de martelo e comportamento de abafador.
+
+60. Com o instrumento conectado, o app **toca pelo próprio instrumento**,
+    mandando MIDI de volta para ele. Não é parecido com o piano do usuário —
+    é o piano do usuário.
+61. Isso também resolve o eco: sem roteamento, tocar uma tecla soa **duas
+    vezes**, no piano e no sintetizador do app, levemente defasadas.
+62. Sem instrumento conectado, o app usa um **piano amostrado** se houver um
+    banco de sons instalado, e só cai no sintetizador se não houver.
+63. O usuário pode **desligar o roteamento** e ouvir o app, para comparar.
+
+### Carregar partituras
+
+64. O app importa **MusicXML** (`.musicxml`, `.xml`) e renderiza na mesma pauta
+    que o resto do curso usa.
+65. O que o importador não souber ler ele **recusa dizendo o quê**, em vez de
+    produzir uma partitura silenciosamente errada.
+66. Uma peça importada pode ser tocada de dois modos: **livre**, onde a pauta
+    espera por você, e **no tempo**, onde ela não espera.
+67. Existe um **preview**: o app toca a peça sozinho, para servir de referência
+    de como deveria soar. O preview nunca avalia nada.
+
+> **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
+> Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o
+> OpenSheetMusicDisplay (TypeScript num `WKWebView`). Ambas entregam o layout
+> inteiro para fora, e o app depende de colorir nota a nota em tempo real,
+> vindo do MIDI. A decisão foi manter a pauta própria e adotar só o **formato**
+> de arquivo padrão. Adotar o Verovio continua possível depois — com o modelo
+> abaixo, o que muda é o desenho, não os dados.
 
 ## Interface
 

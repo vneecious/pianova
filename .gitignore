@@ -13,6 +13,11 @@ CLAUDE.md
 
 # Material de estudo pessoal, não faz parte do app
 curriculo-musica.md
+plano-pratica.md
 
 # Publicado em repositório próprio: github.com/vneecious/piano
 piano.html
+
+# Bancos de som instalados localmente (arquivos grandes, licença do usuário)
+*.sf2
+*.dls
