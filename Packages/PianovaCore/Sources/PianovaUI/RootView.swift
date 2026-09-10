@@ -3,6 +3,7 @@ import Progress
 import ScoreModel
 import Sound
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The app shell: the course trail, free practice, and the lesson runner.
 public struct RootView: View {
@@ -16,6 +17,8 @@ public struct RootView: View {
     case drill
     /// Continuous reading, where the line does not wait.
     case reading
+    /// Every piece in the app, playable on its own.
+    case repertoire
     /// Running a lesson. Which one lives in `lessonController`.
     case lesson
   }
@@ -31,6 +34,7 @@ public struct RootView: View {
   @EnvironmentObject private var tones: TonePlayer
   @EnvironmentObject private var profile: ProfileController
   @State private var lessonController: LessonController?
+  @State private var isInstallingBank = false
   @StateObject private var drill = DrillController()
 
   /// Creates the shell.
@@ -43,14 +47,28 @@ public struct RootView: View {
   public var body: some View {
     Group {
       switch screen {
-      case .trail, .free, .drill, .reading:
+      case .trail, .free, .drill, .reading, .repertoire:
         home
       case .lesson:
         lessonScreen
       }
     }
     .frame(minWidth: 820, minHeight: 620)
-    .onAppear { hub.start() }
+    .onAppear {
+      hub.start()
+      tones.connectInstrument()
+    }
+    .fileImporter(
+      isPresented: $isInstallingBank,
+      allowedContentTypes: [UTType(filenameExtension: "sf2"), UTType(filenameExtension: "dls")]
+        .compactMap { $0 },
+      allowsMultipleSelection: false
+    ) { result in
+      guard let url = try? result.get().first else { return }
+      let scoped = url.startAccessingSecurityScopedResource()
+      defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+      try? tones.installBank(from: url)
+    }
   }
 
   /// Trail state, rebuilt from the stored profile each time it is read.
@@ -70,6 +88,8 @@ public struct RootView: View {
         DrillView(controller: drill, hub: hub, onExit: { screen = .trail })
       case .reading:
         ReadingView(hub: hub, tones: tones, onExit: { screen = .trail })
+      case .repertoire:
+        RepertoireView(hub: hub)
       default:
         CourseTrailView(progress: progress) { start($0) }
       }
@@ -99,10 +119,11 @@ public struct RootView: View {
         Text("Livre").tag(Screen.free)
         Text("Treino").tag(Screen.drill)
         Text("Leitura").tag(Screen.reading)
+        Text("Repertório").tag(Screen.repertoire)
       }
       .pickerStyle(.segmented)
       .labelsHidden()
-      .frame(width: 320)
+      .frame(width: 420)
 
       Button {
         tones.isMuted.toggle()
@@ -126,7 +147,31 @@ public struct RootView: View {
           : "Destravar a trilha inteira, para testar")
 
       Button {
+        isInstallingBank = true
+      } label: {
+        Image(systemName: "waveform")
+          .foregroundStyle(tones.loadedBankName == nil ? .secondary : ItemState.done.color)
+      }
+      .buttonStyle(.borderless)
+      .help(
+        tones.loadedBankName.map { "Piano amostrado: \($0)" }
+          ?? "Sem banco de som — instalar um .sf2")
+
+      Button {
+        tones.routesToInstrument.toggle()
+      } label: {
+        Image(systemName: tones.isRoutingToInstrument ? "pianokeys.inverse" : "pianokeys")
+          .foregroundStyle(tones.isRoutingToInstrument ? ItemState.current.color : .secondary)
+      }
+      .buttonStyle(.borderless)
+      .help(
+        tones.isRoutingToInstrument
+          ? "Som saindo pelo seu piano — toque para ouvir o app"
+          : "Som saindo pelo app — toque para usar o seu piano")
+
+      Button {
         hub.start()
+        tones.connectInstrument()
       } label: {
         Image(systemName: "arrow.clockwise")
       }

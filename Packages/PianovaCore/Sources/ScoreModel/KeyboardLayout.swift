@@ -43,11 +43,13 @@ public struct KeyboardLayout: Equatable, Sendable {
     self.range = range
   }
 
-  /// Three octaves centred on middle C.
+  /// Four octaves, C2 to C6.
   ///
-  /// A fixed window on purpose: a keyboard that only showed the notes of the
-  /// current exercise would answer half of it.
-  public static let standard = KeyboardLayout(range: 48...84)
+  /// Fixed on purpose: a keyboard that showed only the notes of the current
+  /// exercise would answer half of it. But fixed does not mean small — the span
+  /// has to cover **everything the app can ask**, or an exercise becomes
+  /// unanswerable without a real instrument. The tests tie the two together.
+  public static let standard = KeyboardLayout(range: 36...84)
 
   /// The white keys, left to right.
   public var whiteKeys: [Pitch] {

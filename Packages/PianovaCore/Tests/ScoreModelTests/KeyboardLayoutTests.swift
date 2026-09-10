@@ -80,14 +80,14 @@ private let octave = KeyboardLayout(range: 60...72)
 ///
 /// Finding the note is part of the exercise, so the keyboard must not shrink to
 /// only the keys that are needed.
-@Test func theStandardKeyboardIsAFixedThreeOctaveWindow() {
-  #expect(KeyboardLayout.standard.range == 48...84)
-  #expect(KeyboardLayout.standard.whiteKeys.count == 22)
+@Test func theStandardKeyboardIsAFixedWindow() {
+  #expect(KeyboardLayout.standard.range == 36...84)
+  #expect(KeyboardLayout.standard.whiteKeys.count == 29)
   #expect(KeyboardLayout.standard.range.contains(60))
 }
 
 /// Keys are asked to be comfortably larger than the minimum touch target.
 @Test func keysAreComfortablyLargerThanTheTouchMinimum() {
   #expect(KeyboardLayout.preferredWhiteKeyWidth >= 44)
-  #expect(KeyboardLayout.standard.preferredWidth == 22 * KeyboardLayout.preferredWhiteKeyWidth)
+  #expect(KeyboardLayout.standard.preferredWidth == 29 * KeyboardLayout.preferredWhiteKeyWidth)
 }
