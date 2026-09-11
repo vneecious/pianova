@@ -14,6 +14,12 @@ import VerovioToolkit
 public final class Engraver: ScoreEngraver, @unchecked Sendable {
   private let toolkit: VerovioToolkit
 
+  /// One caller at a time: the toolkit shares mutable state across every
+  /// call, and two loads racing — a size slider re-engraving per step while
+  /// the previous engrave still runs — corrupt it and crash inside the
+  /// engraver. Recursive because reading events asks for pitches within.
+  private let lock = NSRecursiveLock()
+
   /// Creates an engraver, pointed at its own resources.
   public init() {
     // The fonts and metric tables travel in the package's own bundle.
@@ -37,6 +43,14 @@ public final class Engraver: ScoreEngraver, @unchecked Sendable {
   /// - Returns: Whether it could be laid out.
   @discardableResult
   public func load(musicXML: String, width: Int, height: Int) -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+
+    // A queue forms behind the lock when sizes change faster than engraving
+    // runs. A load whose task was cancelled while it waited is a load nobody
+    // wants — it gives its turn up instead of engraving into the void.
+    guard !Task.isCancelled else { return false }
+
     let options = """
       {"pageWidth": \(width), "pageHeight": \(height), "scale": 40,
        "adjustPageHeight": true, "footer": "none", "header": "none",
@@ -47,20 +61,28 @@ public final class Engraver: ScoreEngraver, @unchecked Sendable {
   }
 
   /// How many pages the piece came to.
-  public var pageCount: Int { toolkit.getPageCount() }
+  public var pageCount: Int {
+    lock.lock()
+    defer { lock.unlock() }
+    return toolkit.getPageCount()
+  }
 
   /// Draws one page.
   /// - Parameter number: Which page, counting from one.
   /// - Returns: The page, or `nil` if it could not be drawn.
   public func page(_ number: Int) -> EngravedPage? {
-    EngravedPageParser.page(from: toolkit.renderToSVG(number, false))
+    lock.lock()
+    defer { lock.unlock() }
+    return EngravedPageParser.page(from: toolkit.renderToSVG(number, false))
   }
 
   /// Which page an element was drawn on.
   /// - Parameter id: The element identifier.
   /// - Returns: The page number, counting from one.
   public func page(containing id: String) -> Int {
-    toolkit.getPageWithElement(id)
+    lock.lock()
+    defer { lock.unlock() }
+    return toolkit.getPageWithElement(id)
   }
 
   /// Everything that sounds, in order, with the keys it means.
@@ -74,6 +96,9 @@ public final class Engraver: ScoreEngraver, @unchecked Sendable {
   /// So graces leave the map here, and the decorated note returns to its
   /// written moment, merged with whatever else sounds there.
   public func events() -> [EngravedEvent] {
+    lock.lock()
+    defer { lock.unlock() }
+
     guard let data = toolkit.renderToTimemap("{}").data(using: .utf8),
       let entries = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
     else {
@@ -134,6 +159,9 @@ public final class Engraver: ScoreEngraver, @unchecked Sendable {
 
   /// Whether a drawn element is an ornament — a grace note in the engraving.
   private func isOrnament(_ id: String) -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+
     guard let data = toolkit.getElementAttr(id, "grace").data(using: .utf8),
       let attributes = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     else {
@@ -146,6 +174,9 @@ public final class Engraver: ScoreEngraver, @unchecked Sendable {
   /// - Parameter id: The element identifier.
   /// - Returns: Its pitch, or `nil` if the element is not a sounding note.
   public func pitch(of id: String) -> Pitch? {
+    lock.lock()
+    defer { lock.unlock() }
+
     guard let data = toolkit.getMIDIValuesForElement(id).data(using: .utf8),
       let values = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
       let number = values["pitch"] as? Int,
@@ -158,5 +189,9 @@ public final class Engraver: ScoreEngraver, @unchecked Sendable {
   }
 
   /// What the engraver complained about, if anything.
-  public var log: String { toolkit.getLog() }
+  public var log: String {
+    lock.lock()
+    defer { lock.unlock() }
+    return toolkit.getLog()
+  }
 }

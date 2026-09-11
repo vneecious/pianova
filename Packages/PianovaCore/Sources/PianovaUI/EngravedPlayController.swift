@@ -211,6 +211,7 @@ public final class EngravedPlayController: ObservableObject {
   private nonisolated static func engrave(
     _ score: Score, with engraver: ScoreEngraver, units: Int
   ) -> Engraving? {
+    guard !Task.isCancelled else { return nil }
     let xml = MusicXMLExporter.musicXML(for: score)
 
     guard engraver.load(musicXML: xml, width: units, height: 2970) else { return nil }

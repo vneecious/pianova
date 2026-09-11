@@ -42,7 +42,7 @@ struct EngravedPieceView: View {
         VStack(spacing: 14) {
           ProgressView()
             .controlSize(.large)
-          Text("Gravando a partitura…")
+          Text("Carregando a partitura…")
             .font(.system(size: 14, weight: .medium))
           Text(score.title)
             .font(.system(size: 12))
@@ -61,7 +61,7 @@ struct EngravedPieceView: View {
               HStack(spacing: 8) {
                 ProgressView()
                   .controlSize(.small)
-                Text("Regravando…")
+                Text("Redesenhando…")
                   .font(.system(size: 12, weight: .medium))
               }
               .padding(.horizontal, 14)
