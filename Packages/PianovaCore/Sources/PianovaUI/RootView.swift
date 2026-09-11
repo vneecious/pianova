@@ -31,6 +31,9 @@ public struct RootView: View {
 
   @State private var screen: Screen = .trail
   @State private var unlocksEverything = false
+
+  /// The theme, remembered between sessions.
+  @AppStorage("pianova.appearance") private var appearanceChoice = Appearance.system.rawValue
   @EnvironmentObject private var tones: TonePlayer
   @EnvironmentObject private var profile: ProfileController
   @State private var lessonController: LessonController?
@@ -54,6 +57,7 @@ public struct RootView: View {
       }
     }
     .frame(minWidth: 820, minHeight: 620)
+    .preferredColorScheme(appearance.colorScheme)
     .onAppear {
       // The sound routing follows the instrument: plug the piano in and the app
       // starts playing through it without anyone pressing anything.
@@ -137,6 +141,15 @@ public struct RootView: View {
         unlocksEverything
           ? "Trilha destravada — todas as lições abertas"
           : "Destravar a trilha inteira, para testar")
+
+      Button {
+        appearance = appearance.next
+      } label: {
+        Image(systemName: appearance.symbol)
+          .foregroundStyle(.secondary)
+      }
+      .buttonStyle(.borderless)
+      .help("Tema: \(appearance.title)")
 
       metronomeControl
 
@@ -226,6 +239,12 @@ public struct RootView: View {
         .frame(width: 72)
       }
     }
+  }
+
+  /// The theme, as a value rather than the stored string.
+  private var appearance: Appearance {
+    get { Appearance(rawValue: appearanceChoice) ?? .system }
+    nonmutating set { appearanceChoice = newValue.rawValue }
   }
 
   private var instrumentLine: String {

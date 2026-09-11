@@ -35,6 +35,11 @@ struct EngravedPieceView: View {
         pages
       }
 
+    }
+    // As a safe-area inset rather than a sibling: the scroll view then knows
+    // the keyboard is there and stops scrolling music underneath it. Stacked
+    // below, the keyboard simply covered the last system.
+    .safeAreaInset(edge: .bottom, spacing: 0) {
       if !hub.isConnected {
         PianoKeyboardView { controller.play($0) }
       }

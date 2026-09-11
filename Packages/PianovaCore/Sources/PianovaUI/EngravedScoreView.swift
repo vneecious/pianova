@@ -39,9 +39,17 @@ struct EngravedScoreView: View {
         // you clicked rather than covering it.
         if let selected = selectedMeasure, let box = page.measureFrame(selected) {
           let inset = box.insetBy(dx: -8, dy: -8)
+          let shape = Path(roundedRect: inset, cornerRadius: 12)
+
+          // Stronger on a dark page: the same wash that reads clearly on white
+          // all but disappears on black, which is where it was being looked at.
           context.fill(
-            Path(roundedRect: inset, cornerRadius: 12),
-            with: .color(ItemState.current.color.opacity(0.13)))
+            shape,
+            with: .color(ItemState.current.color.opacity(colorScheme == .dark ? 0.28 : 0.15)))
+          context.stroke(
+            shape,
+            with: .color(ItemState.current.color.opacity(0.7)),
+            lineWidth: 3)
         }
 
         for shape in page.shapes {
