@@ -19,12 +19,24 @@ struct EngravedScoreView: View {
   /// Called with the identifier nearest to a tap.
   var onTap: ((String) -> Void)?
 
+  /// A bar to pick out, as an editor marks the one you clicked.
+  var selectedMeasure: String?
+
   var body: some View {
     GeometryReader { proxy in
       let scale = proxy.size.width / max(page.size.width, 1)
 
       Canvas { context, _ in
         context.scaleBy(x: scale, y: scale)
+
+        // The selection sits under the music, the way an editor shades the bar
+        // you clicked rather than covering it.
+        if let selected = selectedMeasure, let box = page.measureFrame(selected) {
+          let inset = box.insetBy(dx: -8, dy: -8)
+          context.fill(
+            Path(roundedRect: inset, cornerRadius: 12),
+            with: .color(ItemState.current.color.opacity(0.13)))
+        }
 
         for shape in page.shapes {
           let path = Path(shape.path)

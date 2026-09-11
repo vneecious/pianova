@@ -30,6 +30,9 @@ public struct EngravedShape: Equatable {
   /// the rest of the note in the old colour.
   public let noteID: String?
 
+  /// Identifier of the bar this sits in.
+  public let measureID: String?
+
   /// Identifier of the system this sits in.
   ///
   /// What the page scrolls by. Following the note instead makes the page rise
@@ -60,6 +63,22 @@ public struct EngravedPage: Equatable {
     }
 
     return boxes.map { (id: $0.key, frame: $0.value) }.sorted { $0.frame.minY < $1.frame.minY }
+  }
+
+  /// Which bar a given element was drawn in.
+  /// - Parameter id: A note or element identifier.
+  /// - Returns: The bar's identifier, or `nil` if it is not on this page.
+  public func measure(containing id: String) -> String? {
+    shapes.first { $0.noteID == id || $0.elementID == id }?.measureID
+  }
+
+  /// Where a bar sits, for drawing a selection over it.
+  /// - Parameter id: The bar's identifier.
+  /// - Returns: Its bounding box, or `nil` if it is not on this page.
+  public func measureFrame(_ id: String) -> CGRect? {
+    let boxes = shapes.filter { $0.measureID == id }.map { $0.path.boundingBoxOfPath }
+    guard let first = boxes.first else { return nil }
+    return boxes.dropFirst().reduce(first) { $0.union($1) }
   }
 
   /// Which system a given element was drawn in.
@@ -95,6 +114,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
   private var kinds: [String?] = [nil]
   private var notes: [String?] = [nil]
   private var systemStack: [String?] = [nil]
+  private var measures: [String?] = [nil]
 
   private var definingSymbol: String?
   private var symbolPath = CGMutablePath()
@@ -146,6 +166,10 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
     systemStack.append(
       isSystem ? (attributes["id"] ?? systemStack.last ?? nil) : (systemStack.last ?? nil))
 
+    let isMeasure = classes.contains("measure")
+    measures.append(
+      isMeasure ? (attributes["id"] ?? measures.last ?? nil) : (measures.last ?? nil))
+
     switch name {
     case "g":
       // A `<g>` inside `<defs>` is a glyph waiting to be reused.
@@ -171,6 +195,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
             elementID: ids.last ?? nil,
             kind: kinds.last ?? nil,
             noteID: notes.last ?? nil,
+            measureID: measures.last ?? nil,
             systemID: systemStack.last ?? nil))
       }
 
@@ -184,7 +209,8 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
         EngravedShape(
           path: placed, isFilled: true, strokeWidth: 0,
           elementID: ids.last ?? nil, kind: kinds.last ?? nil,
-          noteID: notes.last ?? nil, systemID: systemStack.last ?? nil))
+          noteID: notes.last ?? nil, measureID: measures.last ?? nil,
+          systemID: systemStack.last ?? nil))
 
     case "defs":
       isInsideDefs = true
@@ -215,6 +241,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
     if kinds.count > 1 { kinds.removeLast() }
     if notes.count > 1 { notes.removeLast() }
     if systemStack.count > 1 { systemStack.removeLast() }
+    if measures.count > 1 { measures.removeLast() }
   }
 
   private var isInsideDefs = false

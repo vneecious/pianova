@@ -65,6 +65,9 @@ struct EngravedPieceView: View {
   /// note makes the page rise and fall with each change of hand.
   @State private var shownSystem: String?
 
+  /// The bar the player last tapped, marked on the page.
+  @State private var selectedMeasure: String?
+
   /// Every page, stacked, with the cursor kept in view.
   private var pages: some View {
     ScrollViewReader { scroller in
@@ -75,8 +78,10 @@ struct EngravedPieceView: View {
               page: page,
               highlights: controller.highlights,
               onTap: { id in
+                selectedMeasure = page.measure(containing: id)
                 if let column = controller.column(of: id) { onPickStart?(column) }
-              }
+              },
+              selectedMeasure: selectedMeasure
             )
             .overlay(alignment: .top) { systemAnchors(for: page) }
             .id(index)
@@ -100,17 +105,24 @@ struct EngravedPieceView: View {
   }
 
   /// An invisible marker at the top of each system, to scroll to.
+  ///
+  /// Laid out with real spacers rather than positioned with `offset`: an offset
+  /// moves a view when it is drawn and not when it is laid out, and
+  /// `scrollTo` works on layout. Every anchor sat at the top of the page, so
+  /// scrolling to any system went nowhere.
   private func systemAnchors(for engraved: EngravedPage) -> some View {
     GeometryReader { proxy in
       let scale = proxy.size.height / max(engraved.size.height, 1)
 
-      ForEach(engraved.systems, id: \.id) { system in
-        Color.clear
-          .frame(height: 1)
-          .id(system.id)
-          // A little above the system, so the line being read is not pinned
-          // to the very edge of the screen.
-          .offset(y: max(system.frame.minY * scale - 24, 0))
+      VStack(spacing: 0) {
+        ForEach(Array(engraved.systems.enumerated()), id: \.element.id) { index, system in
+          let previous = index == 0 ? 0 : engraved.systems[index - 1].frame.minY
+          let gap = max((system.frame.minY - previous) * scale - 1, 0)
+
+          Color.clear.frame(height: index == 0 ? max(gap - 24, 0) : gap)
+          Color.clear.frame(height: 1).id(system.id)
+        }
+        Spacer(minLength: 0)
       }
     }
     .allowsHitTesting(false)

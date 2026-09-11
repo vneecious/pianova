@@ -208,3 +208,44 @@ private let twoSystems = """
   #expect(page.systems.isEmpty)
   #expect(page.system(containing: "note-1") == nil)
 }
+
+// MARK: - Compassos
+
+/// Uma página com dois compassos, cada um com sua nota.
+private let twoMeasures = """
+  <svg><svg class="definition-scale" viewBox="0 0 1000 400">
+    <g id="sys-1" class="system">
+      <g id="m-1" class="measure">
+        <g id="n-1" class="note"><path d="M50 100 L60 100"/></g>
+      </g>
+      <g id="m-2" class="measure">
+        <g id="n-2" class="note"><path d="M300 100 L310 100"/></g>
+      </g>
+    </g>
+  </svg></svg>
+  """
+
+/// Uma nota sabe em que compasso está, que é o que o clique precisa.
+@Test func aNoteKnowsItsMeasure() {
+  let page = EngravedPageParser.page(from: twoMeasures)
+
+  #expect(page?.measure(containing: "n-1") == "m-1")
+  #expect(page?.measure(containing: "n-2") == "m-2")
+}
+
+/// O contorno de um compasso cobre o que está nele e não o vizinho.
+@Test func aMeasureFrameStopsAtItsOwnContents() throws {
+  let page = try #require(EngravedPageParser.page(from: twoMeasures))
+  let first = try #require(page.measureFrame("m-1"))
+
+  #expect(first.minX <= 50)
+  #expect(first.maxX < 300, "não deveria alcançar o compasso seguinte")
+}
+
+/// Compasso e sistema são coisas diferentes, e ambos são conhecidos.
+@Test func measuresAndSystemsAreBothTracked() {
+  let page = EngravedPageParser.page(from: twoMeasures)
+
+  #expect(page?.system(containing: "n-2") == "sys-1")
+  #expect(page?.measure(containing: "n-2") == "m-2")
+}
