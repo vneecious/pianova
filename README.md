@@ -523,13 +523,23 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      peça empurra a lista para trás; sair a traz de volta. A animação é o que
      diz de onde se veio e para onde se vai.
 
-> **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
-> Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o
-> OpenSheetMusicDisplay (TypeScript num `WKWebView`). Ambas entregam o layout
-> inteiro para fora, e o app depende de colorir nota a nota em tempo real,
-> vindo do MIDI. A decisão foi manter a pauta própria e adotar só o **formato**
-> de arquivo padrão. Adotar o Verovio continua possível depois — com o modelo
-> abaixo, o que muda é o desenho, não os dados.
+## Três lugares
+
+119. O app tem **três lugares**, na ordem em que se vive neles: **Tocar** (o
+     repertório), **Praticar** (treino contínuo, leitura contínua e as
+     atividades repetíveis da trilha, como cartões de um mesmo hub) e
+     **Trilha** (o curso). Lugares são lugares e modos são modos — os modos de
+     praticar moram dentro de Praticar, não na navegação.
+120. O app **abre em Tocar**. Tocar música é o motivo de estudar piano; abrir
+     no curso era abrir no meio.
+
+> **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
+> **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.
+> A pauta própria sobrevive só nos **prompts de exercício** (treino, leitura
+> contínua, passos de lição): eles trocam de conteúdo a cada acerto e precisam
+> de desenho imediato, e a fonte é a mesma Bravura, então a cara das notas não
+> muda. A decisão inicial de manter a pauta própria para tudo caiu diante da
+> medição de latência registrada acima.
 
 ## Interface
 
