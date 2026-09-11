@@ -15,6 +15,20 @@ extension MusicXMLImporter {
     var isTiedToNext = false
     /// Whether it is a grace note — an ornament with no time of its own.
     var isGrace = false
+    /// A pedal instruction written just before this note.
+    var pedal: PedalMark?
+    /// An octave line starting or stopping at this note.
+    var ottava: OttavaMark?
+    /// Whether a phrase slur begins here.
+    var slurStart = false
+    /// Whether a phrase slur ends here.
+    var slurStop = false
+    /// A dynamic written at this note.
+    var dynamic: String?
+    /// A word written at this note.
+    var words: String?
+    /// The articulations written on this note.
+    var articulations: Set<Articulation> = []
     /// Written fingering, one number per pitch of this raw note.
     var fingers: [Int] = []
     /// When it begins, in divisions from the start of its bar.
@@ -56,6 +70,14 @@ extension MusicXMLImporter {
     private var measure = RawMeasure()
     private var event = RawEvent()
     private var inNote = false
+
+    /// Directions read but not yet attached: they belong to the next note.
+    private var pendingPedal: PedalMark?
+    private var pendingOttava: OttavaMark?
+    private var pendingDynamic: String?
+    private var pendingWords: String?
+    private var inWords = false
+    private var inDynamics = false
 
     /// Where in the bar the next note falls, in divisions.
     private var cursor = 0
@@ -129,6 +151,36 @@ extension MusicXMLImporter {
         event.isChord = true
       case "grace":
         event.isGrace = true
+      case "slur":
+        if attributes["type"] == "start" { event.slurStart = true }
+        if attributes["type"] == "stop" { event.slurStop = true }
+      case "staccato":
+        event.articulations.insert(.staccato)
+      case "accent":
+        event.articulations.insert(.accent)
+      case "tenuto":
+        event.articulations.insert(.tenuto)
+      case "pedal":
+        switch attributes["type"] {
+        case "start", "resume": pendingPedal = .down
+        case "stop": pendingPedal = .up
+        case "change": pendingPedal = .change
+        default: break
+        }
+      case "octave-shift":
+        switch attributes["type"] {
+        case "down": pendingOttava = .startAbove
+        case "up": pendingOttava = .startBelow
+        case "stop": pendingOttava = .stop
+        default: break
+        }
+      case "dynamics":
+        inDynamics = true
+      case "words":
+        inWords = true
+        text = ""
+      case "p", "pp", "ppp", "f", "ff", "fff", "mp", "mf", "sf", "fp", "sfz":
+        if inDynamics { pendingDynamic = name }
       case "rest":
         event.pitches = []
       case "tie":
@@ -201,6 +253,16 @@ extension MusicXMLImporter {
         inNote = false
         event.part = max(partIndex, 0)
 
+        // Whatever direction was read since the last note belongs to this one.
+        event.pedal = pendingPedal
+        event.ottava = pendingOttava
+        event.dynamic = pendingDynamic
+        event.words = pendingWords
+        pendingPedal = nil
+        pendingOttava = nil
+        pendingDynamic = nil
+        pendingWords = nil
+
         // An ornament has no time of its own and is not judged: kept, it
         // would be demanded together with the chord it decorates; refused, it
         // took the whole piece down with it. Skipped, the music reads on.
@@ -220,6 +282,12 @@ extension MusicXMLImporter {
       case "measure":
         measures.append(measure)
         measuresByPart[max(partIndex, 0), default: []].append(measure)
+      case "dynamics":
+        inDynamics = false
+      case "words":
+        inWords = false
+        let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !words.isEmpty { pendingWords = words }
       default:
         break
       }

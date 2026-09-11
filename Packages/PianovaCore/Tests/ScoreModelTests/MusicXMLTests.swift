@@ -332,3 +332,71 @@ private let twoVoices = """
   #expect(first.pitches == [Pitch(69)], "a grace note não pode entrar no acorde")
   #expect(score.rightHand.measures.first?.notes.count == 2)
 }
+
+// MARK: - Rules 128-130: pedal, oitava e ligaduras atravessam o cano
+
+/// Rule 128 — as marcas de pedal do arquivo sobrevivem à importação.
+@Test func pedalMarksSurviveImport() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <direction><direction-type><pedal type="start"/></direction-type></direction>
+      <note><pitch><step>C</step><octave>3</octave></pitch><duration>2</duration>
+        <type>half</type></note>
+      <direction><direction-type><pedal type="stop"/></direction-type></direction>
+      <note><pitch><step>G</step><octave>3</octave></pitch><duration>2</duration>
+        <type>half</type></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  let notes = try #require(score.rightHand.measures.first?.notes)
+
+  #expect(notes[0].pedal == .down)
+  #expect(notes[1].pedal == .up)
+}
+
+/// Rule 129 — a oitava vira notação; as alturas seguem sendo as que soam.
+@Test func octaveShiftSurvivesImportWithoutChangingPitches() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <direction><direction-type><octave-shift type="down" size="8"/></direction-type></direction>
+      <note><pitch><step>C</step><octave>6</octave></pitch><duration>2</duration>
+        <type>half</type></note>
+      <direction><direction-type><octave-shift type="stop" size="8"/></direction-type></direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration>
+        <type>half</type></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  let notes = try #require(score.rightHand.measures.first?.notes)
+
+  #expect(notes[0].pitches == [Pitch(84)], "a altura que soa não muda")
+  #expect(notes[0].ottava == .startAbove)
+  #expect(notes[1].ottava == .stop)
+}
+
+/// Rule 130 — as ligaduras de expressão sobrevivem, sem virar ligadura de valor.
+@Test func slursSurviveImportWithoutBecomingTies() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration>
+        <type>half</type><notations><slur type="start" number="1"/></notations></note>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration>
+        <type>half</type><notations><slur type="stop" number="1"/></notations></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  let notes = try #require(score.rightHand.measures.first?.notes)
+
+  #expect(notes[0].slurStart)
+  #expect(notes[1].slurStop)
+  #expect(!notes[0].isTiedToNext, "ligadura de expressão não é ligadura de valor")
+}

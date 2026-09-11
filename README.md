@@ -554,7 +554,16 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      exigi-la junto do acorde seria julgar errado, e recusar a peça inteira
      por causa dela era pior. O importador aceita o arquivo e pula o
      ornamento — execução de ornamento é assunto para depois.
-128. A partitura aceita **anotações à caneta**: a Apple Pencil desenha sobre
+128. O **pedal escrito atravessa o cano inteiro**: o importador preserva as
+     marcas do arquivo, o modelo as carrega ancoradas às notas, e a gravura
+     desenha Ped. e o asterisco de soltar, como uma edição impressa.
+129. A **oitava (8va/8vb)** é respeitada como notação: as alturas continuam
+     sendo as que soam — o julgamento não muda — e a gravura desenha a linha
+     de oitava em vez de empilhar linhas suplementares.
+130. As **ligaduras de expressão** do arquivo são preservadas e desenhadas.
+     Elas não mudam o julgamento (ligadura de expressão não é ligadura de
+     valor); mudam a leitura, e leitura é o que a página serve.
+131. A partitura aceita **anotações à caneta**: a Apple Pencil desenha sobre
      a página a qualquer momento, o dedo nunca desenha — dedo rola, seleciona
      e toca, como sempre. As anotações **persistem por peça e por zoom**
      (a página que reflui é outra página), e o botão Anotar traz a paleta de

@@ -81,23 +81,89 @@ public enum MusicXMLExporter {
     let dot = event.duration.isDotted ? "<dot/>" : ""
 
     guard !event.isRest else {
-      return "<note><rest/><duration>\(length)</duration><type>\(type)</type>\(dot)</note>"
+      return directions(before: event)
+        + "<note><rest/><duration>\(length)</duration><type>\(type)</type>\(dot)</note>"
     }
 
     // A chord is written as one note followed by others marked `<chord/>`,
     // which is how MusicXML says "these share a moment".
-    return event.pitches.enumerated()
+    return directions(before: event)
+      + event.pitches.enumerated()
       .map { index, pitch in
         let chord = index == 0 ? "" : "<chord/>"
-        let finger =
-          event.fingers.indices.contains(index) && event.fingers[index] > 0
-          ? "<notations><technical><fingering>\(event.fingers[index])</fingering>"
-            + "</technical></notations>"
-          : ""
         return "<note>\(chord)\(self.pitch(pitch))<duration>\(length)</duration>"
-          + "<type>\(type)</type>\(dot)\(finger)</note>"
+          + "<type>\(type)</type>\(dot)\(notations(of: event, pitchIndex: index))</note>"
       }
       .joined()
+  }
+
+  /// What is written before the note: pedal, octave line, dynamic, words.
+  private static func directions(before event: ScoreNote) -> String {
+    var parts: [String] = []
+
+    if let words = event.words {
+      parts.append(
+        "<direction><direction-type><words>\(words)</words></direction-type></direction>")
+    }
+    if let dynamic = event.dynamic {
+      parts.append(
+        "<direction placement=\"below\"><direction-type><dynamics><\(dynamic)/></dynamics>"
+          + "</direction-type></direction>")
+    }
+    if let ottava = event.ottava {
+      let attributes: String
+      switch ottava {
+      case .startAbove: attributes = "type=\"down\" size=\"8\""
+      case .startBelow: attributes = "type=\"up\" size=\"8\""
+      case .stop: attributes = "type=\"stop\" size=\"8\""
+      }
+      parts.append(
+        "<direction><direction-type><octave-shift \(attributes)/></direction-type></direction>")
+    }
+    if let pedal = event.pedal {
+      let kind: String
+      switch pedal {
+      case .down: kind = "start"
+      case .up: kind = "stop"
+      case .change: kind = "change"
+      }
+      parts.append(
+        "<direction placement=\"below\"><direction-type><pedal type=\"\(kind)\" line=\"no\"/>"
+          + "</direction-type></direction>")
+    }
+
+    return parts.joined()
+  }
+
+  /// What is written on the note itself: fingering, slur, articulations.
+  ///
+  /// Slur and articulations ride the first note of a chord; fingering rides
+  /// each note that has one.
+  private static func notations(of event: ScoreNote, pitchIndex index: Int) -> String {
+    var inner = ""
+
+    if event.fingers.indices.contains(index) && event.fingers[index] > 0 {
+      inner += "<technical><fingering>\(event.fingers[index])</fingering></technical>"
+    }
+
+    if index == 0 {
+      if event.slurStart { inner += "<slur type=\"start\" number=\"1\"/>" }
+      if event.slurStop { inner += "<slur type=\"stop\" number=\"1\"/>" }
+
+      let marks = event.articulations
+        .map { articulation -> String in
+          switch articulation {
+          case .staccato: return "<staccato/>"
+          case .accent: return "<accent/>"
+          case .tenuto: return "<tenuto/>"
+          }
+        }
+        .sorted()
+        .joined()
+      if !marks.isEmpty { inner += "<articulations>\(marks)</articulations>" }
+    }
+
+    return inner.isEmpty ? "" : "<notations>\(inner)</notations>"
   }
 
   private static func pitch(_ pitch: Pitch) -> String {

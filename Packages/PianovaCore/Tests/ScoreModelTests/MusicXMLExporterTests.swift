@@ -172,3 +172,62 @@ private let simple = Score(
 
   #expect(!MusicXMLExporter.musicXML(for: score).contains("fingering"))
 }
+
+// MARK: - Rules 128-130: o exportador escreve o que o modelo carrega
+
+/// Rule 128 — pedal anotado sai como <pedal> no MusicXML.
+@Test func pedalExportsAsDirections() {
+  let score = Score(
+    title: "Pedal", composer: "—",
+    rightHand: Part(
+      clef: .bass,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(48)], duration: Duration(.half), pedal: .down),
+          ScoreNote(pitches: [Pitch(55)], duration: Duration(.half), pedal: .up),
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.contains("<pedal type=\"start\""))
+  #expect(xml.contains("<pedal type=\"stop\""))
+}
+
+/// Rule 129 — a oitava sai como <octave-shift> nos dois sentidos.
+@Test func ottavaExportsAsOctaveShift() {
+  let score = Score(
+    title: "Oitava", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(84)], duration: Duration(.half), ottava: .startAbove),
+          ScoreNote(pitches: [Pitch(86)], duration: Duration(.half), ottava: .stop),
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.contains("<octave-shift type=\"down\" size=\"8\""))
+  #expect(xml.contains("<octave-shift type=\"stop\""))
+}
+
+/// Rule 130 — a ligadura de expressão sai como <slur> dentro de <notations>.
+@Test func slursExportAsNotations() {
+  let score = Score(
+    title: "Ligada", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(60)], duration: Duration(.half), slurStart: true),
+          ScoreNote(pitches: [Pitch(64)], duration: Duration(.half), slurStop: true),
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.contains("<slur type=\"start\""))
+  #expect(xml.contains("<slur type=\"stop\""))
+}

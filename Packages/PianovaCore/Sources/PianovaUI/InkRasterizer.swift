@@ -91,7 +91,11 @@ public enum InkRasterizer {
 
   /// Draws one run of text at its place on the page.
   private static func draw(_ run: EngravedText, in context: CGContext) {
-    let font = CTFontCreateWithName("Times New Roman" as CFString, run.fontSize, nil)
+    // Music-font runs — dynamics, the pedal sign — are SMuFL glyphs; a text
+    // face would draw them as tofu. Bravura is already in the app for the
+    // staff's own glyphs.
+    let family = run.isMusicFont ? "Bravura" : "Times New Roman"
+    let font = CTFontCreateWithName(family as CFString, run.fontSize, nil)
     let line = CTLineCreateWithAttributedString(
       NSAttributedString(
         string: run.text,

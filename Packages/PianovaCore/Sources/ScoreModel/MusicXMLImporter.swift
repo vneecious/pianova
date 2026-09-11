@@ -214,7 +214,16 @@ public enum MusicXMLImporter {
           pitches: orderedPitches,
           duration: duration(divisions: span, perQuarter: parser.divisions),
           isTiedToNext: struck.first?.isTiedToNext ?? false,
-          fingers: fingers.allSatisfy { $0 == 0 } ? [] : fingers))
+          fingers: fingers.allSatisfy { $0 == 0 } ? [] : fingers,
+          pedal: struck.compactMap(\.pedal).first,
+          ottava: struck.compactMap(\.ottava).first,
+          slurStart: struck.contains { $0.slurStart },
+          slurStop: struck.contains { $0.slurStop },
+          dynamic: struck.compactMap(\.dynamic).first,
+          words: struck.compactMap(\.words).first,
+          articulations: struck.reduce(into: Set<Articulation>()) {
+            $0.formUnion($1.articulations)
+          }))
     }
 
     return Measure(notes)

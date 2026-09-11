@@ -39,6 +39,40 @@ public struct KeySignature: Equatable, Sendable {
   }
 }
 
+/// A written pedal instruction, anchored to the note it precedes.
+public enum PedalMark: String, Equatable, Sendable {
+  /// Press the damper pedal — "Ped."
+  case down
+  /// Release it — the star.
+  case up
+  /// Release and press again in one motion.
+  case change
+}
+
+/// A written octave line, anchored to the note where it starts or stops.
+///
+/// Notation only: pitches in the model are always the sounding ones, so
+/// judging never changes — what changes is how many ledger lines the reader
+/// is spared.
+public enum OttavaMark: String, Equatable, Sendable {
+  /// 8va — written an octave below where it sounds, line above the staff.
+  case startAbove
+  /// 8vb — written an octave above where it sounds, line below the staff.
+  case startBelow
+  /// The line ends here.
+  case stop
+}
+
+/// A written articulation on one note.
+public enum Articulation: String, Equatable, Sendable, CaseIterable {
+  /// Shortened, detached.
+  case staccato
+  /// Leaned on.
+  case accent
+  /// Held full, marked.
+  case tenuto
+}
+
 /// One written event of a piece: notes sounding together, or a rest.
 ///
 /// A rest is a note with no pitches rather than a separate case, because
@@ -63,19 +97,58 @@ public struct ScoreNote: Equatable, Sendable {
   /// piece has any is the edition's choice, never invented downstream.
   public let fingers: [Int]
 
+  /// A pedal instruction written just before this note, if any.
+  public let pedal: PedalMark?
+
+  /// An octave line starting or stopping at this note, if any.
+  public let ottava: OttavaMark?
+
+  /// Whether a phrase slur begins on this note.
+  public let slurStart: Bool
+
+  /// Whether a phrase slur ends on this note.
+  public let slurStop: Bool
+
+  /// A dynamic written at this note — "p", "mf", "ff" — if any.
+  public let dynamic: String?
+
+  /// A written word at this note — "Andante", "dolce" — if any.
+  public let words: String?
+
+  /// The articulations written on this note.
+  public let articulations: Set<Articulation>
+
   /// Creates a written event.
   /// - Parameters:
   ///   - pitches: The pitches sounding together, or empty for a rest.
   ///   - duration: How long it lasts.
   ///   - isTiedToNext: Whether it is tied into the next event.
   ///   - fingers: Written fingering aligned with the pitches, if any.
+  ///   - pedal: A pedal instruction just before this note, if any.
+  ///   - ottava: An octave line starting or stopping here, if any.
+  ///   - slurStart: Whether a phrase slur begins here.
+  ///   - slurStop: Whether a phrase slur ends here.
+  ///   - dynamic: A dynamic written here, if any.
+  ///   - words: A written word here, if any.
+  ///   - articulations: The articulations written on this note.
   public init(
-    pitches: [Pitch], duration: Duration, isTiedToNext: Bool = false, fingers: [Int] = []
+    pitches: [Pitch], duration: Duration, isTiedToNext: Bool = false, fingers: [Int] = [],
+    pedal: PedalMark? = nil, ottava: OttavaMark? = nil,
+    slurStart: Bool = false, slurStop: Bool = false,
+    dynamic: String? = nil, words: String? = nil,
+    articulations: Set<Articulation> = []
   ) {
     self.pitches = pitches
     self.duration = duration
     self.isTiedToNext = isTiedToNext
     self.fingers = fingers
+    self.pedal = pedal
+    self.ottava = ottava
+    self.slurStart = slurStart
+    self.slurStop = slurStop
+    self.dynamic = dynamic
+    self.words = words
+    self.articulations = articulations
   }
 
   /// A single note.

@@ -70,6 +70,13 @@ public struct EngravedText: Equatable, Sendable {
   /// Whether ``position`` is the middle of the run rather than its start.
   public let isCentered: Bool
 
+  /// Whether the run uses the music font — SMuFL glyphs, not letters.
+  ///
+  /// A dynamic's *p* and the pedal sign are characters in a music font;
+  /// drawn with a text face they come out as tofu or as plain letters, which
+  /// is exactly the wrong look for them.
+  public let isMusicFont: Bool
+
   /// Which staff it belongs to, for fading with the hand at rest.
   public let staffNumber: Int?
 
@@ -79,15 +86,17 @@ public struct EngravedText: Equatable, Sendable {
   ///   - position: Where it sits, in page coordinates.
   ///   - fontSize: Height of the type, in page units.
   ///   - isCentered: Whether the position names the middle of the run.
+  ///   - isMusicFont: Whether the run uses the music font.
   ///   - staffNumber: The staff it belongs to, if any.
   public init(
     text: String, position: CGPoint, fontSize: CGFloat, isCentered: Bool,
-    staffNumber: Int?
+    isMusicFont: Bool = false, staffNumber: Int?
   ) {
     self.text = text
     self.position = position
     self.fontSize = fontSize
     self.isCentered = isCentered
+    self.isMusicFont = isMusicFont
     self.staffNumber = staffNumber
   }
 }
@@ -233,6 +242,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
   private var textPosition = CGPoint.zero
   private var textSize = 0.0
   private var textCentered = false
+  private var textMusicFont = false
   private var textTransform = CGAffineTransform.identity
   private var textStaff: Int?
 
@@ -354,6 +364,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
           textPosition = .zero
           textSize = 0
           textCentered = false
+          textMusicFont = false
           textTransform = transform
           textStaff = staves.last ?? nil
         }
@@ -367,6 +378,11 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
         textSize = size
       }
       if attributes["text-anchor"] == "middle" { textCentered = true }
+      if let family = attributes["font-family"],
+        family.contains("Leipzig") || family.contains("Verovio") || family.contains("Bravura")
+      {
+        textMusicFont = true
+      }
 
     default:
       break
@@ -395,6 +411,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
             position: textPosition.applying(textTransform),
             fontSize: textSize,
             isCentered: textCentered,
+            isMusicFont: textMusicFont,
             staffNumber: textStaff))
       }
     }

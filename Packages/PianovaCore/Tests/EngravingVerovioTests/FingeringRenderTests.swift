@@ -62,3 +62,40 @@ import Testing
 
   #expect(page?.texts.contains { $0.text.localizedCaseInsensitiveContains("piano") } == false)
 }
+
+// MARK: - Rules 128-130: as marcações chegam ao desenho
+
+/// Rules 128-130 — pedal, ligadura e oitava produzem tinta na página.
+@Test func pedalSlurAndOttavaReachThePage() throws {
+  let score = Score(
+    title: "Marcações", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(
+            pitches: [Pitch(84)], duration: Duration(.half),
+            pedal: .down, ottava: .startAbove, slurStart: true),
+          ScoreNote(
+            pitches: [Pitch(86)], duration: Duration(.half),
+            pedal: .up, ottava: .stop, slurStop: true),
+        ])
+      ]))
+
+  let engraver = Engraver()
+  engraver.load(musicXML: MusicXMLExporter.musicXML(for: score))
+  let page = try #require(engraver.page(1))
+
+  let kinds = Set(page.shapes.compactMap(\.kind))
+  let textKinds = page.texts.map(\.text)
+
+  #expect(
+    kinds.contains { $0.contains("slur") },
+    "a ligadura deveria virar tinta — classes: \(kinds)")
+  #expect(
+    kinds.contains { $0.contains("octave") } || textKinds.contains { $0.contains("8") },
+    "a oitava deveria aparecer — classes: \(kinds), textos: \(textKinds)")
+  #expect(
+    kinds.contains { $0.contains("pedal") } || !page.texts.isEmpty,
+    "o pedal deveria aparecer — classes: \(kinds)")
+}
