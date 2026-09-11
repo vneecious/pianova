@@ -141,6 +141,18 @@ struct EngravedPieceView: View {
   /// The pinch as it happens, shown by scaling until the finger lifts.
   @State private var liveZoom: CGFloat = 1
 
+  /// Where the scroll sits, for anchoring the lens where the reader was.
+  ///
+  /// A reference box on purpose: writing plain @State per scroll frame would
+  /// re-evaluate the whole body at 120 Hz for a value only the pinch reads.
+  private final class OffsetBox {
+    var value: CGPoint = .zero
+  }
+  @State private var scrollOffset = OffsetBox()
+
+  /// The handle that puts the scroll where the lens says.
+  @State private var scrollPosition = ScrollPosition()
+
   /// Whether written fingering is drawn, remembered between sessions.
   @AppStorage("pianova.showsFingering") private var showsFingering = true
 
@@ -289,7 +301,10 @@ struct EngravedPieceView: View {
     let drawnWidth = pageWidth(viewport: viewport) * pinch
 
     return Group {
-      ScrollView(pinch > 1.001 ? [.vertical, .horizontal] : .vertical) {
+      // Both axes always: switching axes rebuilds the scroll view and throws
+      // the reader back to the start. At rest the content is exactly the
+      // viewport wide, so the horizontal axis simply has nowhere to go.
+      ScrollView([.vertical, .horizontal]) {
         LazyVStack(spacing: 20) {
           ForEach(Array(controller.pages.enumerated()), id: \.offset) { index, page in
             pageRow(page, index: index, drawnWidth: drawnWidth)
@@ -297,6 +312,10 @@ struct EngravedPieceView: View {
         }
         .frame(minWidth: viewport.width)
         .padding(.horizontal, 8)
+      }
+      .scrollPosition($scrollPosition)
+      .onScrollGeometryChange(for: CGPoint.self, of: { $0.contentOffset }) { _, new in
+        scrollOffset.value = new
       }
       .onChange(of: controller.focus) { _, id in
         guard let id, let system = system(containing: id) else { return }
@@ -354,8 +373,23 @@ struct EngravedPieceView: View {
         MagnificationGesture()
           .onChanged { liveZoom = $0 }
           .onEnded { value in
+            let before = pinch
             pinch = min(max(pinch * value, 1.0), 3.0)
             liveZoom = 1
+
+            // The lens keeps what was being looked at: the content grew
+            // around the top-left, so the offset is corrected to zoom about
+            // the viewport's centre instead of walking back to the start.
+            let ratio = pinch / before
+            guard ratio != 1 else { return }
+            let centre = CGPoint(x: viewport.width / 2, y: viewport.height / 2)
+            let offset = scrollOffset.value
+            let target = CGPoint(
+              x: max((offset.x + centre.x) * ratio - centre.x, 0),
+              y: max((offset.y + centre.y) * ratio - centre.y, 0))
+            DispatchQueue.main.async {
+              scrollPosition.scrollTo(point: target)
+            }
           }
       )
     }

@@ -63,6 +63,11 @@ struct AnnotationLayer: UIViewRepresentable {
     canvas.drawingPolicy = .pencilOnly
     canvas.delegate = context.coordinator
 
+    // The canvas is a scroll view underneath, and waking it with the pencil
+    // panned its own content — the ink slid sideways with a flicker. An
+    // overlay the size of the page has nowhere to scroll to.
+    canvas.isScrollEnabled = false
+
     if let saved, let drawing = try? PKDrawing(data: saved) {
       canvas.drawing = drawing
     }
