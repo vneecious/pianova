@@ -3,6 +3,10 @@ import ScoreModel
 import Sound
 import SwiftUI
 
+#if canImport(PencilKit)
+import PencilKit
+#endif
+
 /// A piece drawn by a real engraver and played on the instrument.
 ///
 /// Same rules as everywhere else — the cursor marks what to play, right
@@ -83,6 +87,7 @@ struct EngravedPieceView: View {
       controller.renderInks()
     }
     .onChange(of: judgesPedal) { _, value in controller.judgesPedal = value }
+    .onChange(of: scoreUnits) { _, _ in reload() }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if !hub.isConnected {
         PianoKeyboardView { controller.play($0) }
@@ -120,20 +125,25 @@ struct EngravedPieceView: View {
   /// note makes the page rise and fall with each change of hand.
   @State private var shownSystem: String?
 
-  /// How many systems have to be on screen at once, fewer when zoomed in.
+  /// How many systems have to be on screen at once, fewer at bigger sizes.
   ///
   /// Two is the floor at rest: with one, reading ahead is impossible — the
-  /// line is turned and only then discovered. Zooming in is choosing size
-  /// over look-ahead, so the floor gives way with it.
-  private var systemsInView: CGFloat { max(1.1, 2.2 / zoom) }
+  /// line is turned and only then discovered. A bigger score size is choosing
+  /// size over look-ahead, so the floor gives way with it.
+  private var systemsInView: CGFloat { max(1.1, 2.2 * CGFloat(scoreUnits) / 2100) }
 
-  /// How far in the page is, 1 being at rest.
+  /// The score size in engraving units — the accessibility steps (rule 115).
   ///
-  /// Applied by re-engraving at a narrower page, so the music reflows instead
-  /// of stretching.
-  @State private var zoom: CGFloat = 1
+  /// Global and remembered: every piece opens at the size last chosen.
+  @AppStorage("pianova.scoreUnits") private var scoreUnits = 2100
 
-  /// The pinch as it happens, shown by scaling until the reflow lands.
+  /// The magnifier: how far the pinch has zoomed in, 1 at rest (rule 115).
+  ///
+  /// A lens and nothing else — it scales what is on screen, annotations
+  /// included, and never re-engraves. Kept per visit, not persisted.
+  @State private var pinch: CGFloat = 1
+
+  /// The pinch as it happens, shown by scaling until the finger lifts.
   @State private var liveZoom: CGFloat = 1
 
   /// Whether written fingering is drawn, remembered between sessions.
@@ -154,10 +164,10 @@ struct EngravedPieceView: View {
   /// it on every layout pass was a good part of what made the page slow.
   @State private var selectedMeasures: Set<String> = []
 
-  /// Engraves the piece at the current zoom.
+  /// Engraves the piece at the chosen score size.
   private func reload() {
     guard let engraver else { return }
-    controller.pageUnits = Int(2100 / zoom)
+    controller.pageUnits = scoreUnits
     controller.load(
       score, using: engraver,
       hands: session.phase == .studying ? session.hands : .both)
@@ -211,59 +221,30 @@ struct EngravedPieceView: View {
   ///
   /// The pencil draws and the finger never does, so there is no mode: the
   /// layer is simply always there on the iPad, and absent where no pencil is.
-  /// Strokes are anchored to their bars (rule 131): composed onto this
-  /// engraving's boxes on the way in, split and re-hung on the way out — a
-  /// pinch reflows the page, and the circle around bar 12 stays on bar 12.
+  /// Strokes live at the score size they were made at (rule 131) and come
+  /// back whenever that size does; stored in page units, they ride the
+  /// magnifier with the page instead of being lost to it.
   @ViewBuilder
   private func annotationLayer(page: EngravedPage, pageIndex: Int, scale: CGFloat) -> some View {
     #if canImport(UIKit) && canImport(PencilKit)
     AnnotationLayer(
-      saved: AnchoredAnnotations.compose(
-        annotations.strokes(title: score.title),
-        frameOfBar: { bar in frameForAnnotations(bar: bar, page: page, pageIndex: pageIndex) },
-        scale: scale),
+      saved: annotations.drawing(title: score.title, units: scoreUnits, page: pageIndex)
+        .flatMap { data in
+          (try? PKDrawing(data: data))?
+            .transformed(using: CGAffineTransform(scaleX: scale, y: scale))
+            .dataRepresentation()
+        },
       tool: AnnotationTool(rawValue: annotationTool) ?? .pen,
       onChange: { data in
-        saveAnnotations(data, page: page, pageIndex: pageIndex, scale: scale)
+        guard scale > 0, let drawing = try? PKDrawing(data: data) else { return }
+        let onPage = drawing.transformed(
+          using: CGAffineTransform(scaleX: 1 / scale, y: 1 / scale))
+        annotations.save(
+          drawing.strokes.isEmpty ? Data() : onPage.dataRepresentation(),
+          title: score.title, units: scoreUnits, page: pageIndex)
       }
     )
-    .id("\(score.title)|\(controller.pageUnits)|\(pageIndex)")
-    #endif
-  }
-
-  /// A bar's box for the annotation anchors — the page itself for the
-  /// off-staff sentinel.
-  private func frameForAnnotations(bar: Int, page: EngravedPage, pageIndex: Int) -> CGRect? {
-    #if canImport(UIKit) && canImport(PencilKit)
-    if bar == AnchoredAnnotations.pageBar(pageIndex) {
-      return CGRect(origin: .zero, size: page.size)
-    }
-    #endif
-    if bar < 0 { return nil }
-    return controller.frameOfBar(bar, pageIndex: pageIndex)
-  }
-
-  /// Re-hangs this page's strokes on their bars and keeps the others.
-  private func saveAnnotations(_ data: Data, page: EngravedPage, pageIndex: Int, scale: CGFloat) {
-    #if canImport(UIKit) && canImport(PencilKit)
-    let onThisPage = AnchoredAnnotations.decompose(
-      data, scale: scale,
-      barAt: { point in
-        guard let bar = controller.bar(atPagePoint: point, pageIndex: pageIndex),
-          let frame = controller.frameOfBar(bar, pageIndex: pageIndex)
-        else {
-          return (AnchoredAnnotations.pageBar(pageIndex), CGRect(origin: .zero, size: page.size))
-        }
-        return (bar, frame)
-      })
-
-    // The other pages' strokes stay exactly as they are.
-    let elsewhere = annotations.strokes(title: score.title)
-      .filter { anchored in
-        frameForAnnotations(bar: anchored.bar, page: page, pageIndex: pageIndex) == nil
-      }
-
-    annotations.save(elsewhere + onThisPage, title: score.title)
+    .id("\(score.title)|\(scoreUnits)|\(pageIndex)|\(Int(scale * 1000))")
     #endif
   }
 
@@ -308,16 +289,18 @@ struct EngravedPieceView: View {
   private func scrollingPages(
     _ scroller: ScrollViewProxy, viewport: CGSize
   ) -> some View {
-    let drawnWidth = pageWidth(viewport: viewport)
+    // The magnifier draws the pages larger, really larger — laid out, not
+    // stretched — and the second axis opens so the zoomed page can pan.
+    let drawnWidth = pageWidth(viewport: viewport) * pinch
 
     return Group {
-      ScrollView(.vertical) {
+      ScrollView(pinch > 1.001 ? [.vertical, .horizontal] : .vertical) {
         LazyVStack(spacing: 20) {
           ForEach(Array(controller.pages.enumerated()), id: \.offset) { index, page in
             pageRow(page, index: index, drawnWidth: drawnWidth)
           }
         }
-        .frame(maxWidth: .infinity)
+        .frame(minWidth: viewport.width)
         .padding(.horizontal, 8)
       }
       .onChange(of: controller.focus) { _, id in
@@ -368,17 +351,16 @@ struct EngravedPieceView: View {
           }
         }
       }
-      // The pinch shows itself by scaling while it lasts; letting go
-      // re-engraves at the new size, so the page reflows — fewer bars per
-      // line closer up, more further out — instead of stretching a picture.
+      // The pinch is a lens and nothing else (rule 115): it scales while it
+      // lasts, and letting go keeps the magnification — no re-engrave, no
+      // reflow, nothing moves or is lost.
       .scaleEffect(liveZoom, anchor: .top)
       .simultaneousGesture(
         MagnificationGesture()
           .onChanged { liveZoom = $0 }
           .onEnded { value in
-            zoom = min(max(zoom * value, 0.7), 2.0)
+            pinch = min(max(pinch * value, 1.0), 3.0)
             liveZoom = 1
-            reload()
           }
       )
     }

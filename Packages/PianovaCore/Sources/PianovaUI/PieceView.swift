@@ -48,6 +48,20 @@ struct PieceView: View {
     .onDisappear { preview.stop() }
     // What is being studied changed, so whatever is sounding is no longer it.
     .onChange(of: session.study) { _, _ in preview.stop() }
+    // The one thing worth saying when the size steps (rule 131): drawings
+    // live at the size they were made at, and come back with it.
+    .overlay(alignment: .top) {
+      if showsSizeNotice {
+        Text("As anotações aparecem no tamanho em que foram feitas.")
+          .font(.system(size: 12, weight: .medium))
+          .padding(.horizontal, 14)
+          .padding(.vertical, 8)
+          .background(.regularMaterial, in: Capsule())
+          .shadow(color: Theme.shadow(colorScheme), radius: 8, y: 2)
+          .padding(.top, 52)
+          .transition(.move(edge: .top).combined(with: .opacity))
+      }
+    }
   }
 
   /// The bar at the top, which selection and study take over in turn.
@@ -92,6 +106,7 @@ struct PieceView: View {
         annotateMenu
         fingeringToggle
         pedalToggle
+        sizeControl
 
         if startFrom > 0 {
           Button("Do começo") { startFrom = 0 }
@@ -163,6 +178,58 @@ struct PieceView: View {
 
   /// Whether the written pedal is judged (rule 140), remembered like hands.
   @AppStorage("pianova.judgesPedal") private var judgesPedal = false
+
+  /// The score size in engraving units — fewer units, bigger music.
+  ///
+  /// The accessibility steps of rule 115: global, remembered, and the size
+  /// every piece opens at.
+  @AppStorage("pianova.scoreUnits") private var scoreUnits = 2100
+
+  /// The steps the size control walks, from smallest music to biggest.
+  private static let sizeSteps = [2700, 2400, 2100, 1850, 1600, 1400]
+
+  /// Whether the annotations notice is showing, after a size change.
+  @State private var showsSizeNotice = false
+
+  /// The A− / A+ of the score (rule 115): steps, not a pinch.
+  ///
+  /// Changing size re-engraves and reflows; annotations live at the size
+  /// they were made at, and the notice says so.
+  private var sizeControl: some View {
+    HStack(spacing: 6) {
+      Button {
+        step(by: -1)
+      } label: {
+        Image(systemName: "textformat.size.smaller").font(.system(size: 13))
+      }
+      .disabled(Self.sizeSteps.first == scoreUnits)
+      .help("Diminuir a partitura")
+
+      Button {
+        step(by: +1)
+      } label: {
+        Image(systemName: "textformat.size.larger").font(.system(size: 15))
+      }
+      .disabled(Self.sizeSteps.last == scoreUnits)
+      .help("Aumentar a partitura")
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(.secondary)
+  }
+
+  /// Walks one step of size and raises the annotations notice.
+  private func step(by delta: Int) {
+    let index = Self.sizeSteps.firstIndex(of: scoreUnits) ?? 2
+    let next = min(max(index + delta, 0), Self.sizeSteps.count - 1)
+    guard Self.sizeSteps[next] != scoreUnits else { return }
+    scoreUnits = Self.sizeSteps[next]
+
+    withAnimation(.easeInOut(duration: 0.2)) { showsSizeNotice = true }
+    Task {
+      try? await Task.sleep(for: .seconds(3))
+      withAnimation(.easeInOut(duration: 0.3)) { showsSizeNotice = false }
+    }
+  }
 
   /// Turns the pedal judging on and off — optional, like the choice of hands.
   private var pedalToggle: some View {

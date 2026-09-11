@@ -510,9 +510,13 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      volta é **imediata e no lugar**: a página nunca foi embora, só o
      esmaecido sai de cena.
 114. O preview toca **o que está em estudo** — aqueles compassos, aquela mão.
-115. A **pinça** aproxima e afasta a partitura, e a página **reflui**: mais
-     perto, menos compassos por linha; mais longe, mais — como regravar, não
-     como esticar uma foto.
+115. A **pinça é uma lupa e só**: aproxima e afasta o que está na tela —
+     anotações juntas — e não mexe em nada; soltar não regrava, não reflui,
+     não perde lugar. O **tamanho da partitura** é outro assunto: um ajuste
+     de acessibilidade em **degraus** (A− / A+), como o tamanho de letra de
+     um leitor. Mudar o tamanho regrava e reflui a página; o degrau escolhido
+     é **global e lembrado** — toda peça abre no tamanho configurado por
+     último.
 116. A tinta da página é **desenhada uma vez** e reaproveitada; por cima dela
      só se redesenha o que muda — destaques, seleção, alças. Uma peça longa
      não pode custar a tela inteira a cada tecla.
@@ -584,11 +588,13 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      valor); mudam a leitura, e leitura é o que a página serve.
 131. A partitura aceita **anotações à caneta**: a Apple Pencil desenha sobre
      a página a qualquer momento, o dedo nunca desenha — dedo rola, seleciona
-     e toca, como sempre. Cada traço é **ancorado ao compasso sob ele**,
-     guardado relativo à caixa desse compasso — e reaparece com ele em
-     **qualquer zoom**: a página que reflui é outra página, mas o compasso é
-     o mesmo, e um círculo no compasso 12 pertence ao compasso 12. O botão
-     Anotar traz a paleta de ferramentas para trocar tinta ou apagar.
+     e toca, como sempre. As anotações **moram no tamanho de partitura em que
+     foram feitas** e **voltam sempre** que se volta àquele degrau — a lupa
+     da pinça as amplia junto com a página, sem perdê-las. Ao trocar o
+     tamanho, o app avisa que as anotações ficam no tamanho onde nasceram.
+     O botão Anotar traz a paleta de ferramentas para trocar tinta ou apagar.
+     (A reancoragem por compasso foi tentada e descartada: o reflow distorcia
+     os traços — decisão do dono em 2026-09-11.)
 132. Os **sinais escritos na nota** — staccato, acento, tenuto e o trilo —
      atravessam o cano e são desenhados onde a edição os pôs. Como toda
      notação de leitura, não mudam o julgamento: o trilo é ornamento e
