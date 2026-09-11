@@ -52,6 +52,46 @@ public struct EngravedShape: Equatable, @unchecked Sendable {
   public let systemID: String?
 }
 
+/// A run of text on the page — a fingering number, a tempo word.
+///
+/// The engraver writes these as SVG text, and for a long time the parser read
+/// only paths: every letter and number was dropped in silence. Fingering was
+/// the first thing anyone missed.
+public struct EngravedText: Equatable, Sendable {
+  /// The characters themselves.
+  public let text: String
+
+  /// Where the baseline starts (or centers, per ``isCentered``).
+  public let position: CGPoint
+
+  /// Height of the type, in page units.
+  public let fontSize: CGFloat
+
+  /// Whether ``position`` is the middle of the run rather than its start.
+  public let isCentered: Bool
+
+  /// Which staff it belongs to, for fading with the hand at rest.
+  public let staffNumber: Int?
+
+  /// Creates a run of text.
+  /// - Parameters:
+  ///   - text: The characters.
+  ///   - position: Where it sits, in page coordinates.
+  ///   - fontSize: Height of the type, in page units.
+  ///   - isCentered: Whether the position names the middle of the run.
+  ///   - staffNumber: The staff it belongs to, if any.
+  public init(
+    text: String, position: CGPoint, fontSize: CGFloat, isCentered: Bool,
+    staffNumber: Int?
+  ) {
+    self.text = text
+    self.position = position
+    self.fontSize = fontSize
+    self.isCentered = isCentered
+    self.staffNumber = staffNumber
+  }
+}
+
 /// A page of engraved music, ready to draw.
 ///
 /// Every lookup is a table built once when the page is read. They used to be
@@ -82,14 +122,19 @@ public struct EngravedPage: Equatable, @unchecked Sendable {
   /// Where each bar sits, for selections and hit-testing.
   public let measureFrames: [String: CGRect]
 
+  /// Every run of text on the page, fingering included.
+  public let texts: [EngravedText]
+
   /// Reads a page from its shapes, building every lookup once.
   /// - Parameters:
   ///   - size: The page's own coordinate system.
   ///   - shapes: Everything on it, in drawing order.
-  public init(size: CGSize, shapes: [EngravedShape]) {
+  ///   - texts: The text runs on it.
+  public init(size: CGSize, shapes: [EngravedShape], texts: [EngravedText] = []) {
     self.id = UUID().uuidString
     self.size = size
     self.shapes = shapes
+    self.texts = texts
 
     var owners: [String: [Int]] = [:]
     var measures: [String: CGRect] = [:]
@@ -179,6 +224,18 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
   private var definingSymbol: String?
   private var symbolPath = CGMutablePath()
 
+  /// Text runs collected as the page is read.
+  private var texts: [EngravedText] = []
+
+  /// The text element being read right now, if any.
+  private var textDepth = 0
+  private var textBuffer = ""
+  private var textPosition = CGPoint.zero
+  private var textSize = 0.0
+  private var textCentered = false
+  private var textTransform = CGAffineTransform.identity
+  private var textStaff: Int?
+
   /// Reads a page.
   /// - Parameter svg: The engraver's output.
   /// - Returns: The page, or `nil` if it could not be read.
@@ -190,7 +247,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
     xml.delegate = parser
     guard xml.parse() else { return nil }
 
-    return EngravedPage(size: parser.size, shapes: parser.shapes)
+    return EngravedPage(size: parser.size, shapes: parser.shapes, texts: parser.texts)
   }
 
   private var current: CGAffineTransform { transforms.last ?? .identity }
@@ -289,6 +346,28 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
     case "defs":
       isInsideDefs = true
 
+    case "text", "tspan":
+      if name == "text" {
+        textDepth += 1
+        if textDepth == 1 {
+          textBuffer = ""
+          textPosition = .zero
+          textSize = 0
+          textCentered = false
+          textTransform = transform
+          textStaff = staves.last ?? nil
+        }
+      }
+      // Position and size may sit on the text or on any tspan inside it.
+      if let x = attributes["x"].flatMap(Double.init) { textPosition.x = x }
+      if let y = attributes["y"].flatMap(Double.init) { textPosition.y = y }
+      if let raw = attributes["font-size"],
+        let size = Double(raw.prefix { $0.isNumber || $0 == "." }), size > 0
+      {
+        textSize = size
+      }
+      if attributes["text-anchor"] == "middle" { textCentered = true }
+
     default:
       break
     }
@@ -305,6 +384,21 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
   ) {
     if name == "defs" { isInsideDefs = false }
 
+    if name == "text" {
+      textDepth -= 1
+      let run = textBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
+
+      if textDepth == 0, !run.isEmpty, textSize > 0 {
+        texts.append(
+          EngravedText(
+            text: run,
+            position: textPosition.applying(textTransform),
+            fontSize: textSize,
+            isCentered: textCentered,
+            staffNumber: textStaff))
+      }
+    }
+
     if name == "g", let symbol = definingSymbol {
       symbols[symbol] = symbolPath
       definingSymbol = nil
@@ -320,6 +414,13 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
   }
 
   private var isInsideDefs = false
+
+  /// Collects the characters of the text element being read.
+  ///
+  /// Part of `XMLParserDelegate`; not called directly.
+  public func parser(_ parser: XMLParser, foundCharacters string: String) {
+    if textDepth > 0 { textBuffer += string }
+  }
 
   /// How much a transform scales, so a stroke width scales with it.
   private func scaleOf(_ transform: CGAffineTransform) -> CGFloat {

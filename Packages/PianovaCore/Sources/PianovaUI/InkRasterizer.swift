@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreText
 import Engraving
 import Foundation
 
@@ -31,17 +32,17 @@ public enum InkRasterizer {
   /// - Returns: The masks, as sharp as asked for.
   public static func masks(for page: EngravedPage, pixelWidth: Int, quietStaff: Int?) -> Masks {
     Masks(
-      loud: render(page: page, pixelWidth: pixelWidth) { shape in
-        quietStaff == nil || shape.staffNumber != quietStaff
+      loud: render(page: page, pixelWidth: pixelWidth) { staff in
+        quietStaff == nil || staff != quietStaff
       },
       quiet: quietStaff == nil
         ? nil
-        : render(page: page, pixelWidth: pixelWidth) { $0.staffNumber == quietStaff })
+        : render(page: page, pixelWidth: pixelWidth) { $0 == quietStaff })
   }
 
-  /// Draws the shapes that pass a filter into an alpha-only bitmap.
+  /// Draws the shapes and texts whose staff passes a filter, alpha-only.
   private static func render(
-    page: EngravedPage, pixelWidth: Int, include: (EngravedShape) -> Bool
+    page: EngravedPage, pixelWidth: Int, include: (Int?) -> Bool
   ) -> CGImage? {
     let scale = CGFloat(pixelWidth) / max(page.size.width, 1)
     let pixelHeight = Int((page.size.height * scale).rounded(.up))
@@ -60,7 +61,7 @@ public enum InkRasterizer {
     context.setStrokeColor(gray: 0, alpha: 1)
 
     var drewAnything = false
-    for shape in page.shapes where include(shape) {
+    for shape in page.shapes where include(shape.staffNumber) {
       drewAnything = true
       context.addPath(shape.path)
 
@@ -72,6 +73,38 @@ public enum InkRasterizer {
       }
     }
 
+    // Text runs — fingering numbers, tempo words. The engraver writes them as
+    // SVG text, and until the parser learned to read it every number was
+    // dropped in silence.
+    for run in page.texts where include(run.staffNumber) {
+      drewAnything = true
+      draw(run, in: context)
+    }
+
     return drewAnything ? context.makeImage() : nil
+  }
+
+  /// Draws one run of text at its place on the page.
+  private static func draw(_ run: EngravedText, in context: CGContext) {
+    let font = CTFontCreateWithName("Times New Roman" as CFString, run.fontSize, nil)
+    let line = CTLineCreateWithAttributedString(
+      NSAttributedString(
+        string: run.text,
+        attributes: [
+          kCTFontAttributeName as NSAttributedString.Key: font,
+          kCTForegroundColorFromContextAttributeName as NSAttributedString.Key: true,
+        ]))
+
+    let width = CTLineGetTypographicBounds(line, nil, nil, nil)
+    let startX = run.isCentered ? run.position.x - width / 2 : run.position.x
+
+    // The page's coordinates grow downward and text draws upward, so each run
+    // is drawn in its own small un-flipped world.
+    context.saveGState()
+    context.translateBy(x: startX, y: run.position.y)
+    context.scaleBy(x: 1, y: -1)
+    context.textPosition = .zero
+    CTLineDraw(line, context)
+    context.restoreGState()
   }
 }
