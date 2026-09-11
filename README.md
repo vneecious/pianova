@@ -492,20 +492,20 @@ servir ao segundo e permitir o primeiro, e não o contrário.
 108. A confirmação é o botão **Estudar**, flutuando junto à seleção como o
      menu de edição do iOS flutua junto ao texto. É o único caminho para o
      modo estudo — nenhum toque na pauta confirma nada por acidente.
-109. O modo estudo é **sem distração**: só os compassos escolhidos ficam na
-     tela, regravados. Estudo é trabalho de lupa, e o resto da peça na tela é
-     o que a lupa existe para tirar.
-110. No modo estudo, pode-se trabalhar **uma mão só**. A mão em descanso fica
-     **esmaecida na pauta**, não removida — ela é a referência do que a outra
-     tem de encaixar. O esmaecido é sinal exclusivo de mão em descanso.
+109. O modo estudo acontece **na própria página**: os compassos escolhidos
+     ficam como estão e todo o resto da partitura **esmaece**. Mesma página,
+     mesmo scroll, nada salta nem muda de forma — o esmaecido é a lupa.
+110. No modo estudo, pode-se trabalhar **uma mão só**. A mão em descanso
+     também esmaece, dentro do trecho — esmaecer é a única linguagem para
+     "isto não está em jogo agora", seja compasso, seja mão.
 111. Um trecho em estudo **repete sozinho** ao terminar, para que a repetição
      não custe um gesto a cada volta.
 112. Fora do modo de seleção, tocar num compasso apenas escolhe **de onde
      ouvir**. Enquanto há seleção ou estudo, o botão de sair da peça some:
      sair do trecho e sair da peça são gestos diferentes.
 113. Sempre há um caminho de volta para a **peça inteira**, num gesto — e a
-     volta é **imediata**. A peça inteira já foi gravada uma vez; sair do
-     estudo a restaura, não a regrava.
+     volta é **imediata e no lugar**: a página nunca foi embora, só o
+     esmaecido sai de cena.
 114. O preview toca **o que está em estudo** — aqueles compassos, aquela mão.
 115. A **pinça** aproxima e afasta a partitura, e a página **reflui**: mais
      perto, menos compassos por linha; mais longe, mais — como regravar, não

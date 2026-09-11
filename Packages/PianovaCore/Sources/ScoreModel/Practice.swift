@@ -116,45 +116,6 @@ extension Score {
     return first..<(last + 1)
   }
 
-  /// The piece reduced to a stretch of bars, both hands kept.
-  ///
-  /// Re-engraved rather than cropped on screen: study is magnifying-glass
-  /// work, and the rest of the piece on screen is what the glass exists to
-  /// remove. The hands are never cut — the resting one is faded on the page,
-  /// so fading stays the one signal that means "not judged".
-  /// - Parameter range: The bars to keep, or `nil` for the whole piece.
-  /// - Returns: The passage as a piece of its own.
-  public func extracting(_ range: PracticeRange?) -> Score {
-    guard let lower = leftHand else {
-      return Score(
-        title: title, composer: composer, timeSignature: timeSignature, key: key,
-        rightHand: slice(rightHand, to: range) ?? rightHand,
-        hasPickup: hasPickup && range == nil)
-    }
-
-    return Score(
-      title: title, composer: composer, timeSignature: timeSignature, key: key,
-      rightHand: slice(rightHand, to: range) ?? rightHand,
-      leftHand: slice(lower, to: range) ?? lower,
-      // A passage that does not start at the beginning has no upbeat: its
-      // first bar is a whole bar of music.
-      hasPickup: hasPickup && range == nil)
-  }
-
-  /// One staff, cut to the bars asked for.
-  private func slice(_ part: Part, to range: PracticeRange?) -> Part? {
-    guard let range else { return part }
-
-    // Bar numbers are what the player sees, and an upbeat is not numbered — so
-    // they are turned back into positions before anything is cut.
-    let offset = hasPickup ? 1 : 0
-    let from = max(range.first - 1 + offset, 0)
-    let through = min(range.last - 1 + offset, part.measures.count - 1)
-    guard from <= through else { return nil }
-
-    return Part(clef: part.clef, measures: Array(part.measures[from...through]))
-  }
-
   /// How many bars the player can choose between.
   public var measureCount: Int {
     max(rightHand.measures.count - (hasPickup ? 1 : 0), 1)

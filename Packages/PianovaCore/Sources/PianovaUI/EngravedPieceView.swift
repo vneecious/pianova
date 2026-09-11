@@ -72,27 +72,11 @@ struct EngravedPieceView: View {
     }
     .animation(.easeInOut(duration: 0.25), value: controller.pages.first?.id)
     .animation(.easeInOut(duration: 0.2), value: controller.isEngraving)
-    .onChange(of: session.phase) { was, now in
-      // Entering or leaving study is the one thing that changes the page:
-      // study engraves the passage alone, everything else engraves the piece.
-      // The scroll does not follow on its own — it is one scroll view and it
-      // keeps its offset — so each crossing names where it wants to land:
-      // study starts at its top, and finishing returns to where the passage
-      // lives in the whole piece, which is where the player was working.
-      if now == .studying {
-        lastStudied = session.range
-        pendingScroll = .top
-        reload()
-      } else if was == .studying {
-        pendingScroll = .bar(lastStudied?.first ?? 1)
-        reload()
-      }
-    }
+    // Study never changes the page: same engraving, same scroll, nothing
+    // jumps. What changes is what is judged and what is faded.
+    .onChange(of: session.phase) { _, _ in applyStudy() }
     .onChange(of: session.range) { _, _ in refreshSelection() }
-    .onChange(of: session.hands) { _, hands in
-      controller.restrict(to: nil, hands: hands)
-      controller.renderInks()
-    }
+    .onChange(of: session.hands) { _, _ in applyStudy() }
     .onChange(of: session.loops) { _, value in controller.loops = value }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if !hub.isConnected {
@@ -148,21 +132,59 @@ struct EngravedPieceView: View {
   /// it on every layout pass was a good part of what made the page slow.
   @State private var selectedMeasures: Set<String> = []
 
-  /// What the engraver should be drawing right now.
-  private var shown: Score {
-    session.phase == .studying ? score.extracting(session.range) : score
-  }
-
-  /// Engraves what the phase asks for and re-applies the study to it.
+  /// Engraves the piece at the current zoom.
   private func reload() {
     guard let engraver else { return }
     controller.pageUnits = Int(2100 / zoom)
     controller.load(
-      shown, using: engraver,
+      score, using: engraver,
       hands: session.phase == .studying ? session.hands : .both)
     refreshSelection()
-    shownSystem = nil
     controller.renderInks()
+  }
+
+  /// Applies what study means now: what is judged, what is faded.
+  private func applyStudy() {
+    let studying = session.phase == .studying
+    controller.restrict(
+      to: studying ? session.range : nil,
+      hands: studying ? session.hands : .both)
+    refreshSelection()
+    controller.renderInks()
+  }
+
+  /// One page with everything it wears, split out to keep the compiler sane.
+  private func pageRow(_ page: EngravedPage, index: Int, drawnWidth: CGFloat) -> some View {
+    EngravedScoreView(
+      page: page,
+      masks: controller.inkMasks[controller.inkKey(for: page)],
+      highlights: controller.highlights,
+      onTap: { id in tapped(id) },
+      onHoldDrag: { point, ended in
+        holdDrag(at: point, ended: ended, pageIndex: index)
+      },
+      onTapAt: { point in tappedPoint(point, pageIndex: index) },
+      selectedMeasures: selectedMeasures,
+      leadingHandle: handleFrame(end: \.first, pageIndex: index),
+      trailingHandle: handleFrame(end: \.last, pageIndex: index),
+      onHandleDrag: { point, isLeading, ended in
+        dragHandle(to: point, isLeading: isLeading, ended: ended, pageIndex: index)
+      },
+      quietStaff: controller.quietStaff,
+      studyMeasures: studyMeasures,
+      width: drawnWidth
+    )
+    .overlay(alignment: .top) { systemAnchors(for: page) }
+    .overlay(alignment: .topLeading) { selectionMarker(for: page, pageIndex: index) }
+    .padding(.vertical, 18)
+    .asPage(colorScheme)
+    .id(index)
+  }
+
+  /// The bars kept sharp while studying; everything else is scrimmed.
+  private var studyMeasures: Set<String> {
+    guard session.phase == .studying else { return [] }
+    return controller.measureIDs(in: session.range)
   }
 
   /// Marks the anchor bar while choosing, and nothing otherwise.
@@ -206,37 +228,13 @@ struct EngravedPieceView: View {
       ScrollView(.vertical) {
         LazyVStack(spacing: 20) {
           ForEach(Array(controller.pages.enumerated()), id: \.offset) { index, page in
-            EngravedScoreView(
-              page: page,
-              masks: controller.inkMasks[controller.inkKey(for: page)],
-              highlights: controller.highlights,
-              onTap: { id in tapped(id) },
-              onHoldDrag: { point, ended in
-                holdDrag(at: point, ended: ended, pageIndex: index)
-              },
-              onTapAt: { point in tappedPoint(point, pageIndex: index) },
-              selectedMeasures: selectedMeasures,
-              leadingHandle: handleFrame(end: \.first, pageIndex: index),
-              trailingHandle: handleFrame(end: \.last, pageIndex: index),
-              onHandleDrag: { point, isLeading, ended in
-                dragHandle(to: point, isLeading: isLeading, ended: ended, pageIndex: index)
-              },
-              quietStaff: controller.quietStaff,
-              width: drawnWidth
-            )
-            .overlay(alignment: .top) { systemAnchors(for: page) }
-            .overlay(alignment: .topLeading) { selectionMarker(for: page, pageIndex: index) }
-            .padding(.vertical, 18)
-            .asPage(colorScheme)
-            .id(index)
+            pageRow(page, index: index, drawnWidth: drawnWidth)
           }
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 8)
       }
       .onChange(of: controller.focus) { _, id in
-        // A crossing owns the next landing; the cursor takes over after.
-        guard pendingScroll == nil else { return }
         guard let id, let system = system(containing: id) else { return }
 
         // Only when the cursor leaves the system on screen. Inside it, the
@@ -246,18 +244,6 @@ struct EngravedPieceView: View {
 
         withAnimation(.easeInOut(duration: 0.45)) {
           scroller.scrollTo(system, anchor: .top)
-        }
-      }
-      .onChange(of: controller.pages.first?.id) { _, _ in
-        guard let target = pendingScroll else { return }
-
-        // The new page has to exist in layout before anything can scroll to
-        // it — scrolling in the same beat as the swap lands on nothing,
-        // which is exactly how the old offset used to survive the crossing.
-        Task { @MainActor in
-          try? await Task.sleep(for: .milliseconds(80))
-          land(target, with: scroller)
-          pendingScroll = nil
         }
       }
       // The pill floats over the scroll, not inside the page: pinned to the
@@ -420,20 +406,6 @@ struct EngravedPieceView: View {
   /// Whether a finger is mid-adjustment, when the pill steps aside.
   @State private var adjusting = false
 
-  /// Where the next page change should land the scroll.
-  private enum PendingScroll: Equatable {
-    /// The top of the page.
-    case top
-    /// The line of music holding a bar.
-    case bar(Int)
-  }
-
-  /// Set when crossing into or out of study, applied once the pages settle.
-  @State private var pendingScroll: PendingScroll?
-
-  /// The passage that was in study, for landing back on it after.
-  @State private var lastStudied: PracticeRange?
-
   /// A hold in progress: selection is born under the finger and follows it.
   ///
   /// The first report begins the selection right there, still pressed — the
@@ -445,20 +417,6 @@ struct EngravedPieceView: View {
         holdAnchor = nil
         adjusting = false
       }
-    }
-
-    if session.phase == .studying {
-      // The page in study is the passage alone, so its bars count from one
-      // and go back into the piece's numbering. The reload replaces the page
-      // mid-gesture, so this hold begins the choice and does no dragging.
-      guard holdAnchor == nil, let bar = controller.bar(atPagePoint: point, pageIndex: pageIndex)
-      else { return }
-      let held = bar + (session.range?.first ?? 1) - 1
-
-      holdAnchor = held
-      Haptics.selected()
-      withAnimation(.easeOut(duration: 0.22)) { session.begin(at: held) }
-      return
     }
 
     guard let bar = controller.bar(atPagePoint: point, pageIndex: pageIndex) else { return }
@@ -475,33 +433,6 @@ struct EngravedPieceView: View {
     guard stretched != session.range else { return }
     Haptics.selected()
     session.resize(stretched)
-  }
-
-  /// Lands a crossing's scroll where it asked to go.
-  private func land(_ target: PendingScroll, with scroller: ScrollViewProxy) {
-    switch target {
-    case .top:
-      shownSystem = controller.pages.first?.systems.first?.id
-      withAnimation(.easeInOut(duration: 0.3)) {
-        scroller.scrollTo(0, anchor: .top)
-      }
-
-    case .bar(let bar):
-      guard let system = system(ofBar: bar) else { return }
-      shownSystem = system
-      withAnimation(.easeInOut(duration: 0.35)) {
-        scroller.scrollTo(system, anchor: .top)
-      }
-    }
-  }
-
-  /// The line of music a bar sits on, across every page.
-  private func system(ofBar bar: Int) -> String? {
-    for (index, page) in controller.pages.enumerated() {
-      guard let frame = controller.frameOfBar(bar, pageIndex: index) else { continue }
-      return page.systems.first { $0.frame.intersects(frame) }?.id
-    }
-    return nil
   }
 
   /// Which system a note was drawn in, across every page.

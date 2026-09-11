@@ -146,7 +146,7 @@ struct PieceView: View {
     case .selecting:
       return "Arraste as alças ou toque noutro compasso. Estudar confirma."
     case .studying:
-      return "Só o trecho está na tela. Conclua para voltar à peça."
+      return "O resto da partitura espera a vez. Conclua para voltar."
     }
   }
 
@@ -163,11 +163,12 @@ struct PieceView: View {
     guard !preview.isPlaying else { return preview.stop() }
 
     if session.phase == .studying {
-      // The passage is what the page is showing, so its columns are the
-      // engraved ones and the highlight lands where the sound is.
+      // A stretch of the piece itself, so the columns the preview announces
+      // are the ones on the page and the highlight lands where the sound is.
+      let bounds = score.columns(in: session.range)
       preview.play(
-        score.extracting(session.range), tempo: Self.tempo(for: score),
-        hands: session.hands)
+        score, tempo: Self.tempo(for: score),
+        from: bounds.lowerBound, through: bounds.upperBound, hands: session.hands)
     } else {
       preview.play(score, tempo: Self.tempo(for: score), from: startFrom)
     }

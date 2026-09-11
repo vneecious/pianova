@@ -53,6 +53,13 @@ struct EngravedScoreView: View {
   /// The staff not being practised, whose ink is drawn faded.
   var quietStaff: Int?
 
+  /// The bars in study; everything else on the page is scrimmed down.
+  ///
+  /// Empty means no study. Study happens on the page itself — same page,
+  /// same scroll, nothing jumps or reflows — and the fade is the magnifier:
+  /// one language for "not in play now", whether it is a bar or a hand.
+  var studyMeasures: Set<String> = []
+
   /// How wide to draw the page, in points.
   ///
   /// Given rather than measured, because the height has to be known by whatever
@@ -71,8 +78,13 @@ struct EngravedScoreView: View {
 
     return ZStack(alignment: .topLeading) {
       inkLayer
+      if !studyMeasures.isEmpty {
+        scrimLayer(scale: scale)
+          .transition(.opacity)
+      }
       livingLayer(scale: scale)
     }
+    .animation(.easeInOut(duration: 0.25), value: studyMeasures.isEmpty)
     .frame(width: width, height: height)
     .overlay { touches(scale: scale) }
     .overlay { handles(scale: scale) }
@@ -132,6 +144,28 @@ struct EngravedScoreView: View {
       height: height
     )
     .equatable()
+  }
+
+  /// A veil over everything not in study, with the passage cut out.
+  ///
+  /// Paper-colored and even-odd: one rectangle the size of the page with the
+  /// studied bars as holes, so the rest of the music recedes without being
+  /// redrawn, re-rendered or re-engraved.
+  private func scrimLayer(scale: CGFloat) -> some View {
+    Canvas { context, _ in
+      context.scaleBy(x: scale, y: scale)
+
+      var veil = Path(CGRect(origin: .zero, size: page.size))
+      for measure in studyMeasures {
+        guard let box = page.measureFrames[measure] else { continue }
+        veil.addPath(Path(roundedRect: box.insetBy(dx: -10, dy: -10), cornerRadius: 12))
+      }
+
+      context.fill(
+        veil, with: .color(Theme.paper(colorScheme).opacity(0.82)), style: .init(eoFill: true))
+    }
+    .frame(width: width, height: height)
+    .allowsHitTesting(false)
   }
 
   /// Everything that moves: selection washes and highlighted notes.
