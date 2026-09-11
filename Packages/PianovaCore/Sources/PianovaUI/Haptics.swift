@@ -8,10 +8,15 @@ import UIKit
 /// knowing whether anything happened. The Mac has no equivalent, and silence
 /// there is the right behaviour rather than a missing feature.
 enum Haptics {
+  #if canImport(UIKit)
+  /// One generator kept warm: creating one per tick costs more than the tick.
+  @MainActor private static let generator = UISelectionFeedbackGenerator()
+  #endif
+
   /// Confirms that something became selected.
   @MainActor static func selected() {
     #if canImport(UIKit)
-    UISelectionFeedbackGenerator().selectionChanged()
+    generator.selectionChanged()
     #endif
   }
 }

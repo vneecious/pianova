@@ -182,7 +182,7 @@ struct EngravedPieceView: View {
               width: drawnWidth
             )
             .overlay(alignment: .top) { systemAnchors(for: page) }
-            .overlay(alignment: .topLeading) { studyPill(for: page, pageIndex: index) }
+            .overlay(alignment: .topLeading) { selectionMarker(for: page, pageIndex: index) }
             .padding(.vertical, 18)
             .asPage(colorScheme)
             .id(index)
@@ -201,6 +201,25 @@ struct EngravedPieceView: View {
 
         withAnimation(.easeInOut(duration: 0.45)) {
           scroller.scrollTo(system, anchor: .top)
+        }
+      }
+      // The pill floats over the scroll, not inside the page: pinned to the
+      // paper it was clipped by the paper's own edges — a selection on the
+      // last line hid its own confirmation. Out here it can also be clamped
+      // to the screen, which is what the edit menu does.
+      .overlayPreferenceValue(SelectionRectKey.self) { anchor in
+        GeometryReader { proxy in
+          if let anchor, session.phase == .selecting, !adjusting,
+            let range = session.range
+          {
+            let rect = proxy[anchor]
+            let above = rect.minY - 32
+            let x = min(max(rect.midX, 96), proxy.size.width - 96)
+            let y = above > 40 ? above : min(rect.maxY + 38, proxy.size.height - 40)
+
+            studyPill(for: range)
+              .position(x: x, y: max(y, 40))
+          }
         }
       }
       // The pinch shows itself by scaling while it lasts; letting go
@@ -271,9 +290,10 @@ struct EngravedPieceView: View {
       ? PracticeRange(first: bar, last: range.last)
       : PracticeRange(first: range.first, last: bar)
 
+    adjusting = !ended
     guard resized != range else { return }
     Haptics.selected()
-    withAnimation(.easeOut(duration: 0.12)) { session.resize(resized) }
+    session.resize(resized)
   }
 
   /// The frame for one selection handle on one page, while selecting.
@@ -282,41 +302,44 @@ struct EngravedPieceView: View {
     return controller.frameOfBar(range[keyPath: end], pageIndex: pageIndex)
   }
 
-  /// The floating confirmation, hovering by the selection as an edit menu
-  /// does.
+  /// Publishes where the selection sits on screen, for the pill to follow.
   @ViewBuilder
-  private func studyPill(for page: EngravedPage, pageIndex: Int) -> some View {
+  private func selectionMarker(for page: EngravedPage, pageIndex: Int) -> some View {
     if session.phase == .selecting, let range = session.range,
       let union = unionFrame(of: range, pageIndex: pageIndex)
     {
       GeometryReader { proxy in
         let scale = proxy.size.width / max(page.size.width, 1)
-        let above = union.minY * scale - 32
-        let x = min(max(union.midX * scale, 96), proxy.size.width - 96)
 
-        Button {
-          withAnimation(.easeOut(duration: 0.22)) { session.commit() }
-        } label: {
-          HStack(spacing: 8) {
-            Text("Estudar")
-              .font(.system(size: 14, weight: .semibold))
-              .foregroundStyle(Theme.accent)
-            Text(range.count == 1 ? "1 compasso" : "\(range.count) compassos")
-              .font(.system(size: 12))
-              .foregroundStyle(.secondary)
-          }
-          .padding(.horizontal, 14)
-          .padding(.vertical, 9)
-          .background(.regularMaterial, in: Capsule())
-          .shadow(color: Theme.shadow(colorScheme), radius: 10, y: 3)
-        }
-        .buttonStyle(.plain)
-        // Above the selection, as the edit menu sits above text — below it
-        // only when there is no room above.
-        .position(x: x, y: above > 30 ? above : union.maxY * scale + 38)
+        Color.clear
+          .frame(width: union.width * scale, height: union.height * scale)
+          .offset(x: union.minX * scale, y: union.minY * scale)
+          .anchorPreference(key: SelectionRectKey.self, value: .bounds) { $0 }
       }
-      .allowsHitTesting(true)
+      .allowsHitTesting(false)
     }
+  }
+
+  /// The floating confirmation, hovering by the selection as an edit menu
+  /// does.
+  private func studyPill(for range: PracticeRange) -> some View {
+    Button {
+      withAnimation(.easeOut(duration: 0.22)) { session.commit() }
+    } label: {
+      HStack(spacing: 8) {
+        Text("Estudar")
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundStyle(Theme.accent)
+        Text(range.count == 1 ? "1 compasso" : "\(range.count) compassos")
+          .font(.system(size: 12))
+          .foregroundStyle(.secondary)
+      }
+      .padding(.horizontal, 14)
+      .padding(.vertical, 9)
+      .background(.regularMaterial, in: Capsule())
+      .shadow(color: Theme.shadow(colorScheme), radius: 10, y: 3)
+    }
+    .buttonStyle(.plain)
   }
 
   /// Every selected bar's box on one page, joined.
@@ -332,13 +355,21 @@ struct EngravedPieceView: View {
   /// The bar a hold began on, which the moving finger stretches from.
   @State private var holdAnchor: Int?
 
+  /// Whether a finger is mid-adjustment, when the pill steps aside.
+  @State private var adjusting = false
+
   /// A hold in progress: selection is born under the finger and follows it.
   ///
   /// The first report begins the selection right there, still pressed — the
   /// way holding text selects the word before anything lifts. Every movement
   /// after stretches the passage to the bar under the finger.
   private func holdDrag(at point: CGPoint, ended: Bool, pageIndex: Int) {
-    defer { if ended { holdAnchor = nil } }
+    defer {
+      if ended {
+        holdAnchor = nil
+        adjusting = false
+      }
+    }
 
     if session.phase == .studying {
       // The page in study is the passage alone, so its bars count from one
@@ -363,14 +394,24 @@ struct EngravedPieceView: View {
       return
     }
 
+    adjusting = true
     let stretched = PracticeRange(first: anchor, last: bar)
     guard stretched != session.range else { return }
     Haptics.selected()
-    withAnimation(.easeOut(duration: 0.12)) { session.resize(stretched) }
+    session.resize(stretched)
   }
 
   /// Which system a note was drawn in, across every page.
   private func system(containing id: String) -> String? {
     controller.pages.compactMap { $0.system(containing: id) }.first
+  }
+}
+
+/// Where the selection sits on screen, published by whichever page holds it.
+private struct SelectionRectKey: PreferenceKey {
+  static let defaultValue: Anchor<CGRect>? = nil
+
+  static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+    value = nextValue() ?? value
   }
 }

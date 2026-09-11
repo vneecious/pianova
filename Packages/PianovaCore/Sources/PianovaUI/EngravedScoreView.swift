@@ -119,26 +119,19 @@ struct EngravedScoreView: View {
   }
 
   /// The ink itself: masks tinted in the page's color, rendered once.
-  @ViewBuilder private var inkLayer: some View {
-    let ink = Color(PlatformColor.staffInk(colorScheme))
-
-    if let masks {
-      if let loud = masks.loud {
-        ink.mask(alignment: .topLeading) { maskImage(loud) }
-      }
-      if let quiet = masks.quiet {
-        ink.opacity(0.22).mask(alignment: .topLeading) { maskImage(quiet) }
-      }
-    } else {
-      // The first frames after an engrave, before the raster lands.
-      Color.clear
-    }
-  }
-
-  private func maskImage(_ image: CGImage) -> some View {
-    Image(decorative: image, scale: 1)
-      .resizable()
-      .frame(width: width, height: height)
+  ///
+  /// Equatable and compared by key, so a drag that changes the selection does
+  /// not touch this subtree: rebuilding the mask composite re-uploads a
+  /// texture the size of the page, per frame, and that was the drag's jank.
+  private var inkLayer: some View {
+    InkLayer(
+      key: "\(page.id)|\(quietStaff ?? 0)",
+      masks: masks,
+      ink: Color(PlatformColor.staffInk(colorScheme)),
+      width: width,
+      height: height
+    )
+    .equatable()
   }
 
   /// Everything that moves: selection washes and highlighted notes.
@@ -265,5 +258,38 @@ struct EngravedScoreView: View {
     }
 
     return best?.id
+  }
+}
+
+/// The tinted ink masks, isolated so nothing else re-renders them.
+private struct InkLayer: View, Equatable {
+  let key: String
+  let masks: InkRasterizer.Masks?
+  let ink: Color
+  let width: CGFloat
+  let height: CGFloat
+
+  nonisolated static func == (left: InkLayer, right: InkLayer) -> Bool {
+    left.key == right.key && left.width == right.width && left.ink == right.ink
+      && (left.masks == nil) == (right.masks == nil)
+  }
+
+  var body: some View {
+    ZStack(alignment: .topLeading) {
+      if let masks {
+        if let loud = masks.loud {
+          ink.mask(alignment: .topLeading) { maskImage(loud) }
+        }
+        if let quiet = masks.quiet {
+          ink.opacity(0.22).mask(alignment: .topLeading) { maskImage(quiet) }
+        }
+      }
+    }
+  }
+
+  private func maskImage(_ image: CGImage) -> some View {
+    Image(decorative: image, scale: 1)
+      .resizable()
+      .frame(width: width, height: height)
   }
 }
