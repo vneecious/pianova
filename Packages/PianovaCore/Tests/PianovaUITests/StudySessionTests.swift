@@ -46,14 +46,45 @@ import Testing
   #expect(session.range == PracticeRange(first: 2, last: 8))
 }
 
-/// Tocar dentro do trecho não o encolhe: encolher é trabalho das alças.
-@MainActor @Test func tappingInsideChangesNothing() {
+/// Rule 108 — tocar dentro do trecho confirma: é o toque de quem já decidiu.
+@MainActor @Test func tappingInsideConfirmsTheSelection() {
   let session = StudySession()
   session.begin(at: 2)
   session.extend(to: 6)
-  session.extend(to: 4)
+  session.tap(4)
 
+  #expect(session.phase == .studying)
   #expect(session.range == PracticeRange(first: 2, last: 6))
+}
+
+/// Rule 107 — o toque além do trecho estende, sem confirmar.
+@MainActor @Test func aTapBeyondTheSelectionExtends() {
+  let session = StudySession()
+  session.begin(at: 3)
+  session.tap(7)
+
+  #expect(session.phase == .selecting)
+  #expect(session.range == PracticeRange(first: 3, last: 7))
+}
+
+/// Rule 107 — tocar fora da pauta desfaz a seleção, como tocar fora do texto.
+@MainActor @Test func aTapOffTheStavesDeselects() {
+  let session = StudySession()
+  session.begin(at: 3)
+  session.extend(to: 5)
+  session.tap(nil)
+
+  #expect(session.phase == .browsing)
+  #expect(session.range == nil)
+}
+
+/// Fora da seleção, o toque não tem gramática nenhuma: nada acontece.
+@MainActor @Test func aTapWhileBrowsingDoesNothing() {
+  let session = StudySession()
+  session.tap(4)
+
+  #expect(session.phase == .browsing)
+  #expect(session.range == nil)
 }
 
 /// Rule 107 — arrastar uma alça redimensiona o trecho, para os dois lados.

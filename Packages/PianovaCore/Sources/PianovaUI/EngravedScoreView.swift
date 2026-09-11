@@ -19,8 +19,16 @@ struct EngravedScoreView: View {
   /// Called with the identifier nearest to a tap.
   var onTap: ((String) -> Void)?
 
-  /// Called when an element is held, to enter selection as Photos does.
-  var onLongPress: ((String) -> Void)?
+  /// Called through a hold, from press to lift.
+  ///
+  /// Reports the point in page coordinates at the press and at every movement
+  /// after, with whether the gesture ended. Selection is born under the finger
+  /// and grows with it, the way holding text does — lifting is not part of the
+  /// job.
+  var onHoldDrag: ((CGPoint, Bool) -> Void)?
+
+  /// Called with a tap's point in page coordinates, after `onTap`.
+  var onTapAt: ((CGPoint) -> Void)?
 
   /// Bars to pick out, as an editor marks what you selected.
   var selectedMeasures: Set<String> = []
@@ -95,20 +103,22 @@ struct EngravedScoreView: View {
     .overlay { handles(scale: scale) }
     .contentShape(Rectangle())
     .onTapGesture { location in
-      guard let onTap, let id = element(at: location) else { return }
-      onTap(id)
+      if let onTap, let id = element(at: location) { onTap(id) }
+      onTapAt?(CGPoint(x: location.x / scale, y: location.y / scale))
     }
     // Held, not dragged: the press has to win before any movement, so a finger
-    // that starts scrolling still scrolls instead of selecting a bar.
+    // that starts scrolling still scrolls instead of selecting a bar. Once it
+    // wins, every movement reports — the selection lives under the finger.
     .gesture(
       LongPressGesture(minimumDuration: 0.35)
         .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
+        .onChanged { value in
+          guard case .second(true, let drag?) = value else { return }
+          onHoldDrag?(CGPoint(x: drag.location.x / scale, y: drag.location.y / scale), false)
+        }
         .onEnded { value in
-          guard case .second(true, let drag?) = value, let onLongPress,
-            let id = element(at: drag.location)
-          else { return }
-
-          onLongPress(id)
+          guard case .second(true, let drag?) = value else { return }
+          onHoldDrag?(CGPoint(x: drag.location.x / scale, y: drag.location.y / scale), true)
         }
     )
   }

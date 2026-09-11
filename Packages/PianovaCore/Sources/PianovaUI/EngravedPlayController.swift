@@ -218,6 +218,23 @@ public final class EngravedPlayController: ObservableObject {
       .bar
   }
 
+  /// Which bar a point is squarely inside, or nothing if it is off the music.
+  ///
+  /// The loose neighbour of `bar(atPagePoint:pageIndex:)`: a drag wants the
+  /// nearest bar so the handle never slips off the line, but a tap wants the
+  /// truth — off the staves means "deselect", and nearest-matching would make
+  /// the page margins impossible to tap.
+  /// - Parameters:
+  ///   - point: A point in the page's own coordinates.
+  ///   - pageIndex: Which page it is on.
+  /// - Returns: The bar there, or `nil` for empty paper.
+  public func bar(exactlyAtPagePoint point: CGPoint, pageIndex: Int) -> Int? {
+    guard measureFramesByPage.indices.contains(pageIndex) else { return nil }
+    return measureFramesByPage[pageIndex]
+      .first { $0.frame.insetBy(dx: -6, dy: -14).contains(point) }?
+      .bar
+  }
+
   /// The frame of one bar on one page, for placing its selection handles.
   /// - Parameters:
   ///   - bar: The bar number.

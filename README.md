@@ -478,17 +478,21 @@ dois a quatro compassos, uma mão de cada vez, devagar, repetindo. O app precisa
 servir ao segundo e permitir o primeiro, e não o contrário.
 
 105. Um **trecho** é escolhido como se seleciona texto no iOS: **segurar** num
-     compasso entra em modo de seleção e marca aquele compasso, com **alças
-     nas duas pontas**. A peça inteira continua na tela enquanto se escolhe.
+     compasso marca aquele compasso **sob o dedo, sem precisar soltar** — e
+     continuar arrastando estende a seleção até onde o dedo for. Soltar
+     mantém, com **alças nas duas pontas** para ajustar. A peça inteira
+     continua na tela enquanto se escolhe.
 106. Um trecho é sempre **contíguo**. Do 1 ao 7 vai tudo que há entre eles —
      não se estuda o 1 e o 7 soltos, porque o que se treina é a passagem de um
      ao outro.
 107. Ajustar é **arrastar uma alça** — com um tique háptico a cada compasso —
-     ou tocar num compasso de fora para estender a seleção até ele. Nenhum
+     ou tocar num compasso de fora para estender a seleção até ele. Tocar
+     **fora da pauta desfaz a seleção**, como tocar fora do texto. Nenhum
      gesto de ajuste confirma nada: ajustar e confirmar são atos diferentes.
 108. A confirmação é o botão **Estudar**, flutuando junto à seleção como o
-     menu de edição do iOS flutua junto ao texto. É ele que entra no modo
-     estudo.
+     menu de edição do iOS flutua junto ao texto — ou um toque **dentro do
+     próprio trecho**, que é o atalho de quem já decidiu. São os dois únicos
+     caminhos para o modo estudo.
 109. O modo estudo é **sem distração**: só os compassos escolhidos ficam na
      tela, regravados. Estudo é trabalho de lupa, e o resto da peça na tela é
      o que a lupa existe para tirar.

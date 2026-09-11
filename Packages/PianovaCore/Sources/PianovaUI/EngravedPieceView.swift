@@ -154,7 +154,10 @@ struct EngravedPieceView: View {
               page: page,
               highlights: controller.highlights,
               onTap: { id in tapped(id) },
-              onLongPress: { id in hold(id) },
+              onHoldDrag: { point, ended in
+                holdDrag(at: point, ended: ended, pageIndex: index)
+              },
+              onTapAt: { point in tappedPoint(point, pageIndex: index) },
               selectedMeasures: selectedMeasures,
               leadingHandle: handleFrame(end: \.first, pageIndex: index),
               trailingHandle: handleFrame(end: \.last, pageIndex: index),
@@ -213,25 +216,21 @@ struct EngravedPieceView: View {
     .allowsHitTesting(false)
   }
 
-  /// A short tap: pick where to listen from, or widen the selection to here.
-  ///
-  /// The same division text selection makes: while selecting, a tap adjusts
-  /// and only adjusts — confirming is the floating button's job, never a side
-  /// effect of a tap.
+  /// A short tap on a note while browsing picks where to listen from.
   private func tapped(_ id: String) {
-    switch session.phase {
-    case .browsing:
-      if let column = controller.column(of: id) { onPickStart?(column) }
+    guard session.phase == .browsing, let column = controller.column(of: id) else { return }
+    onPickStart?(column)
+  }
 
-    case .selecting:
-      guard let bar = controller.bar(of: id) else { return }
-      let before = session.range
-      withAnimation(.easeOut(duration: 0.18)) { session.extend(to: bar) }
-      if session.range != before { Haptics.selected() }
+  /// A short tap while selecting speaks the tap grammar: inside confirms,
+  /// beyond extends, and off the staves deselects — like tapping around text.
+  private func tappedPoint(_ point: CGPoint, pageIndex: Int) {
+    guard session.phase == .selecting else { return }
 
-    case .studying:
-      break
-    }
+    let bar = controller.bar(exactlyAtPagePoint: point, pageIndex: pageIndex)
+    let before = (session.phase, session.range)
+    withAnimation(.easeOut(duration: 0.18)) { session.tap(bar) }
+    if (session.phase, session.range) != before { Haptics.selected() }
   }
 
   /// Follows a handle drag: the bar under the finger becomes that end.
@@ -303,23 +302,44 @@ struct EngravedPieceView: View {
     return boxes.dropFirst().reduce(first) { $0.union($1) }
   }
 
-  /// A long press: begin choosing a passage at this bar.
+  /// The bar a hold began on, which the moving finger stretches from.
+  @State private var holdAnchor: Int?
+
+  /// A hold in progress: selection is born under the finger and follows it.
   ///
-  /// The gesture holding a photo makes. Mid-study it starts the choice over,
-  /// back on the whole piece.
-  private func hold(_ id: String) {
-    guard let bar = controller.bar(of: id) else { return }
+  /// The first report begins the selection right there, still pressed — the
+  /// way holding text selects the word before anything lifts. Every movement
+  /// after stretches the passage to the bar under the finger.
+  private func holdDrag(at point: CGPoint, ended: Bool, pageIndex: Int) {
+    defer { if ended { holdAnchor = nil } }
 
-    // The page in study is the passage alone, so its bars count from one and
-    // have to be put back into the piece's own numbering.
-    let start = session.phase == .studying ? (session.range?.first ?? 1) : 1
-    let held = session.phase == .studying ? bar + start - 1 : bar
+    if session.phase == .studying {
+      // The page in study is the passage alone, so its bars count from one
+      // and go back into the piece's numbering. The reload replaces the page
+      // mid-gesture, so this hold begins the choice and does no dragging.
+      guard holdAnchor == nil, let bar = controller.bar(atPagePoint: point, pageIndex: pageIndex)
+      else { return }
+      let held = bar + (session.range?.first ?? 1) - 1
 
+      holdAnchor = held
+      Haptics.selected()
+      withAnimation(.easeOut(duration: 0.22)) { session.begin(at: held) }
+      return
+    }
+
+    guard let bar = controller.bar(atPagePoint: point, pageIndex: pageIndex) else { return }
+
+    guard let anchor = holdAnchor else {
+      holdAnchor = bar
+      Haptics.selected()
+      withAnimation(.easeOut(duration: 0.22)) { session.begin(at: bar) }
+      return
+    }
+
+    let stretched = PracticeRange(first: anchor, last: bar)
+    guard stretched != session.range else { return }
     Haptics.selected()
-    withAnimation(.easeOut(duration: 0.22)) { session.begin(at: held) }
-    // Leaving study re-engraves and marks the anchor itself; a hold while
-    // browsing changes no page, so the mark is made here.
-    if session.phase == .selecting { refreshSelection() }
+    withAnimation(.easeOut(duration: 0.12)) { session.resize(stretched) }
   }
 
   /// Which system a note was drawn in, across every page.
