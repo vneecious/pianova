@@ -66,9 +66,6 @@ struct EngravedScoreView: View {
     width * page.size.height / max(page.size.width, 1)
   }
 
-  /// Where the finger last touched, for a hold that has no location of its own.
-  @State private var lastTouch: CGPoint = .zero
-
   var body: some View {
     let scale = width / max(page.size.width, 1)
 
@@ -77,40 +74,48 @@ struct EngravedScoreView: View {
       livingLayer(scale: scale)
     }
     .frame(width: width, height: height)
+    .overlay { touches(scale: scale) }
     .overlay { handles(scale: scale) }
-    .contentShape(Rectangle())
-    // Records where the finger is without claiming the touch: a long press
-    // knows when it fired but never where, and this is the where.
-    .simultaneousGesture(
-      DragGesture(minimumDistance: 0, coordinateSpace: .local)
-        .onChanged { lastTouch = $0.location }
-    )
-    .onTapGesture { location in
-      if let onTap, let id = nearest(to: pagePoint(location, scale: scale)) { onTap(id) }
-      onTapAt?(pagePoint(location, scale: scale))
-    }
-    // Held, not dragged: the press has to win before any movement, so a finger
-    // that starts scrolling still scrolls instead of selecting a bar. The
-    // moment it wins — finger still down — the selection begins, and every
-    // movement after reports; that is how holding text behaves.
-    .gesture(
-      LongPressGesture(minimumDuration: 0.3)
-        .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
-        .onChanged { value in
-          switch value {
-          case .second(true, nil):
-            onHoldDrag?(pagePoint(lastTouch, scale: scale), false)
-          case .second(true, .some(let drag)):
+  }
+
+  /// The gestures, read the way the system reads them.
+  ///
+  /// On the iPad the recognizer is the one text selection uses: the hold fires
+  /// the moment it completes, where it happened, finger still down — and loses
+  /// cleanly to the scroll when the finger scrolls. The Mac keeps SwiftUI's
+  /// own gestures, which a pointer is patient enough for.
+  @ViewBuilder
+  private func touches(scale: CGFloat) -> some View {
+    #if canImport(UIKit)
+    TouchSurface(
+      onTap: { location in
+        if let onTap, let id = nearest(to: pagePoint(location, scale: scale)) { onTap(id) }
+        onTapAt?(pagePoint(location, scale: scale))
+      },
+      onHold: { location, phase in
+        onHoldDrag?(pagePoint(location, scale: scale), phase == .ended)
+      },
+      canHold: { location in !isNearAHandle(location, scale: scale) })
+    #else
+    Color.clear
+      .contentShape(Rectangle())
+      .onTapGesture { location in
+        if let onTap, let id = nearest(to: pagePoint(location, scale: scale)) { onTap(id) }
+        onTapAt?(pagePoint(location, scale: scale))
+      }
+      .gesture(
+        LongPressGesture(minimumDuration: 0.3)
+          .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
+          .onChanged { value in
+            guard case .second(true, .some(let drag)) = value else { return }
             onHoldDrag?(pagePoint(drag.location, scale: scale), false)
-          default:
-            break
           }
-        }
-        .onEnded { value in
-          guard case .second(true, let drag) = value else { return }
-          onHoldDrag?(pagePoint(drag?.location ?? lastTouch, scale: scale), true)
-        }
-    )
+          .onEnded { value in
+            guard case .second(true, .some(let drag)) = value else { return }
+            onHoldDrag?(pagePoint(drag.location, scale: scale), true)
+          }
+      )
+    #endif
   }
 
   /// The ink itself: masks tinted in the page's color, rendered once.
@@ -218,6 +223,22 @@ struct EngravedScoreView: View {
           onHandleDrag?(pagePoint(value.location, scale: scale), isLeading, true)
         }
     )
+  }
+
+  /// Whether a point sits on one of the selection handles.
+  private func isNearAHandle(_ location: CGPoint, scale: CGFloat) -> Bool {
+    let reach: CGFloat = 34
+
+    for (frame, leading) in [(leadingHandle, true), (trailingHandle, false)] {
+      guard let frame else { continue }
+      let x = (leading ? frame.minX : frame.maxX) * scale
+      let y = frame.midY * scale
+      let half = (frame.height * scale + 16) / 2 + 22
+
+      if abs(location.x - x) < reach && abs(location.y - y) < half { return true }
+    }
+
+    return false
   }
 
   /// A point on screen taken back into the page's own coordinates.
