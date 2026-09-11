@@ -22,9 +22,15 @@ struct EngravedScoreView: View {
   /// A bar to pick out, as an editor marks the one you clicked.
   var selectedMeasure: String?
 
+  /// How much to shrink the page below full width.
+  ///
+  /// One means fill the width. Less than one is how more of the piece is made
+  /// to fit, which is what reading ahead needs.
+  var zoom: CGFloat = 1
+
   var body: some View {
     GeometryReader { proxy in
-      let scale = proxy.size.width / max(page.size.width, 1)
+      let scale = proxy.size.width / max(page.size.width, 1) * zoom
 
       Canvas { context, _ in
         context.scaleBy(x: scale, y: scale)
@@ -65,7 +71,7 @@ struct EngravedScoreView: View {
   /// Read from the page rather than guessed, so the container reserves exactly
   /// the room the music needs.
   private var pageHeight: CGFloat {
-    page.size.height / max(page.size.width, 1) * 1_000
+    page.size.height / max(page.size.width, 1) * 1_000 * zoom
   }
 
   /// The ink for one shape: its highlight if it has one, otherwise the page's.

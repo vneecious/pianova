@@ -466,6 +466,10 @@ representa isso. Competir com um gravador de verdade não é trabalho de semanas
      subir e descer a cada troca de mão — a esquerda está no pé do sistema e a
      direita no topo — e o que se lê fica pulando.
 102. Enquanto o cursor está **dentro do sistema visível**, a página não se mexe.
+103. A tela mostra **sempre pelo menos dois sistemas**, reduzindo a escala se
+     preciso. Com um só não existe ler adiante: vira-se a linha e descobre-se.
+104. O sistema que está sendo tocado fica **no alto**, para que todo o resto da
+     tela seja música que ainda vem.
 
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o

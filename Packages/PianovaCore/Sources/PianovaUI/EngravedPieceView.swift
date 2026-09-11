@@ -65,12 +65,42 @@ struct EngravedPieceView: View {
   /// note makes the page rise and fall with each change of hand.
   @State private var shownSystem: String?
 
+  /// How many systems have to be on screen at once.
+  ///
+  /// Two is the floor: with one, reading ahead is impossible — the line is
+  /// turned and only then discovered.
+  private static let systemsInView: CGFloat = 2.2
+
   /// The bar the player last tapped, marked on the page.
   @State private var selectedMeasure: String?
 
   /// Every page, stacked, with the cursor kept in view.
   private var pages: some View {
-    ScrollViewReader { scroller in
+    GeometryReader { outer in
+      ScrollViewReader { scroller in
+        scrollingPages(scroller, viewportHeight: outer.size.height)
+      }
+    }
+  }
+
+  /// How much the page is shrunk so enough of it fits.
+  private func zoom(viewportHeight: CGFloat) -> CGFloat {
+    guard let first = controller.pages.first, first.systemHeight > 0 else { return 1 }
+
+    // The page is drawn at the view's width; at that scale, how tall is a
+    // system? If more than a share of the screen, shrink until it is not.
+    let atFullWidth = first.systemHeight / max(first.size.width, 1) * 1_000
+    let allowed = viewportHeight / Self.systemsInView
+
+    return min(1, allowed / max(atFullWidth, 1))
+  }
+
+  private func scrollingPages(
+    _ scroller: ScrollViewProxy, viewportHeight: CGFloat
+  ) -> some View {
+    let shrink = zoom(viewportHeight: viewportHeight)
+
+    return Group {
       ScrollView(.vertical) {
         LazyVStack(spacing: 20) {
           ForEach(Array(controller.pages.enumerated()), id: \.offset) { index, page in
@@ -81,10 +111,12 @@ struct EngravedPieceView: View {
                 selectedMeasure = page.measure(containing: id)
                 if let column = controller.column(of: id) { onPickStart?(column) }
               },
-              selectedMeasure: selectedMeasure
+              selectedMeasure: selectedMeasure,
+              zoom: shrink
             )
             .overlay(alignment: .top) { systemAnchors(for: page) }
             .id(index)
+            .padding(.bottom, 12)
           }
         }
         .padding(.horizontal, 8)

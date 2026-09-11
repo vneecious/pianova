@@ -249,3 +249,22 @@ private let twoMeasures = """
   #expect(page?.system(containing: "n-2") == "sys-1")
   #expect(page?.measure(containing: "n-2") == "m-2")
 }
+
+/// A altura de sistema é a do maior deles, que é o que tem de caber.
+@Test func theSystemHeightIsTheTallest() throws {
+  let uneven = """
+    <svg><svg class="definition-scale" viewBox="0 0 1000 1000">
+      <g id="s1" class="system"><path d="M0 0 L10 0"/><path d="M0 40 L10 40"/></g>
+      <g id="s2" class="system"><path d="M0 200 L10 200"/><path d="M0 400 L10 400"/></g>
+    </svg></svg>
+    """
+
+  let page = try #require(EngravedPageParser.page(from: uneven))
+  #expect(page.systemHeight == 200, "o sistema mais alto é o que decide")
+}
+
+/// Sem sistemas marcados, a altura é a da página — nada a encolher.
+@Test func aPageWithoutSystemsUsesItsOwnHeight() throws {
+  let page = try #require(parsedPage())
+  #expect(page.systemHeight == page.size.height)
+}

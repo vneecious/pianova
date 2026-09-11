@@ -65,6 +65,14 @@ public struct EngravedPage: Equatable {
     return boxes.map { (id: $0.key, frame: $0.value) }.sorted { $0.frame.minY < $1.frame.minY }
   }
 
+  /// How tall a system is here, taking the tallest as the measure.
+  ///
+  /// Used to work out how much has to fit on screen: reading ahead means the
+  /// next line being visible, and that is impossible if one line fills the view.
+  public var systemHeight: CGFloat {
+    systems.map(\.frame.height).max() ?? size.height
+  }
+
   /// Which bar a given element was drawn in.
   /// - Parameter id: A note or element identifier.
   /// - Returns: The bar's identifier, or `nil` if it is not on this page.
