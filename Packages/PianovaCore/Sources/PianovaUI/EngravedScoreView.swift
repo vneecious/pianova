@@ -155,10 +155,13 @@ struct EngravedScoreView: View {
     Canvas { context, _ in
       context.scaleBy(x: scale, y: scale)
 
+      // One hole per system (rule 106): cut out bar by bar, a strip of veil
+      // survives between neighbouring bars of the passage — a hole in the
+      // middle of what is being studied.
       var veil = Path(CGRect(origin: .zero, size: page.size))
-      for measure in studyMeasures {
-        guard let box = page.measureFrames[measure] else { continue }
-        veil.addPath(Path(roundedRect: box.insetBy(dx: -10, dy: -10), cornerRadius: 12))
+      let boxes = studyMeasures.compactMap { page.measureFrames[$0] }
+      for row in SelectionWash.rows(boxes) {
+        veil.addPath(Path(roundedRect: row.insetBy(dx: -10, dy: -10), cornerRadius: 12))
       }
 
       context.fill(
@@ -177,10 +180,12 @@ struct EngravedScoreView: View {
       context.scaleBy(x: scale, y: scale)
 
       // The selection sits under the music, the way an editor shades the bar
-      // you clicked rather than covering it.
-      for selected in selectedMeasures {
-        guard let box = page.measureFrames[selected] else { continue }
-        let inset = box.insetBy(dx: -8, dy: -8)
+      // you clicked rather than covering it — and a passage is ONE thing
+      // (rule 106): one wash per system, never a box per bar with seams and
+      // holes between neighbours.
+      let boxes = selectedMeasures.compactMap { page.measureFrames[$0] }
+      for row in SelectionWash.rows(boxes) {
+        let inset = row.insetBy(dx: -8, dy: -8)
         let shape = Path(roundedRect: inset, cornerRadius: 12)
 
         // Stronger on a dark page: the same wash that reads clearly on white
@@ -294,6 +299,29 @@ struct EngravedScoreView: View {
     }
 
     return best?.id
+  }
+
+}
+
+/// How the selection wash is shaped (rule 106): a passage is one thing.
+enum SelectionWash {
+  /// One wash per system: bars whose boxes share a line fuse into one box.
+  ///
+  /// Painted bar by bar the selection shows seams and holes between
+  /// neighbours. Boxes on the same line — vertical middles within half a box
+  /// of each other — are unioned.
+  static func rows(_ boxes: [CGRect]) -> [CGRect] {
+    var rows: [CGRect] = []
+
+    for box in boxes.sorted(by: { $0.minY < $1.minY }) {
+      if let index = rows.firstIndex(where: { abs($0.midY - box.midY) < $0.height / 2 }) {
+        rows[index] = rows[index].union(box)
+      } else {
+        rows.append(box)
+      }
+    }
+
+    return rows
   }
 }
 

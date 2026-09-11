@@ -484,7 +484,9 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      continua na tela enquanto se escolhe.
 106. Um trecho é sempre **contíguo**. Do 1 ao 7 vai tudo que há entre eles —
      não se estuda o 1 e o 7 soltos, porque o que se treina é a passagem de um
-     ao outro.
+     ao outro. E a seleção **é pintada como uma coisa só**: uma mancha
+     contínua por sistema, sem costura nem buraco entre compassos vizinhos —
+     compasso a compasso pintado separado, o trecho parece picado.
 107. Ajustar é **arrastar uma alça** — com um tique háptico a cada compasso —
      ou tocar num compasso de fora para estender a seleção até ele. Tocar
      **fora da pauta desfaz a seleção**, como tocar fora do texto. Nenhum
