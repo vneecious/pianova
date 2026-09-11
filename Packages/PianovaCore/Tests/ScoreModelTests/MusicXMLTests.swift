@@ -599,3 +599,34 @@ private let twoVoices = """
   #expect(score.rightHand.measures.first?.notes.first?.ottava == .stop, "oitava na pauta 1")
   #expect(score.leftHand?.measures.first?.notes.first?.dynamic == "mp", "mp na pauta 2")
 }
+
+/// Rule 138 — o andamento gravado no arquivo chega ao modelo.
+@Test func theWrittenTempoSurvivesImport() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <direction><direction-type><words>Allegretto</words></direction-type>
+        <sound tempo="120"/></direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>
+        <type>whole</type></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  #expect(score.tempo == 120)
+}
+
+/// Rule 138 — arquivo sem andamento não inventa um.
+@Test func aScoreWithoutTempoCarriesNone() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>
+        <type>whole</type></note>
+    </measure></part></score-partwise>
+    """
+
+  #expect(try MusicXMLImporter.score(from: Data(xml.utf8)).tempo == nil)
+}

@@ -82,6 +82,7 @@ struct EngravedPieceView: View {
       controller.showsTexts = value
       controller.renderInks()
     }
+    .onChange(of: judgesPedal) { _, value in controller.judgesPedal = value }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if !hub.isConnected {
         PianoKeyboardView { controller.play($0) }
@@ -91,10 +92,14 @@ struct EngravedPieceView: View {
       controller.onFinished = onFinished
       controller.loops = session.loopsNow
       controller.showsTexts = showsFingering
+      controller.judgesPedal = judgesPedal
       reload()
       hub.setListener(owner: controller) { [controller] event in
-        guard case .pressed(let pitch, _) = event else { return }
-        controller.play(pitch)
+        switch event {
+        case .pressed(let pitch, _): controller.play(pitch)
+        case .sustainPedal(let isDown): controller.setSustain(isDown)
+        case .released: break
+        }
       }
     }
     .onDisappear { hub.clearListener(owner: controller) }
@@ -133,6 +138,9 @@ struct EngravedPieceView: View {
 
   /// Whether written fingering is drawn, remembered between sessions.
   @AppStorage("pianova.showsFingering") private var showsFingering = true
+
+  /// Whether the written pedal is judged (rule 140), remembered like hands.
+  @AppStorage("pianova.judgesPedal") private var judgesPedal = false
 
   /// The tool the pencil holds, remembered between sessions.
   @AppStorage("pianova.annotationTool") private var annotationTool = "pen"

@@ -609,6 +609,22 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      **dinâmicas** de um sistema de piano ficam **entre as pautas**: abaixo
      da pauta de cima quando presas à melodia, acima da pauta de baixo
      quando presas ao baixo.
+137. O **Ouvir honra o ritornello**: a volta escrita toca duas vezes — chega
+     na barra de repetição, volta ao começo dela, segue adiante na segunda
+     passagem — e a página acompanha a volta. O julgamento continua linear
+     por enquanto: repetir a cobrança é assunto com decisões próprias.
+138. O **Ouvir toca no andamento escrito**: o arquivo que declara seu tempo
+     (o `sound tempo` que acompanha o "Allegretto") é tocado nele. Sem
+     andamento escrito, vale o tempo de leitura suave de sempre — ler não é
+     performar.
+139. O **Ouvir toca os ornamentos**: a grace soa rápida, roubando o instante
+     da nota que decora, como um pianista a executaria. O julgamento segue a
+     regra 127 — nem cobra, nem pune.
+140. O **pedal escrito pode ser avaliado** — opcional e desligável, como a
+     escolha de mãos. Ligado, um compasso com Ped. espera o pedal de sustain
+     (CC 64) pisado junto das notas dele, e o ✻ espera a troca; o pedal
+     errado não pune, apenas não completa — a mesma paciência do resto do
+     app. Desligado, as marcas são só leitura.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

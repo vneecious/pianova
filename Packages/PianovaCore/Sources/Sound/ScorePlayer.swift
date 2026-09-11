@@ -58,19 +58,41 @@ public final class ScorePlayer: ObservableObject {
     isPlaying = true
     column = first
 
+    // A full play-through honours the ritornello (rule 137); a passage under
+    // study is the player's own loop and stays as chosen.
+    let order =
+      (first == 0 && end == nil)
+      ? score.playbackColumns
+      : Array(first..<max(last, first))
+    let graces = score.columnGraces
+
     task = Task { [weak self] in
       guard let self else { return }
 
-      for index in first..<max(last, first) {
+      for index in order {
         if Task.isCancelled { break }
         let event = score.columns[index]
         column = index
+
+        // The ornament sounds quick, stealing its instant from the note it
+        // decorates (rule 139) — unless only the left hand plays, which is
+        // not where these ornaments live.
+        var remaining = event.duration.beats * beat
+        if hands != .left, graces.indices.contains(index) {
+          for pitch in graces[index] {
+            if Task.isCancelled { break }
+            tones.play(pitch, velocity: 66)
+            let stolen = min(0.09, remaining * 0.2)
+            remaining -= stolen
+            try? await Task.sleep(for: .seconds(stolen))
+          }
+        }
 
         for pitch in event.pitches(for: hands) {
           tones.play(pitch, velocity: 74)
         }
 
-        try? await Task.sleep(for: .seconds(event.duration.beats * beat))
+        try? await Task.sleep(for: .seconds(max(remaining, 0)))
       }
 
       if !Task.isCancelled { finish() }

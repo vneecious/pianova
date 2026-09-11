@@ -62,7 +62,22 @@ public final class EngravedPlayController: ObservableObject {
 
   /// The ornament pitches decorating each column, excused from judgement
   /// (rule 127): played, a grace neither advances nor punishes.
-  private var gracesOfColumn: [Set<Pitch>] = []
+  private var gracesOfColumn: [[Pitch]] = []
+
+  /// The pedal mark at each column, for the optional pedal judging.
+  private var pedalOfColumn: [PedalMark?] = []
+
+  /// Whether the written pedal is judged (rule 140) — optional, like hands.
+  public var judgesPedal = false
+
+  /// The sustain pedal's state right now, from the instrument.
+  public private(set) var sustainIsDown = false
+
+  /// Feeds the sustain pedal's state from the instrument.
+  /// - Parameter isDown: Whether the pedal is pressed.
+  public func setSustain(_ isDown: Bool) {
+    sustainIsDown = isDown
+  }
 
   /// What each staff carries at each column, for judging note by note.
   ///
@@ -122,7 +137,8 @@ public final class EngravedPlayController: ObservableObject {
     var columnOfEvent: [Int]
     var upperOfColumn: [Set<Pitch>]
     var lowerOfColumn: [Set<Pitch>]
-    var gracesOfColumn: [Set<Pitch>]
+    var gracesOfColumn: [[Pitch]]
+    var pedalOfColumn: [PedalMark?]
     var staffOfElement: [String: Int]
     var barOfColumn: [Int]
     var eventOfColumn: [Int: Int]
@@ -209,6 +225,7 @@ public final class EngravedPlayController: ObservableObject {
     let columns = score.columns
     let upperOfColumn = columns.map { Set($0.upper) }
     let gracesOfColumn = score.columnGraces
+    let pedalOfColumn = score.columnPedals
     let lowerOfColumn = columns.map { Set($0.lower) }
 
     let barOfColumn = columns.indices.map { score.measureNumber(atColumn: $0) }
@@ -249,6 +266,7 @@ public final class EngravedPlayController: ObservableObject {
       upperOfColumn: upperOfColumn,
       lowerOfColumn: lowerOfColumn,
       gracesOfColumn: gracesOfColumn,
+      pedalOfColumn: pedalOfColumn,
       staffOfElement: staffOfElement,
       barOfColumn: barOfColumn,
       eventOfColumn: Dictionary(
@@ -270,6 +288,7 @@ public final class EngravedPlayController: ObservableObject {
     upperOfColumn = engraved.upperOfColumn
     lowerOfColumn = engraved.lowerOfColumn
     gracesOfColumn = engraved.gracesOfColumn
+    pedalOfColumn = engraved.pedalOfColumn
     staffOfElement = engraved.staffOfElement
     barOfColumn = engraved.barOfColumn
     eventOfColumn = engraved.eventOfColumn
@@ -434,8 +453,18 @@ public final class EngravedPlayController: ObservableObject {
       if columnOfEvent.indices.contains(event) {
         let column = columnOfEvent[event]
         if gracesOfColumn.indices.contains(column),
-          gracesOfColumn[column].contains(pitch),
+          Set(gracesOfColumn[column]).contains(pitch),
           !judgedPitches[session.cursorIndex].contains(pitch)
+        {
+          return
+        }
+
+        // With pedal judging on (rule 140), a moment marked Ped. waits for
+        // the sustain pedal before its notes count — wrong pedal never
+        // punishes, it simply does not complete.
+        if judgesPedal, pedalOfColumn.indices.contains(column),
+          pedalOfColumn[column] == .down || pedalOfColumn[column] == .change,
+          !sustainIsDown
         {
           return
         }

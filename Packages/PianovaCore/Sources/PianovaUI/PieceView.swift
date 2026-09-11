@@ -91,6 +91,7 @@ struct PieceView: View {
       HStack(spacing: 12) {
         annotateMenu
         fingeringToggle
+        pedalToggle
 
         if startFrom > 0 {
           Button("Do começo") { startFrom = 0 }
@@ -160,6 +161,22 @@ struct PieceView: View {
     .help(showsFingering ? "Ocultar a digitação" : "Mostrar a digitação")
   }
 
+  /// Whether the written pedal is judged (rule 140), remembered like hands.
+  @AppStorage("pianova.judgesPedal") private var judgesPedal = false
+
+  /// Turns the pedal judging on and off — optional, like the choice of hands.
+  private var pedalToggle: some View {
+    Button {
+      judgesPedal.toggle()
+    } label: {
+      Image(systemName: "shoeprints.fill")
+        .font(.system(size: 13))
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(judgesPedal ? Theme.accent : .secondary)
+    .help(judgesPedal ? "Deixar de avaliar o pedal" : "Avaliar o pedal escrito")
+  }
+
   /// The pencil's tools: what it draws with, and the way out of a mess.
   private var annotateMenu: some View {
     Menu {
@@ -226,11 +243,12 @@ struct PieceView: View {
     }
   }
 
-  /// A tempo gentle enough to read at.
+  /// The tempo the piece asks for, or a gentle reading pace without one.
   ///
-  /// An imported score is usually marked at performance speed, and reading
-  /// speed is not performance speed.
+  /// A score that declares its tempo — the number behind the "Allegretto" —
+  /// is heard at it (rule 138). One that does not gets a pace to read at:
+  /// reading speed is not performance speed.
   private static func tempo(for score: Score) -> Double {
-    score.timeSignature.beatValue == .eighth ? 108 : 72
+    score.tempo ?? (score.timeSignature.beatValue == .eighth ? 108 : 72)
   }
 }

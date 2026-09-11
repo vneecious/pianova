@@ -192,6 +192,72 @@ import Testing
 
   #expect(graces.count == score.columns.count)
   #expect(graces[0].isEmpty)
-  #expect(graces[1] == Set([Pitch(76), Pitch(77)]), "a coluna decorada conhece suas graces")
+  #expect(graces[1] == [Pitch(76), Pitch(77)], "a coluna decorada conhece suas graces, em ordem")
   #expect(graces[2].isEmpty)
+}
+
+// MARK: - Rule 137: a ordem de execução honra o ritornello
+
+/// Rule 137 — a volta escrita toca duas vezes; o resto segue em frente.
+@Test func playbackOrderHonorsTheRepeat() {
+  let score = Score(
+    title: "Volta", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure(Array(repeating: ScoreNote(Pitch(60), .quarter), count: 3)),
+        Measure(
+          Array(repeating: ScoreNote(Pitch(64), .quarter), count: 3),
+          repeatStart: true, repeatEnd: true),
+        Measure(Array(repeating: ScoreNote(Pitch(67), .quarter), count: 3)),
+      ]))
+
+  // Compassos 0, 1, 1 de novo, 2 — em colunas: 3 de cada.
+  let order = score.playbackColumns
+  #expect(order == [0, 1, 2, 3, 4, 5, 3, 4, 5, 6, 7, 8])
+}
+
+/// Rule 137 — sem ritornello, a ordem é a própria sequência das colunas.
+@Test func playbackOrderIsLinearWithoutRepeats() {
+  let score = Score(
+    title: "Reta", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure(Array(repeating: ScoreNote(Pitch(60), .quarter), count: 3)),
+        Measure(Array(repeating: ScoreNote(Pitch(64), .quarter), count: 3)),
+      ]))
+
+  #expect(score.playbackColumns == Array(0..<6))
+}
+
+// MARK: - Rule 140: o pedal de cada coluna, para a avaliação opcional
+
+/// Rule 140 — a partitura sabe a marca de pedal de cada coluna: é o que a
+/// avaliação opcional de pedal consulta.
+@Test func columnsKnowTheirPedalMarks() {
+  let score = Score(
+    title: "Pedalada", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [Measure(Array(repeating: ScoreNote(Pitch(72), .quarter), count: 3))]),
+    leftHand: Part(
+      clef: .bass,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(45)], duration: Duration(.quarter), pedal: .down),
+          ScoreNote(pitches: [Pitch(52)], duration: Duration(.quarter)),
+          ScoreNote(pitches: [Pitch(52)], duration: Duration(.quarter), pedal: .up),
+        ])
+      ]))
+
+  let pedals = score.columnPedals
+
+  #expect(pedals.count == score.columns.count)
+  #expect(pedals[0] == .down)
+  #expect(pedals[1] == nil)
+  #expect(pedals[2] == .up)
 }

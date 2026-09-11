@@ -152,7 +152,8 @@ public enum MusicXMLImporter {
       key: KeySignature(fifths: parser.fifths),
       rightHand: Part(clef: .treble, measures: right),
       leftHand: hasLeft ? Part(clef: .bass, measures: left) : nil,
-      hasPickup: isPickup(right.first, parser: parser))
+      hasPickup: isPickup(right.first, parser: parser),
+      tempo: parser.tempo)
   }
 
   /// Builds one bar from events that may overlap and may be out of order.
@@ -321,6 +322,6 @@ extension Score {
   public func retitled(_ title: String) -> Score {
     Score(
       title: title, composer: composer, timeSignature: timeSignature, key: key,
-      rightHand: rightHand, leftHand: leftHand, hasPickup: hasPickup)
+      rightHand: rightHand, leftHand: leftHand, hasPickup: hasPickup, tempo: tempo)
   }
 }

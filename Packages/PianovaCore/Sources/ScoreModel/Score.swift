@@ -338,6 +338,12 @@ public struct Score: Equatable, Sendable {
   /// that bars must fill.
   public let hasPickup: Bool
 
+  /// The written tempo in crotchets per minute, when the edition declares one.
+  ///
+  /// "Allegretto" is the word; this is its number (rule 138). `nil` means the
+  /// file said nothing, and listening falls back to a gentle reading pace.
+  public let tempo: Double?
+
   /// Creates a score.
   /// - Parameters:
   ///   - title: The title shown to the player.
@@ -347,6 +353,7 @@ public struct Score: Equatable, Sendable {
   ///   - rightHand: The right hand part.
   ///   - leftHand: The left hand part, or `nil` for one hand.
   ///   - hasPickup: Whether the piece begins on an upbeat.
+  ///   - tempo: The written tempo in crotchets per minute, if declared.
   public init(
     title: String,
     composer: String,
@@ -354,7 +361,8 @@ public struct Score: Equatable, Sendable {
     key: KeySignature = .c,
     rightHand: Part,
     leftHand: Part? = nil,
-    hasPickup: Bool = false
+    hasPickup: Bool = false,
+    tempo: Double? = nil
   ) {
     self.title = title
     self.composer = composer
@@ -363,6 +371,7 @@ public struct Score: Equatable, Sendable {
     self.rightHand = rightHand
     self.leftHand = leftHand
     self.hasPickup = hasPickup
+    self.tempo = tempo
   }
 
   /// Whether the piece needs both hands, and so a grand staff.
@@ -481,8 +490,8 @@ public struct Score: Equatable, Sendable {
   /// Judging uses this in reverse: an ornament is never demanded, and played
   /// it is never wrong — whoever reads the grace and plays it is not
   /// punished for the note the edition wrote.
-  public var columnGraces: [Set<Pitch>] {
-    var decorating: [Double: Set<Pitch>] = [:]
+  public var columnGraces: [[Pitch]] {
+    var decorating: [Double: [Pitch]] = [:]
 
     for part in [rightHand, leftHand].compactMap({ $0 }) {
       var elapsed = 0.0
@@ -490,13 +499,69 @@ public struct Score: Equatable, Sendable {
         // The same quantised grid the columns use, so the keys meet.
         let time = (elapsed * 720).rounded() / 720
         if !note.graces.isEmpty {
-          decorating[time, default: []].formUnion(note.graces.map(\.pitch))
+          decorating[time, default: []].append(contentsOf: note.graces.map(\.pitch))
         }
         elapsed += note.beats
       }
     }
 
     return columns.map { decorating[$0.beats] ?? [] }
+  }
+
+  /// The pedal mark at each column (rule 140), for the optional judging.
+  ///
+  /// The mark rides whichever hand's note carried it; merged per moment the
+  /// same way the columns are.
+  public var columnPedals: [PedalMark?] {
+    var marks: [Double: PedalMark] = [:]
+
+    for part in [rightHand, leftHand].compactMap({ $0 }) {
+      var elapsed = 0.0
+      for note in part.notes {
+        let time = (elapsed * 720).rounded() / 720
+        if let pedal = note.pedal, marks[time] == nil { marks[time] = pedal }
+        elapsed += note.beats
+      }
+    }
+
+    return columns.map { marks[$0.beats] }
+  }
+
+  /// The column order a straight play-through follows, ritornellos honoured
+  /// (rule 137): a repeated span plays twice, then the piece moves on.
+  ///
+  /// Judging stays linear; this order is the listener's.
+  public var playbackColumns: [Int] {
+    let bars = rightHand.measures
+    guard !bars.isEmpty else { return [] }
+
+    // Which columns each bar holds, from where the barlines fall.
+    let barlines = barlineColumns
+    var columnsOfBar: [[Int]] = [[]]
+    for column in columns.indices {
+      columnsOfBar[columnsOfBar.count - 1].append(column)
+      if barlines.contains(column) { columnsOfBar.append([]) }
+    }
+
+    var order: [Int] = []
+    var index = 0
+    var openRepeat: Int?
+    var taken = Set<Int>()
+
+    while index < bars.count {
+      if bars[index].repeatStart { openRepeat = index }
+      if columnsOfBar.indices.contains(index) { order += columnsOfBar[index] }
+
+      if bars[index].repeatEnd && !taken.contains(index) {
+        taken.insert(index)
+        index = openRepeat ?? 0
+        openRepeat = nil
+        continue
+      }
+      index += 1
+    }
+
+    return order
   }
 
   /// Indices of the columns that actually have to be played.

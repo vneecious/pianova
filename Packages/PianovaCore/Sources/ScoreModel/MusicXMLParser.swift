@@ -77,6 +77,9 @@ extension MusicXMLImporter {
     private(set) var fifths = 0
     private(set) var title = ""
     private(set) var composer = ""
+
+    /// The first written tempo, in crotchets per minute (rule 138).
+    private(set) var tempo: Double?
     private(set) var failure: MusicXMLError?
 
     private var element = ""
@@ -237,6 +240,12 @@ extension MusicXMLImporter {
         if attributes["type"] == "start" { event.isTiedToNext = true }
       case "creator":
         creatorType = attributes["type"] ?? ""
+      case "sound":
+        // The first declared tempo names the piece's pace; later ones are
+        // local nuances this player does not follow yet.
+        if tempo == nil, let declared = attributes["tempo"].flatMap(Double.init), declared > 0 {
+          tempo = declared
+        }
       default:
         break
       }
