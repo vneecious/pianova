@@ -102,6 +102,9 @@ struct PieceView: View {
             systemImage: preview.isPlaying ? "stop.fill" : "play.fill"
           )
           .font(.system(size: 13, weight: .medium))
+          // The icon morphs instead of swapping — the button is one thing
+          // changing state, not two buttons taking turns.
+          .contentTransition(.symbolEffect(.replace))
         }
         .buttonStyle(.plain)
         .foregroundStyle(Theme.accent)

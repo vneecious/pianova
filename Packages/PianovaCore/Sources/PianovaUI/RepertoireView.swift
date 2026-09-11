@@ -33,6 +33,15 @@ struct RepertoireView: View {
   @State private var mode: PlayMode = .free
 
   var body: some View {
+    // One container animating between the two, so entering a piece pushes the
+    // list away and leaving brings it back — the motion says where you went.
+    ZStack {
+      content
+    }
+    .animation(.spring(duration: 0.35, bounce: 0.12), value: playing?.title)
+  }
+
+  @ViewBuilder private var content: some View {
     if let score = playing {
       // Its own title bar, because selection has to take it over: while a
       // passage is picked out there is no way back to the list, the way Photos
@@ -45,8 +54,16 @@ struct RepertoireView: View {
       .padding(.top, 20)
       .padding(.bottom, 32)
       .id(score.title)
+      .transition(
+        .asymmetric(
+          insertion: .move(edge: .trailing).combined(with: .opacity),
+          removal: .move(edge: .trailing).combined(with: .opacity)))
     } else {
       list
+        .transition(
+          .asymmetric(
+            insertion: .move(edge: .leading).combined(with: .opacity),
+            removal: .move(edge: .leading).combined(with: .opacity)))
     }
   }
 

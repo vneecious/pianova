@@ -19,4 +19,14 @@ enum Haptics {
     generator.selectionChanged()
     #endif
   }
+
+  /// Marks a decision that stuck — entering study, finishing a passage.
+  ///
+  /// A different weight from the selection tick on purpose: adjusting and
+  /// committing should not feel the same in the hand either.
+  @MainActor static func confirmed() {
+    #if canImport(UIKit)
+    UINotificationFeedbackGenerator().notificationOccurred(.success)
+    #endif
+  }
 }

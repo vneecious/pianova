@@ -513,6 +513,14 @@ servir ao segundo e permitir o primeiro, e não o contrário.
 116. A tinta da página é **desenhada uma vez** e reaproveitada; por cima dela
      só se redesenha o que muda — destaques, seleção, alças. Uma peça longa
      não pode custar a tela inteira a cada tecla.
+117. **Gravar nunca congela a tela.** A gravação acontece fora dela; enquanto
+     dura, a tela diz o que está fazendo — abrir uma peça mostra progresso, e
+     regravar (zoom, estudo) mantém a página antiga à vista com um aviso
+     discreto. Um app parado sem explicação é um app quebrado, ainda que por
+     dois segundos.
+118. As **transições entre telas são animadas** e direcionais: entrar numa
+     peça empurra a lista para trás; sair a traz de volta. A animação é o que
+     diz de onde se veio e para onde se vai.
 
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o

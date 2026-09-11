@@ -23,6 +23,13 @@ public final class EngravedPlayController: ObservableObject {
   /// Which staff is not being practised, so the page can fade it.
   @Published public private(set) var quietStaff: Int?
 
+  /// Whether an engraving is running right now, for the screen to say so.
+  ///
+  /// Engraving a long piece takes seconds, and those seconds used to happen
+  /// on the main thread — the screen froze with no explanation, which reads
+  /// as broken. Now the work happens off it and this flag is the explanation.
+  @Published public private(set) var isEngraving = false
+
   /// Each page's ink as images, rendered off the main thread.
   ///
   /// Keyed by page and resting staff. The screen paints these once and draws
@@ -112,29 +119,67 @@ public final class EngravedPlayController: ObservableObject {
   /// larger, and the page reflows.
   public var pageUnits = 2100
 
+  /// The engraving under way, so a newer request replaces an older one.
+  private var engraveTask: Task<Void, Never>?
+
   /// Engraves a piece and prepares it to be played, reusing a ready engraving
   /// when there is one.
+  ///
+  /// A cache hit lands synchronously — leaving study must be immediate. A
+  /// miss engraves off the main thread, with ``isEngraving`` raised so the
+  /// screen can say what is happening instead of freezing.
   /// - Parameters:
   ///   - score: The piece.
   ///   - engraver: Who draws it.
-  public func load(_ score: Score, using engraver: ScoreEngraver) {
+  ///   - hands: The hand restriction to apply once the pages land.
+  public func load(
+    _ score: Score, using engraver: ScoreEngraver, hands: PracticeHands = .both
+  ) {
+    engraveTask?.cancel()
+
     if let ready = engravings.first(where: { $0.score == score && $0.units == pageUnits }) {
       apply(ready.engraved)
       remember(score, ready.engraved)
-      restrict(to: nil, hands: .both)
+      restrict(to: nil, hands: hands)
+      isEngraving = false
       return
     }
 
+    isEngraving = true
+    let units = pageUnits
+
+    engraveTask = Task.detached(priority: .userInitiated) { [weak self] in
+      let engraved = Self.engrave(score, with: engraver, units: units)
+
+      await MainActor.run { [weak self] in
+        guard let self, !Task.isCancelled else { return }
+        self.isEngraving = false
+
+        guard let engraved else {
+          self.failure = "Não consegui gravar esta partitura."
+          return
+        }
+
+        self.failure =
+          engraved.pages.isEmpty ? "A gravação não produziu página nenhuma." : nil
+        self.apply(engraved)
+        self.remember(score, engraved)
+        self.restrict(to: nil, hands: hands)
+        self.renderInks()
+      }
+    }
+  }
+
+  /// The whole engraving, done wherever it is called from.
+  private nonisolated static func engrave(
+    _ score: Score, with engraver: ScoreEngraver, units: Int
+  ) -> Engraving? {
     let xml = MusicXMLExporter.musicXML(for: score)
 
-    guard engraver.load(musicXML: xml, width: pageUnits, height: 2970) else {
-      failure = "Não consegui gravar esta partitura."
-      return
-    }
+    guard engraver.load(musicXML: xml, width: units, height: 2970) else { return nil }
 
     let pages = (1...max(engraver.pageCount, 1)).compactMap { engraver.page($0) }
     let events = engraver.events()
-    failure = pages.isEmpty ? "A gravação não produziu página nenhuma." : nil
 
     let columnOfEvent = score.soundingColumns
 
@@ -169,7 +214,7 @@ public final class EngravedPlayController: ObservableObject {
       for id in ids { barOfMeasureID[id] = bar }
     }
 
-    let engraved = Engraving(
+    return Engraving(
       pages: pages,
       events: events,
       columnOfEvent: columnOfEvent,
@@ -184,10 +229,6 @@ public final class EngravedPlayController: ObservableObject {
           page.measureFrame(id).map { (bar: bar, frame: $0) }
         }
       })
-
-    apply(engraved)
-    remember(score, engraved)
-    restrict(to: nil, hands: .both)
   }
 
   /// Swaps a ready engraving in.

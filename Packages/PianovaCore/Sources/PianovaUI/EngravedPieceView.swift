@@ -32,15 +32,46 @@ struct EngravedPieceView: View {
           .foregroundStyle(ItemState.failed.color)
           .frame(maxWidth: .infinity, minHeight: 200)
       } else if controller.pages.isEmpty {
-        Text("Gravando…")
-          .font(.system(size: 13))
-          .foregroundStyle(.secondary)
-          .frame(maxWidth: .infinity, minHeight: 200)
+        // Opening a long piece takes a moment; the screen says so instead of
+        // freezing. Progress plus the piece's name, so the wait reads as
+        // intentional and not as a hang.
+        VStack(spacing: 14) {
+          ProgressView()
+            .controlSize(.large)
+          Text("Gravando a partitura…")
+            .font(.system(size: 14, weight: .medium))
+          Text(score.title)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .transition(.opacity)
       } else {
         pages
           .frame(maxHeight: .infinity, alignment: .top)
+          .transition(.opacity)
+          // A re-engrave — zoom, entering study — keeps the old page in view
+          // with a quiet word, never a blank screen.
+          .overlay(alignment: .top) {
+            if controller.isEngraving {
+              HStack(spacing: 8) {
+                ProgressView()
+                  .controlSize(.small)
+                Text("Regravando…")
+                  .font(.system(size: 12, weight: .medium))
+              }
+              .padding(.horizontal, 14)
+              .padding(.vertical, 8)
+              .background(.regularMaterial, in: Capsule())
+              .shadow(color: Theme.shadow(colorScheme), radius: 8, y: 2)
+              .padding(.top, 10)
+              .transition(.move(edge: .top).combined(with: .opacity))
+            }
+          }
       }
     }
+    .animation(.easeInOut(duration: 0.25), value: controller.pages.first?.id)
+    .animation(.easeInOut(duration: 0.2), value: controller.isEngraving)
     .onChange(of: session.phase) { was, now in
       // Entering or leaving study is the one thing that changes the page:
       // study engraves the passage alone, everything else engraves the piece.
@@ -115,8 +146,9 @@ struct EngravedPieceView: View {
   private func reload() {
     guard let engraver else { return }
     controller.pageUnits = Int(2100 / zoom)
-    controller.load(shown, using: engraver)
-    controller.restrict(to: nil, hands: session.phase == .studying ? session.hands : .both)
+    controller.load(
+      shown, using: engraver,
+      hands: session.phase == .studying ? session.hands : .both)
     refreshSelection()
     shownSystem = nil
     controller.renderInks()
@@ -328,6 +360,7 @@ struct EngravedPieceView: View {
   /// does.
   private func studyPill(for range: PracticeRange) -> some View {
     Button {
+      Haptics.confirmed()
       withAnimation(.easeOut(duration: 0.22)) { session.commit() }
     } label: {
       HStack(spacing: 8) {

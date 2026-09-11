@@ -42,6 +42,7 @@ struct PracticeBar: View {
         Button(action: onListen) {
           Label(isPlaying ? "Parar" : "Ouvir", systemImage: isPlaying ? "stop.fill" : "play.fill")
             .font(.system(size: 12, weight: .medium))
+            .contentTransition(.symbolEffect(.replace))
         }
       }
 
