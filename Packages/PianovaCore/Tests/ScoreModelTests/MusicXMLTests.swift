@@ -304,3 +304,31 @@ private let twoVoices = """
 
   #expect(score.rightHand.measures.first?.notes.first?.fingers.isEmpty == true)
 }
+
+// MARK: - Rule 127: ornamentos não são julgados
+
+/// Rule 127 — uma grace note não derruba a peça nem entra no julgamento.
+///
+/// Ela não tem duração própria, e era por isso que o importador recusava o
+/// arquivo inteiro ("compasso 5 tem uma nota sem duração") — a valsa de
+/// Chopin caiu exatamente aí.
+@Test func aGraceNoteIsSkippedNotFatal() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <note><grace/><pitch><step>B</step><octave>4</octave></pitch>
+        <type>eighth</type></note>
+      <note><pitch><step>A</step><octave>4</octave></pitch><duration>2</duration>
+        <type>half</type></note>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration>
+        <type>half</type></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  let first = try #require(score.rightHand.measures.first?.notes.first)
+
+  #expect(first.pitches == [Pitch(69)], "a grace note não pode entrar no acorde")
+  #expect(score.rightHand.measures.first?.notes.count == 2)
+}

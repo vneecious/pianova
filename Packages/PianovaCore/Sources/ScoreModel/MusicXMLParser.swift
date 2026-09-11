@@ -13,6 +13,8 @@ extension MusicXMLImporter {
     var isChord = false
     /// Whether it is tied into what follows.
     var isTiedToNext = false
+    /// Whether it is a grace note — an ornament with no time of its own.
+    var isGrace = false
     /// Written fingering, one number per pitch of this raw note.
     var fingers: [Int] = []
     /// When it begins, in divisions from the start of its bar.
@@ -125,6 +127,8 @@ extension MusicXMLImporter {
         octave = 4
       case "chord":
         event.isChord = true
+      case "grace":
+        event.isGrace = true
       case "rest":
         event.pitches = []
       case "tie":
@@ -196,6 +200,11 @@ extension MusicXMLImporter {
       case "note":
         inNote = false
         event.part = max(partIndex, 0)
+
+        // An ornament has no time of its own and is not judged: kept, it
+        // would be demanded together with the chord it decorates; refused, it
+        // took the whole piece down with it. Skipped, the music reads on.
+        if event.isGrace { break }
 
         // A chord shares the moment of the note it hangs off, and does not move
         // the cursor; anything else starts where the cursor is and advances it.

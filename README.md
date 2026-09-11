@@ -550,7 +550,11 @@ servir ao segundo e permitir o primeiro, e não o contrário.
 126. Excluir uma peça importada **pede confirmação** e diz o que vai
      acontecer: o arquivo sai também da pasta Pianova do Arquivos. Apagar o
      arquivo do dono sem perguntar não é um gesto, é um acidente esperando.
-127. A partitura aceita **anotações à caneta**: a Apple Pencil desenha sobre
+127. **Ornamentos não são julgados.** Uma grace note não tem tempo próprio;
+     exigi-la junto do acorde seria julgar errado, e recusar a peça inteira
+     por causa dela era pior. O importador aceita o arquivo e pula o
+     ornamento — execução de ornamento é assunto para depois.
+128. A partitura aceita **anotações à caneta**: a Apple Pencil desenha sobre
      a página a qualquer momento, o dedo nunca desenha — dedo rola, seleciona
      e toca, como sempre. As anotações **persistem por peça e por zoom**
      (a página que reflui é outra página), e o botão Anotar traz a paleta de
