@@ -18,25 +18,3 @@ extension EnvironmentValues {
     set { self[ScoreEngraverKey.self] = newValue }
   }
 }
-
-/// Which renderer draws a piece.
-///
-/// Both exist while they are being compared: one is the app's own staff, the
-/// other a real engraver. Same piece, same screen, one switch.
-public enum ScoreRenderer: String, CaseIterable, Identifiable, Sendable {
-  /// The staff this app draws itself.
-  case own
-  /// Verovio, the engraving tradition MuseScore and Finale follow.
-  case engraved
-
-  /// Stable identity for `ForEach`.
-  public var id: String { rawValue }
-
-  /// The name shown to the player.
-  public var title: String {
-    switch self {
-    case .own: return "Pauta própria"
-    case .engraved: return "Gravação"
-    }
-  }
-}

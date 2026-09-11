@@ -161,12 +161,9 @@ public struct LessonView: View {
         onFinished: { controller.completeStep() })
 
     case .song(let song):
-      PlayStepView(
-        exercise: Self.exercise(for: song),
-        clef: song.clef,
-        title: "\(song.title) — \(song.composer)",
-        hub: hub,
-        score: song,
+      // A written piece goes to the engraver, wherever it appears.
+      EngravedPieceView(
+        hub: hub, score: song,
         onFinished: { controller.completeStep() })
 
     case .technique(let exercise):

@@ -78,18 +78,7 @@ struct PlayStepView: View {
     VStack(alignment: .leading, spacing: 18) {
       header
 
-      if let score {
-        // A written piece is laid out as printed music: systems down the page,
-        // scrolled by the cursor and by hand.
-        ScoreSheetView(
-          score: score,
-          states: columnStates,
-          focusColumn: Int(focusColumn),
-          staffSpace: 16
-        )
-        .frame(minHeight: 300)
-        .padding(.horizontal, 8)
-      } else if isGrandStaff {
+      if isGrandStaff {
         // A generated two-handed drill has no written staves, so pitch is all
         // there is to go on — which is right here and wrong for real music.
         GrandStaffView(

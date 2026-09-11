@@ -31,6 +31,7 @@ public struct RootView: View {
 
   @State private var screen: Screen = .trail
   @State private var unlocksEverything = false
+  @Environment(\.colorScheme) private var colorScheme
 
   /// The theme, remembered between sessions.
   @AppStorage("pianova.appearance") private var appearanceChoice = Appearance.system.rawValue
@@ -57,6 +58,8 @@ public struct RootView: View {
       }
     }
     .frame(minWidth: 820, minHeight: 620)
+    .background(Theme.background(colorScheme))
+    .tint(Theme.accent)
     .preferredColorScheme(appearance.colorScheme)
     .onAppear {
       // The sound routing follows the instrument: plug the piano in and the app
@@ -75,7 +78,8 @@ public struct RootView: View {
   private var home: some View {
     VStack(alignment: .leading, spacing: 0) {
       header
-      Divider()
+        .background(Theme.surface(colorScheme))
+      Divider().overlay(Theme.border(colorScheme))
 
       switch screen {
       case .free:

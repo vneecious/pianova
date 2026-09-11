@@ -211,21 +211,7 @@ struct RhythmStepView: View {
     VStack(alignment: .leading, spacing: 18) {
       header
 
-      if let score {
-        ScoreSheetView(
-          score: score,
-          states: states,
-          focusColumn: controller.session.index,
-          staffSpace: 16,
-          playhead: controller.phase == .playing
-            ? PlayheadPosition(
-              column: controller.playheadPosition.column,
-              progress: controller.playheadPosition.progress)
-            : nil
-        )
-        .frame(minHeight: 260)
-        .padding(.horizontal, 8)
-      } else {
+      Group {
         ZStack(alignment: .topLeading) {
           StaffView(
             clef: clef,

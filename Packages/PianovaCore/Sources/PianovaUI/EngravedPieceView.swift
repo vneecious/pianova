@@ -12,6 +12,7 @@ struct EngravedPieceView: View {
   @EnvironmentObject private var preview: ScorePlayer
   @StateObject private var controller = EngravedPlayController()
   @ObservedObject var hub: MIDIHub
+  @Environment(\.colorScheme) private var colorScheme
 
   let score: Score
   let onFinished: () -> Void
@@ -120,8 +121,9 @@ struct EngravedPieceView: View {
               zoom: shrink
             )
             .overlay(alignment: .top) { systemAnchors(for: page) }
+            .padding(.vertical, 18)
+            .asPage(colorScheme)
             .id(index)
-            .padding(.bottom, 12)
           }
         }
         .padding(.horizontal, 8)

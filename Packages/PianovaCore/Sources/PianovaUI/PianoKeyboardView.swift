@@ -18,6 +18,7 @@ public struct PianoKeyboardView: View {
   public let onPress: (Pitch) -> Void
 
   @EnvironmentObject private var tones: TonePlayer
+  @Environment(\.colorScheme) private var colorScheme
   @State private var pressed: Pitch?
 
   /// Creates a keyboard.
@@ -49,6 +50,9 @@ public struct PianoKeyboardView: View {
       .padding(.horizontal, 1)
     }
     .frame(height: height + 10)
+    .padding(.vertical, 8)
+    .background(Theme.surface(colorScheme))
+    .overlay(alignment: .top) { Divider().overlay(Theme.border(colorScheme)) }
     // Opens around the middle of the span rather than at the far left, so the
     // hand starts near middle C without the keyboard pointing at an answer.
     .defaultScrollAnchor(.center)
