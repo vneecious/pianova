@@ -171,16 +171,19 @@ public enum MusicXMLImporter {
     repeatStart: Bool = false,
     repeatEnd: Bool = false
   ) throws -> Measure {
-    let sounding = events.filter { !$0.pitches.isEmpty }
+    let sounding = events.filter { !$0.pitches.isEmpty && !$0.isGrace }
 
-    for event in events where event.divisions <= 0 && !event.isChord {
+    // An ornament legitimately has no duration; anything else without one has
+    // no place in time and poisons the bar.
+    for event in events where event.divisions <= 0 && !event.isChord && !event.isGrace {
       throw MusicXMLError.noteWithoutDuration(measure: number)
     }
 
     // Every moment anything starts — silences included, or a bar ending in a
     // rest would simply lose it. A moment where no voice sounds becomes a rest
     // column; a moment where one voice rests while another plays does not.
-    var moments = Set(events.filter { !$0.isChord }.map(\.start))
+    // An ornament opens no moment of its own: it decorates the note at its.
+    var moments = Set(events.filter { !$0.isChord && !$0.isGrace }.map(\.start))
     let barLength =
       events.map { $0.start + $0.divisions }.max()
       ?? Int(
@@ -200,9 +203,17 @@ public enum MusicXMLImporter {
       let struck = sounding.filter { $0.start == moment }
       // Marks come from every event at the moment, rests included: a dynamic
       // or a pedal written over a rest rides that rest, and gathering marks
-      // only from sounding events silently dropped them.
-      let marked = events.filter { $0.start == moment && !$0.isChord } + struck
+      // only from sounding events silently dropped them. Ornaments stay out:
+      // their little slur is theirs, not the column's.
+      let marked = events.filter { $0.start == moment && !$0.isChord && !$0.isGrace } + struck
       let pitches = struck.flatMap(\.pitches)
+
+      // The ornaments written at this moment, in file order, each carrying
+      // its own fingering (rule 127).
+      let ornaments = events.filter { $0.isGrace && $0.start == moment }
+        .compactMap { raw in
+          raw.pitches.first.map { GraceNote(pitch: $0, finger: raw.fingers.first ?? 0) }
+        }
 
       // Fingering rides its pitch through the merge and the sort. Zero means
       // "none written on this one", which keeps a partially fingered chord
@@ -233,7 +244,8 @@ public enum MusicXMLImporter {
           words: marked.compactMap(\.words).first,
           articulations: marked.reduce(into: Set<Articulation>()) {
             $0.formUnion($1.articulations)
-          }))
+          },
+          graces: ornaments))
     }
 
     return Measure(notes, repeatStart: repeatStart, repeatEnd: repeatEnd)

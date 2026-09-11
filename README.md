@@ -550,13 +550,20 @@ servir ao segundo e permitir o primeiro, e não o contrário.
 126. Excluir uma peça importada **pede confirmação** e diz o que vai
      acontecer: o arquivo sai também da pasta Pianova do Arquivos. Apagar o
      arquivo do dono sem perguntar não é um gesto, é um acidente esperando.
-127. **Ornamentos não são julgados.** Uma grace note não tem tempo próprio;
-     exigi-la junto do acorde seria julgar errado, e recusar a peça inteira
-     por causa dela era pior. O importador aceita o arquivo e pula o
-     ornamento — execução de ornamento é assunto para depois.
+127. **Ornamentos são desenhados, não julgados.** Uma grace note não tem
+     tempo próprio; exigi-la junto do acorde seria julgar errado, e recusar a
+     peça inteira por causa dela era pior. O importador preserva o ornamento
+     ancorado à nota que ele decora — com a digitação que ele carrega e a
+     ligadurinha até a nota real — e a gravura o desenha miúdo, como o
+     impresso. O julgamento não o vê: a ponte com a gravura remove os
+     ornamentos do mapa de eventos e recola a nota decorada no tempo escrito,
+     para que destaque e cobrança sigam casados coluna a coluna — execução de
+     ornamento continua assunto para depois.
 128. O **pedal escrito atravessa o cano inteiro**: o importador preserva as
      marcas do arquivo, o modelo as carrega ancoradas às notas, e a gravura
-     desenha Ped. e o asterisco de soltar, como uma edição impressa.
+     desenha o estilo que a edição pediu — **linha com cantoneiras** quando o
+     arquivo escreve o pedal em linha, Ped. e o asterisco de soltar quando
+     escreve em sinais.
 129. A **oitava (8va/8vb)** é respeitada como notação: as alturas continuam
      sendo as que soam — o julgamento não muda — e a gravura desenha a linha
      de oitava em vez de empilhar linhas suplementares.
@@ -568,6 +575,10 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      e toca, como sempre. As anotações **persistem por peça e por zoom**
      (a página que reflui é outra página), e o botão Anotar traz a paleta de
      ferramentas para trocar tinta ou apagar.
+132. Os **sinais escritos na nota** — staccato, acento, tenuto e o trilo —
+     atravessam o cano e são desenhados onde a edição os pôs. Como toda
+     notação de leitura, não mudam o julgamento: o trilo é ornamento e
+     ornamento não é cobrado (regra 127).
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

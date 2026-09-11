@@ -194,6 +194,81 @@ private let simple = Score(
   #expect(xml.contains("<pedal type=\"stop\""))
 }
 
+/// Rule 128 — pedal escrito em linha sai como linha, não como sinais.
+@Test func pedalLineStyleExportsAsLine() {
+  let score = Score(
+    title: "Pedal em linha", composer: "—",
+    rightHand: Part(
+      clef: .bass,
+      measures: [
+        Measure([
+          ScoreNote(
+            pitches: [Pitch(48)], duration: Duration(.half), pedal: .down, pedalLine: true),
+          ScoreNote(pitches: [Pitch(55)], duration: Duration(.half), pedal: .up, pedalLine: true),
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.contains("<pedal type=\"start\" line=\"yes\""))
+  #expect(xml.contains("<pedal type=\"stop\" line=\"yes\""))
+  #expect(!xml.contains("line=\"no\""))
+}
+
+/// Rule 128 — pedal em sinais continua saindo como sinais.
+@Test func pedalSignStyleStaysSigns() {
+  let score = Score(
+    title: "Pedal em sinais", composer: "—",
+    rightHand: Part(
+      clef: .bass,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(48)], duration: Duration(.half), pedal: .down),
+          ScoreNote(pitches: [Pitch(55)], duration: Duration(.half), pedal: .up),
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.contains("<pedal type=\"start\" line=\"no\""))
+  #expect(!xml.contains("line=\"yes\""))
+}
+
+/// Rule 127 — os ornamentos saem desenhados: <grace/> antes da nota, miúdos,
+/// com a digitação que carregam e a ligadurinha até a nota real.
+@Test func gracesExportBeforeTheirNote() {
+  let score = Score(
+    title: "Graces", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(
+            pitches: [Pitch(83)], duration: Duration(.whole),
+            graces: [
+              GraceNote(pitch: Pitch(83), finger: 2), GraceNote(pitch: Pitch(84), finger: 4),
+            ]
+          )
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.contains("<grace/>"))
+  // A grace vem ANTES da nota decorada.
+  let graceAt = xml.range(of: "<grace/>")?.lowerBound
+  let mainAt = xml.range(of: "<duration>")?.lowerBound
+  #expect(graceAt != nil && mainAt != nil && graceAt! < mainAt!)
+  // A dupla de semicolcheias vai barrada, com a digitação escrita nela.
+  #expect(xml.contains("<beam number=\"1\">begin</beam>"))
+  #expect(xml.contains("<beam number=\"1\">end</beam>"))
+  #expect(xml.contains("<fingering>2</fingering>"))
+  #expect(xml.contains("<fingering>4</fingering>"))
+  // A ligadurinha do ornamento fecha na nota real, em voz própria de ligadura.
+  #expect(xml.contains("<slur type=\"start\" number=\"2\"/>"))
+  #expect(xml.contains("<slur type=\"stop\" number=\"2\"/>"))
+}
+
 /// Rule 129 — a oitava sai como <octave-shift> nos dois sentidos.
 @Test func ottavaExportsAsOctaveShift() {
   let score = Score(
@@ -230,4 +305,24 @@ private let simple = Score(
 
   #expect(xml.contains("<slur type=\"start\""))
   #expect(xml.contains("<slur type=\"stop\""))
+}
+
+/// Rule 132 — o trilo sai como <trill-mark> dentro de <ornaments>, não
+/// misturado às articulações.
+@Test func aTrillExportsAsOrnament() {
+  let score = Score(
+    title: "Trinado", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(
+            pitches: [Pitch(76)], duration: Duration(.whole), articulations: [.trill])
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.contains("<ornaments><trill-mark/></ornaments>"))
+  #expect(!xml.contains("<articulations>"))
 }

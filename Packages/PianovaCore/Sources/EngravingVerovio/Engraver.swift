@@ -67,6 +67,12 @@ public final class Engraver: ScoreEngraver, @unchecked Sendable {
   ///
   /// This is the whole bridge between the engraver and the engine: each moment
   /// carries the identifiers to highlight and the pitches to judge against.
+  ///
+  /// Ornaments never cross it (rule 127). The engraver gives a grace note
+  /// time of its own — stolen from the note it decorates, which splits one
+  /// written moment into several and would put the ornament under judgement.
+  /// So graces leave the map here, and the decorated note returns to its
+  /// written moment, merged with whatever else sounds there.
   public func events() -> [EngravedEvent] {
     guard let data = toolkit.renderToTimemap("{}").data(using: .utf8),
       let entries = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
@@ -74,15 +80,47 @@ public final class Engraver: ScoreEngraver, @unchecked Sendable {
       return []
     }
 
-    return entries.compactMap { entry in
-      guard let starting = entry["on"] as? [String], !starting.isEmpty else { return nil }
-      let milliseconds = (entry["tstamp"] as? Double) ?? 0
+    var events: [EngravedEvent] = []
 
-      return EngravedEvent(
-        time: milliseconds / 1000,
-        elementIDs: starting,
-        pitches: starting.compactMap(pitch(of:)))
+    /// When the ornament run under way began — the written moment of the
+    /// note the run decorates.
+    var ornamentRunStart: TimeInterval?
+
+    for entry in entries {
+      guard let starting = entry["on"] as? [String], !starting.isEmpty else { continue }
+      let time = ((entry["tstamp"] as? Double) ?? 0) / 1000
+
+      let real = starting.filter { !isOrnament($0) }
+      let hasOrnaments = real.count < starting.count
+
+      if hasOrnaments && ornamentRunStart == nil { ornamentRunStart = time }
+      guard !real.isEmpty else { continue }
+
+      // A note delayed by the graces before it belongs at the moment the run
+      // began; a note with no run pending is already where it was written.
+      let written = ornamentRunStart ?? time
+      if !hasOrnaments { ornamentRunStart = nil }
+
+      let pitches = real.compactMap(pitch(of:))
+      if let last = events.last, abs(last.time - written) < 0.0005 {
+        events[events.count - 1] = EngravedEvent(
+          time: last.time, elementIDs: last.elementIDs + real, pitches: last.pitches + pitches)
+      } else {
+        events.append(EngravedEvent(time: written, elementIDs: real, pitches: pitches))
+      }
     }
+
+    return events
+  }
+
+  /// Whether a drawn element is an ornament — a grace note in the engraving.
+  private func isOrnament(_ id: String) -> Bool {
+    guard let data = toolkit.getElementAttr(id, "grace").data(using: .utf8),
+      let attributes = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    else {
+      return false
+    }
+    return attributes["grace"] != nil
   }
 
   /// The key one drawn note stands for.

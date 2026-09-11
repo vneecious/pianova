@@ -49,6 +49,27 @@ public enum PedalMark: String, Equatable, Sendable {
   case change
 }
 
+/// One ornament note, drawn small before the note it decorates.
+///
+/// It has no time of its own and is never judged (rule 127); what it carries
+/// is how it reads — the pitch and the fingering the edition wrote on it.
+public struct GraceNote: Equatable, Sendable {
+  /// The pitch, as written.
+  public let pitch: Pitch
+
+  /// Written fingering, or `0` for none.
+  public let finger: Int
+
+  /// Creates an ornament note.
+  /// - Parameters:
+  ///   - pitch: The pitch, as written.
+  ///   - finger: Written fingering, or `0` for none.
+  public init(pitch: Pitch, finger: Int = 0) {
+    self.pitch = pitch
+    self.finger = finger
+  }
+}
+
 /// A written octave line, anchored to the note where it starts or stops.
 ///
 /// Notation only: pitches in the model are always the sounding ones, so
@@ -63,7 +84,7 @@ public enum OttavaMark: String, Equatable, Sendable {
   case stop
 }
 
-/// A written articulation on one note.
+/// A written mark on one note: an articulation, or the trill.
 public enum Articulation: String, Equatable, Sendable, CaseIterable {
   /// Shortened, detached.
   case staccato
@@ -71,6 +92,8 @@ public enum Articulation: String, Equatable, Sendable, CaseIterable {
   case accent
   /// Held full, marked.
   case tenuto
+  /// The trill — an ornament sign; drawn, never judged (rule 127).
+  case trill
 }
 
 /// One written event of a piece: notes sounding together, or a rest.
@@ -121,6 +144,9 @@ public struct ScoreNote: Equatable, Sendable {
   /// The articulations written on this note.
   public let articulations: Set<Articulation>
 
+  /// The ornament notes drawn small before this one, in written order.
+  public let graces: [GraceNote]
+
   /// Creates a written event.
   /// - Parameters:
   ///   - pitches: The pitches sounding together, or empty for a rest.
@@ -135,12 +161,14 @@ public struct ScoreNote: Equatable, Sendable {
   ///   - dynamic: A dynamic written here, if any.
   ///   - words: A written word here, if any.
   ///   - articulations: The articulations written on this note.
+  ///   - graces: The ornament notes drawn small before this one.
   public init(
     pitches: [Pitch], duration: Duration, isTiedToNext: Bool = false, fingers: [Int] = [],
     pedal: PedalMark? = nil, pedalLine: Bool = false, ottava: OttavaMark? = nil,
     slurStart: Bool = false, slurStop: Bool = false,
     dynamic: String? = nil, words: String? = nil,
-    articulations: Set<Articulation> = []
+    articulations: Set<Articulation> = [],
+    graces: [GraceNote] = []
   ) {
     self.pitches = pitches
     self.duration = duration
@@ -154,6 +182,7 @@ public struct ScoreNote: Equatable, Sendable {
     self.dynamic = dynamic
     self.words = words
     self.articulations = articulations
+    self.graces = graces
   }
 
   /// A single note.

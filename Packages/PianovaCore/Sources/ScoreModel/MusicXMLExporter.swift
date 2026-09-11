@@ -104,6 +104,7 @@ public enum MusicXMLExporter {
     // A chord is written as one note followed by others marked `<chord/>`,
     // which is how MusicXML says "these share a moment".
     return directions(before: event, staff: staff)
+      + graceNotes(of: event, staff: staff, voice: voice)
       + event.pitches.enumerated()
       .map { index, pitch in
         let chord = index == 0 ? "" : "<chord/>"
@@ -139,11 +140,10 @@ public enum MusicXMLExporter {
           + "\(staffTag)</direction>")
     }
     if let pedal = event.pedal {
-      // Sign style for now, whatever the file used: the engraver drops the
-      // whole pedal lane when a line-style stream displeases it, and Ped. with
-      // the release star under the bass staff is the classic look anyway.
-      // Winning the line style back is a refinement, not a rescue.
-      let line = "no"
+      // The style the edition chose: a line with corner hooks, or Ped. with
+      // the release star. The engraver pairs a line's start and stop by their
+      // staff, so the staff tag below is what keeps the lane alive.
+      let line = event.pedalLine ? "yes" : "no"
 
       func mark(_ kind: String) -> String {
         "<direction placement=\"below\"><direction-type>"
@@ -162,6 +162,36 @@ public enum MusicXMLExporter {
     }
 
     return parts.joined()
+  }
+
+  /// The ornament notes drawn small before the note (rule 127).
+  ///
+  /// Written as `<grace/>` sixteenths — the figure ornament pairs are engraved
+  /// in — beamed as one group, fingered as the edition fingered them, and
+  /// slurred into the note they decorate. The slur takes number 2 so it never
+  /// collides with the phrase slur riding number 1.
+  private static func graceNotes(of event: ScoreNote, staff: Int?, voice: Int) -> String {
+    let staffTag = staff.map { "<staff>\($0)</staff>" } ?? ""
+    let count = event.graces.count
+
+    return event.graces.enumerated()
+      .map { index, grace in
+        var beams = ""
+        if count > 1 {
+          let position = index == 0 ? "begin" : (index == count - 1 ? "end" : "continue")
+          beams = "<beam number=\"1\">\(position)</beam><beam number=\"2\">\(position)</beam>"
+        }
+
+        var inner = index == 0 ? "<slur type=\"start\" number=\"2\"/>" : ""
+        if grace.finger > 0 {
+          inner += "<technical><fingering>\(grace.finger)</fingering></technical>"
+        }
+        let notations = inner.isEmpty ? "" : "<notations>\(inner)</notations>"
+
+        return "<note><grace/>\(pitch(grace.pitch))<voice>\(voice)</voice>"
+          + "<type>16th</type>\(staffTag)\(beams)\(notations)</note>"
+      }
+      .joined()
   }
 
   /// What is written on the note itself: fingering, slur, articulations.
@@ -183,17 +213,24 @@ public enum MusicXMLExporter {
       if event.slurStart && !slurBoth { inner += "<slur type=\"start\" number=\"1\"/>" }
       if event.slurStop && !slurBoth { inner += "<slur type=\"stop\" number=\"1\"/>" }
 
+      // The ornament's little slur closes on the note it decorates.
+      if !event.graces.isEmpty { inner += "<slur type=\"stop\" number=\"2\"/>" }
+
+      // The trill is an ornament and lives in its own container; mixing it
+      // into <articulations> makes engravers drop it.
       let marks = event.articulations
-        .map { articulation -> String in
+        .compactMap { articulation -> String? in
           switch articulation {
           case .staccato: return "<staccato/>"
           case .accent: return "<accent/>"
           case .tenuto: return "<tenuto/>"
+          case .trill: return nil
           }
         }
         .sorted()
         .joined()
       if !marks.isEmpty { inner += "<articulations>\(marks)</articulations>" }
+      if event.articulations.contains(.trill) { inner += "<ornaments><trill-mark/></ornaments>" }
     }
 
     return inner.isEmpty ? "" : "<notations>\(inner)</notations>"

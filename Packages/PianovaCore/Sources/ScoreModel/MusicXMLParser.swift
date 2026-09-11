@@ -185,6 +185,8 @@ extension MusicXMLImporter {
         event.articulations.insert(.accent)
       case "tenuto":
         event.articulations.insert(.tenuto)
+      case "trill-mark":
+        event.articulations.insert(.trill)
       case "direction":
         direction = OpenDirection()
       case "pedal":
@@ -288,13 +290,16 @@ extension MusicXMLImporter {
         inNote = false
         event.part = max(partIndex, 0)
 
-        // An ornament has no time of its own and is not judged: kept, it
-        // would be demanded together with the chord it decorates; refused, it
-        // took the whole piece down with it. Skipped, the music reads on —
-        // and skipped BEFORE the pending directions attach, or the ornament
-        // swallows the dynamic, the pedal and the octave line meant for the
-        // real note after it.
-        if event.isGrace { break }
+        // An ornament has no time of its own and is not judged (rule 127).
+        // It is kept — anchored where the cursor stands, so the importer can
+        // hang it on the note it decorates — but it takes no pending
+        // directions and moves no cursor: the dynamic, the pedal and the
+        // octave line written before it belong to the real note after it.
+        if event.isGrace {
+          event.start = cursor
+          measure.events.append(event)
+          break
+        }
 
         // Whatever direction was read since the last note belongs to the next
         // note on the direction's own staff — a pedal written under the bass

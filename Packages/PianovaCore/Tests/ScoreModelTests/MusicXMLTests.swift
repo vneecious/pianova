@@ -333,6 +333,62 @@ private let twoVoices = """
   #expect(score.rightHand.measures.first?.notes.count == 2)
 }
 
+/// Rule 127 — o ornamento é preservado ancorado à nota que decora, com a
+/// digitação que carrega; a nota real e as pendências não mudam.
+@Test func gracesSurviveImportAnchoredToTheirNote() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>4</divisions></attributes>
+      <direction><direction-type><dynamics><mf/></dynamics></direction-type></direction>
+      <note><grace/><pitch><step>B</step><octave>5</octave></pitch><type>16th</type>
+        <notations><technical><fingering>2</fingering></technical></notations></note>
+      <note><grace/><pitch><step>C</step><octave>6</octave></pitch><type>16th</type>
+        <notations><technical><fingering>4</fingering></technical></notations></note>
+      <note><pitch><step>B</step><octave>5</octave></pitch><duration>8</duration>
+        <type>half</type></note>
+      <note><pitch><step>A</step><octave>5</octave></pitch><duration>8</duration>
+        <type>half</type></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  let notes = try #require(score.rightHand.measures.first?.notes)
+
+  #expect(notes.count == 2, "o ornamento não cria coluna própria")
+  #expect(notes[0].pitches == [Pitch(83)])
+  #expect(
+    notes[0].graces == [
+      GraceNote(pitch: Pitch(83), finger: 2), GraceNote(pitch: Pitch(84), finger: 4),
+    ])
+  #expect(notes[0].dynamic == "mf", "a dinâmica atravessa o ornamento até a nota real")
+  #expect(notes[1].graces.isEmpty)
+}
+
+/// Rule 128 — o estilo de linha do pedal sobrevive à importação.
+@Test func pedalLineStyleSurvivesImport() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <direction><direction-type><pedal type="start" line="yes"/></direction-type></direction>
+      <note><pitch><step>C</step><octave>3</octave></pitch><duration>2</duration>
+        <type>half</type></note>
+      <direction><direction-type><pedal type="stop" line="yes"/></direction-type></direction>
+      <note><pitch><step>G</step><octave>3</octave></pitch><duration>2</duration>
+        <type>half</type></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  let notes = try #require(score.rightHand.measures.first?.notes)
+
+  #expect(notes[0].pedal == .down)
+  #expect(notes[0].pedalLine, "o arquivo escreveu linha; o modelo tem que lembrar")
+  #expect(notes[1].pedal == .up)
+  #expect(notes[1].pedalLine)
+}
+
 // MARK: - Rules 128-130: pedal, oitava e ligaduras atravessam o cano
 
 /// Rule 128 — as marcas de pedal do arquivo sobrevivem à importação.
@@ -399,6 +455,23 @@ private let twoVoices = """
   #expect(notes[0].slurStart)
   #expect(notes[1].slurStop)
   #expect(!notes[0].isTiedToNext, "ligadura de expressão não é ligadura de valor")
+}
+
+/// Rule 132 — o trilo escrito na nota sobrevive à importação.
+@Test func aTrillSurvivesImport() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>4</duration>
+        <type>whole</type><notations><ornaments><trill-mark/></ornaments></notations></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  let note = try #require(score.rightHand.measures.first?.notes.first)
+
+  #expect(note.articulations.contains(.trill))
 }
 
 /// Sonda — direção com `<staff>` num arquivo de pauta dupla chega à mão certa.

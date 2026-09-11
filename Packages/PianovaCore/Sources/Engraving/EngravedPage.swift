@@ -340,6 +340,24 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
             systemID: systemStack.last ?? nil))
       }
 
+    case "rect":
+      // The pedal line and its corner hooks are rectangles, not paths — a
+      // parser that reads only paths drops the whole pedal lane in silence.
+      guard let x = attributes["x"].flatMap(Double.init),
+        let y = attributes["y"].flatMap(Double.init),
+        let width = attributes["width"].flatMap(Double.init),
+        let height = attributes["height"].flatMap(Double.init)
+      else { break }
+
+      let rect = CGPath(rect: CGRect(x: x, y: y, width: width, height: height), transform: nil)
+      let placed = rect.copy(using: [transform]) ?? rect
+      shapes.append(
+        EngravedShape(
+          path: placed, isFilled: true, strokeWidth: 0,
+          elementID: ids.last ?? nil, kind: kinds.last ?? nil,
+          noteID: notes.last ?? nil, measureID: measures.last ?? nil,
+          staffNumber: staves.last ?? nil, systemID: systemStack.last ?? nil))
+
     case "use":
       let reference = (attributes["xlink:href"] ?? attributes["href"] ?? "")
         .trimmingCharacters(in: CharacterSet(charactersIn: "#"))
