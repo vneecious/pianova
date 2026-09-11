@@ -547,7 +547,10 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      (o `Documents` do app): o que se solta lá aparece no repertório, e o que
      se importa pelo app aparece lá. Uma biblioteca que o dono não consegue
      ver não é uma biblioteca.
-126. A partitura aceita **anotações à caneta**: a Apple Pencil desenha sobre
+126. Excluir uma peça importada **pede confirmação** e diz o que vai
+     acontecer: o arquivo sai também da pasta Pianova do Arquivos. Apagar o
+     arquivo do dono sem perguntar não é um gesto, é um acidente esperando.
+127. A partitura aceita **anotações à caneta**: a Apple Pencil desenha sobre
      a página a qualquer momento, o dedo nunca desenha — dedo rola, seleciona
      e toca, como sempre. As anotações **persistem por peça e por zoom**
      (a página que reflui é outra página), e o botão Anotar traz a paleta de

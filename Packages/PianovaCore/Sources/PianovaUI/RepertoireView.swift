@@ -29,6 +29,13 @@ struct RepertoireView: View {
   /// Why the last import was refused, if it was.
   @State private var importError: String?
 
+  /// The piece the player asked to delete, awaiting their certainty.
+  ///
+  /// Deleting removes the file itself from the Pianova folder — destroying
+  /// the owner's file without asking is not a gesture, it is an accident
+  /// waiting to happen.
+  @State private var pendingRemoval: String?
+
   /// How the open piece is being worked at.
   @State private var mode: PlayMode = .free
 
@@ -126,6 +133,24 @@ struct RepertoireView: View {
       .padding(32)
     }
     .onAppear { imported = library.scores().reversed() }
+    .confirmationDialog(
+      "Apagar \"\(pendingRemoval ?? "")\"?",
+      isPresented: Binding(
+        get: { pendingRemoval != nil },
+        set: { if !$0 { pendingRemoval = nil } }),
+      titleVisibility: .visible
+    ) {
+      Button("Apagar", role: .destructive) {
+        if let title = pendingRemoval {
+          library.remove(titled: title)
+          imported = library.scores().reversed()
+        }
+        pendingRemoval = nil
+      }
+      Button("Cancelar", role: .cancel) { pendingRemoval = nil }
+    } message: {
+      Text("O arquivo sai também da pasta Pianova do app Arquivos.")
+    }
   }
 
   private func sectionTitle(_ text: String) -> some View {
@@ -192,8 +217,7 @@ struct RepertoireView: View {
 
         if imported.contains(where: { $0.title == score.title }) {
           Button {
-            library.remove(titled: score.title)
-            imported = library.scores().reversed()
+            pendingRemoval = score.title
           } label: {
             Image(systemName: "trash")
               .font(.system(size: 12))
