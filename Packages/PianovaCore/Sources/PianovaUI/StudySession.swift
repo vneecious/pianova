@@ -72,20 +72,16 @@ public final class StudySession: ObservableObject {
 
   /// Applies one tap while selecting: the whole grammar of a tap in one place.
   ///
-  /// Inside the passage confirms — the tap of someone who already decided.
-  /// Beyond it widens. Off the staves entirely, it deselects, the way tapping
-  /// outside text does.
+  /// Beyond the passage widens it. Off the staves entirely, it deselects, the
+  /// way tapping outside text does. Inside it, nothing — confirming belongs to
+  /// the floating button alone, so no tap ever commits by accident.
   /// - Parameter bar: The bar under the tap, or `nil` for empty page.
   public func tap(_ bar: Int?) {
-    guard phase == .selecting, let range else { return }
+    guard phase == .selecting else { return }
 
     guard let bar else { return finish() }
 
-    if range.judges(bar: bar) {
-      commit()
-    } else {
-      extend(to: bar)
-    }
+    extend(to: bar)
   }
 
   /// Confirms the selection and enters study.

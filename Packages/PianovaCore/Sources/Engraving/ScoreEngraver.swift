@@ -38,6 +38,19 @@ public protocol ScoreEngraver: AnyObject, Sendable {
   @discardableResult
   func load(musicXML: String) -> Bool
 
+  /// Lays out a piece at a given page width, which is what zoom is.
+  ///
+  /// Fewer units across the page means fewer bars per line, each drawn
+  /// larger at the same display width — the page reflows instead of
+  /// stretching.
+  /// - Parameters:
+  ///   - musicXML: The piece, as MusicXML.
+  ///   - width: Page width, in tenths of a staff space.
+  ///   - height: Page height, in the same units.
+  /// - Returns: Whether it could be laid out.
+  @discardableResult
+  func load(musicXML: String, width: Int, height: Int) -> Bool
+
   /// How many pages the piece came to.
   var pageCount: Int { get }
 

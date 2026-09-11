@@ -23,6 +23,13 @@ public final class EngravedPlayController: ObservableObject {
   /// Which staff is not being practised, so the page can fade it.
   @Published public private(set) var quietStaff: Int?
 
+  /// Each page's ink as images, rendered off the main thread.
+  ///
+  /// Keyed by page and resting staff. The screen paints these once and draws
+  /// only highlights over them — the redraw-everything path is what froze
+  /// long pieces.
+  @Published public private(set) var inkMasks: [String: InkRasterizer.Masks] = [:]
+
   /// Why the piece could not be engraved, if it could not.
   @Published public private(set) var failure: String?
 
@@ -81,7 +88,7 @@ public final class EngravedPlayController: ObservableObject {
   /// stall that read as a dead button — and the second tap landed on whatever
   /// button appeared under the finger. The whole piece was engraved once
   /// already; it is restored, not redone.
-  private var engravings: [(score: Score, engraved: Engraving)] = []
+  private var engravings: [(score: Score, units: Int, engraved: Engraving)] = []
 
   /// Everything one engraving produced, kept together so it can be swapped in.
   private struct Engraving {
@@ -99,12 +106,19 @@ public final class EngravedPlayController: ObservableObject {
   /// Creates an empty controller, ready to be handed a piece.
   public init() {}
 
-  /// Engraves a piece and prepares it to be played.
+  /// Page width handed to the engraver, in its own units.
+  ///
+  /// Smaller is zoomed in: fewer units across the line, each bar drawn
+  /// larger, and the page reflows.
+  public var pageUnits = 2100
+
+  /// Engraves a piece and prepares it to be played, reusing a ready engraving
+  /// when there is one.
   /// - Parameters:
   ///   - score: The piece.
   ///   - engraver: Who draws it.
   public func load(_ score: Score, using engraver: ScoreEngraver) {
-    if let ready = engravings.first(where: { $0.score == score }) {
+    if let ready = engravings.first(where: { $0.score == score && $0.units == pageUnits }) {
       apply(ready.engraved)
       remember(score, ready.engraved)
       restrict(to: nil, hands: .both)
@@ -113,7 +127,7 @@ public final class EngravedPlayController: ObservableObject {
 
     let xml = MusicXMLExporter.musicXML(for: score)
 
-    guard engraver.load(musicXML: xml) else {
+    guard engraver.load(musicXML: xml, width: pageUnits, height: 2970) else {
       failure = "Não consegui gravar esta partitura."
       return
     }
@@ -191,9 +205,9 @@ public final class EngravedPlayController: ObservableObject {
 
   /// Keeps the most recent engravings, the piece and its current passage.
   private func remember(_ score: Score, _ engraved: Engraving) {
-    engravings.removeAll { $0.score == score }
-    engravings.insert((score, engraved), at: 0)
-    if engravings.count > 2 { engravings.removeLast(engravings.count - 2) }
+    engravings.removeAll { $0.score == score && $0.units == pageUnits }
+    engravings.insert((score, pageUnits, engraved), at: 0)
+    if engravings.count > 3 { engravings.removeLast(engravings.count - 3) }
   }
 
   /// Which bar sits under a point on a page, for dragging a handle across.
@@ -251,6 +265,31 @@ public final class EngravedPlayController: ObservableObject {
     let dx = max(frame.minX - point.x, 0, point.x - frame.maxX)
     let dy = max(frame.minY - point.y, 0, point.y - frame.maxY)
     return dx * dx + dy * dy
+  }
+
+  /// The key under which one page's ink lives right now.
+  /// - Parameter page: The page.
+  /// - Returns: Its cache key, tied to the staff at rest.
+  public func inkKey(for page: EngravedPage) -> String {
+    "\(page.id)|\(quietStaff ?? 0)"
+  }
+
+  /// Renders any page whose ink is not yet an image, off the main thread.
+  public func renderInks() {
+    for page in pages {
+      let key = inkKey(for: page)
+      guard inkMasks[key] == nil else { continue }
+      let quiet = quietStaff
+
+      Task.detached(priority: .userInitiated) {
+        let masks = InkRasterizer.masks(for: page, pixelWidth: 2400, quietStaff: quiet)
+        await MainActor.run { self.inkMasks[key] = masks }
+      }
+    }
+
+    // Pages from engravings gone by stay out of memory.
+    let alive = Set(pages.map { inkKey(for: $0) })
+    inkMasks = inkMasks.filter { alive.contains($0.key) }
   }
 
   /// The measures a passage covers on the page, for drawing it as selected.

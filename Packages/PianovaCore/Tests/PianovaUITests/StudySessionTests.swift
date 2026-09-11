@@ -46,14 +46,17 @@ import Testing
   #expect(session.range == PracticeRange(first: 2, last: 8))
 }
 
-/// Rule 108 — tocar dentro do trecho confirma: é o toque de quem já decidiu.
-@MainActor @Test func tappingInsideConfirmsTheSelection() {
+/// Rule 108 — tocar dentro do trecho não confirma nada: só o botão confirma.
+///
+/// Confirmar por toque parecia atalho e era armadilha — todo ajuste ficava a
+/// um dedo de virar compromisso.
+@MainActor @Test func tappingInsideConfirmsNothing() {
   let session = StudySession()
   session.begin(at: 2)
   session.extend(to: 6)
   session.tap(4)
 
-  #expect(session.phase == .studying)
+  #expect(session.phase == .selecting)
   #expect(session.range == PracticeRange(first: 2, last: 6))
 }
 

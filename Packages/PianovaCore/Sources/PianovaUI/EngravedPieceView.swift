@@ -49,6 +49,7 @@ struct EngravedPieceView: View {
     .onChange(of: session.range) { _, _ in refreshSelection() }
     .onChange(of: session.hands) { _, hands in
       controller.restrict(to: nil, hands: hands)
+      controller.renderInks()
     }
     .onChange(of: session.loops) { _, value in controller.loops = value }
     .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -83,11 +84,21 @@ struct EngravedPieceView: View {
   /// note makes the page rise and fall with each change of hand.
   @State private var shownSystem: String?
 
-  /// How many systems have to be on screen at once.
+  /// How many systems have to be on screen at once, fewer when zoomed in.
   ///
-  /// Two is the floor: with one, reading ahead is impossible — the line is
-  /// turned and only then discovered.
-  private static let systemsInView: CGFloat = 2.2
+  /// Two is the floor at rest: with one, reading ahead is impossible — the
+  /// line is turned and only then discovered. Zooming in is choosing size
+  /// over look-ahead, so the floor gives way with it.
+  private var systemsInView: CGFloat { max(1.1, 2.2 / zoom) }
+
+  /// How far in the page is, 1 being at rest.
+  ///
+  /// Applied by re-engraving at a narrower page, so the music reflows instead
+  /// of stretching.
+  @State private var zoom: CGFloat = 1
+
+  /// The pinch as it happens, shown by scaling until the reflow lands.
+  @State private var liveZoom: CGFloat = 1
 
   /// The bars marked on the page while a passage is being chosen.
   ///
@@ -103,10 +114,12 @@ struct EngravedPieceView: View {
   /// Engraves what the phase asks for and re-applies the study to it.
   private func reload() {
     guard let engraver else { return }
+    controller.pageUnits = Int(2100 / zoom)
     controller.load(shown, using: engraver)
     controller.restrict(to: nil, hands: session.phase == .studying ? session.hands : .both)
     refreshSelection()
     shownSystem = nil
+    controller.renderInks()
   }
 
   /// Marks the anchor bar while choosing, and nothing otherwise.
@@ -135,7 +148,7 @@ struct EngravedPieceView: View {
     }
 
     let atFullWidth = first.systemHeight / max(first.size.width, 1) * viewport.width
-    let allowed = viewport.height / Self.systemsInView
+    let allowed = viewport.height / systemsInView
     let shrink = min(1, allowed / max(atFullWidth, 1))
 
     return viewport.width * shrink
@@ -152,6 +165,7 @@ struct EngravedPieceView: View {
           ForEach(Array(controller.pages.enumerated()), id: \.offset) { index, page in
             EngravedScoreView(
               page: page,
+              masks: controller.inkMasks[controller.inkKey(for: page)],
               highlights: controller.highlights,
               onTap: { id in tapped(id) },
               onHoldDrag: { point, ended in
@@ -189,6 +203,19 @@ struct EngravedPieceView: View {
           scroller.scrollTo(system, anchor: .top)
         }
       }
+      // The pinch shows itself by scaling while it lasts; letting go
+      // re-engraves at the new size, so the page reflows — fewer bars per
+      // line closer up, more further out — instead of stretching a picture.
+      .scaleEffect(liveZoom, anchor: .top)
+      .simultaneousGesture(
+        MagnificationGesture()
+          .onChanged { liveZoom = $0 }
+          .onEnded { value in
+            zoom = min(max(zoom * value, 0.7), 2.0)
+            liveZoom = 1
+            reload()
+          }
+      )
     }
   }
 
@@ -264,8 +291,8 @@ struct EngravedPieceView: View {
     {
       GeometryReader { proxy in
         let scale = proxy.size.width / max(page.size.width, 1)
-        let above = union.minY * scale - 34
-        let x = min(max(union.midX * scale, 90), proxy.size.width - 90)
+        let above = union.minY * scale - 32
+        let x = min(max(union.midX * scale, 96), proxy.size.width - 96)
 
         Button {
           withAnimation(.easeOut(duration: 0.22)) { session.commit() }
@@ -286,7 +313,7 @@ struct EngravedPieceView: View {
         .buttonStyle(.plain)
         // Above the selection, as the edit menu sits above text — below it
         // only when there is no room above.
-        .position(x: x, y: above > 24 ? above : union.maxY * scale + 34)
+        .position(x: x, y: above > 30 ? above : union.maxY * scale + 38)
       }
       .allowsHitTesting(true)
     }

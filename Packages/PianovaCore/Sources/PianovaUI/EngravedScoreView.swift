@@ -2,16 +2,21 @@ import Engraving
 import ScoreModel
 import SwiftUI
 
-/// Draws an engraved page, with the notes being played picked out.
+/// Draws an engraved page: the ink as a cached image, the life as paths.
 ///
-/// Everything here is `Canvas`: the engraver hands over outlines and this draws
-/// them, so there is no web view and no JavaScript between a key being pressed
-/// and the screen reacting.
+/// The ink — thousands of paths — never changes while playing; what changes is
+/// a handful of highlights, the selection, the handles. So the ink is a tinted
+/// bitmap rendered once, and the canvas on top draws only what moved. Before
+/// this split, every key press redrew the whole page, and on a long piece that
+/// was the freeze.
 struct EngravedScoreView: View {
   @Environment(\.colorScheme) private var colorScheme
 
   /// The page to draw.
   let page: EngravedPage
+
+  /// The page's ink, rendered once — `nil` while it is still being drawn.
+  var masks: InkRasterizer.Masks?
 
   /// Identifiers to pick out, and how each should read.
   let highlights: [String: ItemState]
@@ -45,10 +50,7 @@ struct EngravedScoreView: View {
   /// is the leading handle, and whether the drag just ended.
   var onHandleDrag: ((CGPoint, Bool, Bool) -> Void)?
 
-  /// The staff not being practised, drawn faded.
-  ///
-  /// Faded and not removed: the other hand is the reference for what this one
-  /// has to fit into, and taking it away takes the reason for the passage.
+  /// The staff not being practised, whose ink is drawn faded.
   var quietStaff: Int?
 
   /// How wide to draw the page, in points.
@@ -64,21 +66,93 @@ struct EngravedScoreView: View {
     width * page.size.height / max(page.size.width, 1)
   }
 
+  /// Where the finger last touched, for a hold that has no location of its own.
+  @State private var lastTouch: CGPoint = .zero
+
   var body: some View {
     let scale = width / max(page.size.width, 1)
 
-    return Canvas { context, _ in
+    return ZStack(alignment: .topLeading) {
+      inkLayer
+      livingLayer(scale: scale)
+    }
+    .frame(width: width, height: height)
+    .overlay { handles(scale: scale) }
+    .contentShape(Rectangle())
+    // Records where the finger is without claiming the touch: a long press
+    // knows when it fired but never where, and this is the where.
+    .simultaneousGesture(
+      DragGesture(minimumDistance: 0, coordinateSpace: .local)
+        .onChanged { lastTouch = $0.location }
+    )
+    .onTapGesture { location in
+      if let onTap, let id = nearest(to: pagePoint(location, scale: scale)) { onTap(id) }
+      onTapAt?(pagePoint(location, scale: scale))
+    }
+    // Held, not dragged: the press has to win before any movement, so a finger
+    // that starts scrolling still scrolls instead of selecting a bar. The
+    // moment it wins — finger still down — the selection begins, and every
+    // movement after reports; that is how holding text behaves.
+    .gesture(
+      LongPressGesture(minimumDuration: 0.3)
+        .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
+        .onChanged { value in
+          switch value {
+          case .second(true, nil):
+            onHoldDrag?(pagePoint(lastTouch, scale: scale), false)
+          case .second(true, .some(let drag)):
+            onHoldDrag?(pagePoint(drag.location, scale: scale), false)
+          default:
+            break
+          }
+        }
+        .onEnded { value in
+          guard case .second(true, let drag) = value else { return }
+          onHoldDrag?(pagePoint(drag?.location ?? lastTouch, scale: scale), true)
+        }
+    )
+  }
+
+  /// The ink itself: masks tinted in the page's color, rendered once.
+  @ViewBuilder private var inkLayer: some View {
+    let ink = Color(PlatformColor.staffInk(colorScheme))
+
+    if let masks {
+      if let loud = masks.loud {
+        ink.mask(alignment: .topLeading) { maskImage(loud) }
+      }
+      if let quiet = masks.quiet {
+        ink.opacity(0.22).mask(alignment: .topLeading) { maskImage(quiet) }
+      }
+    } else {
+      // The first frames after an engrave, before the raster lands.
+      Color.clear
+    }
+  }
+
+  private func maskImage(_ image: CGImage) -> some View {
+    Image(decorative: image, scale: 1)
+      .resizable()
+      .frame(width: width, height: height)
+  }
+
+  /// Everything that moves: selection washes and highlighted notes.
+  ///
+  /// A handful of paths, so redrawing on every key press costs nothing — which
+  /// is the entire point of the split.
+  private func livingLayer(scale: CGFloat) -> some View {
+    Canvas { context, _ in
       context.scaleBy(x: scale, y: scale)
 
       // The selection sits under the music, the way an editor shades the bar
       // you clicked rather than covering it.
       for selected in selectedMeasures {
-        guard let box = page.measureFrame(selected) else { continue }
+        guard let box = page.measureFrames[selected] else { continue }
         let inset = box.insetBy(dx: -8, dy: -8)
         let shape = Path(roundedRect: inset, cornerRadius: 12)
 
         // Stronger on a dark page: the same wash that reads clearly on white
-        // all but disappears on black, which is where it was being looked at.
+        // paper disappears into black.
         context.fill(
           shape,
           with: .color(ItemState.current.color.opacity(colorScheme == .dark ? 0.28 : 0.15)))
@@ -88,39 +162,20 @@ struct EngravedScoreView: View {
           lineWidth: 3)
       }
 
-      for shape in page.shapes {
-        let path = Path(shape.path)
-        let colour = colour(for: shape)
+      for (id, state) in highlights {
+        for index in page.ownersIndex[id] ?? [] {
+          let shape = page.shapes[index]
+          let path = Path(shape.path)
 
-        if shape.isFilled {
-          context.fill(path, with: .color(colour))
-        } else {
-          context.stroke(path, with: .color(colour), lineWidth: shape.strokeWidth)
+          if shape.isFilled {
+            context.fill(path, with: .color(state.color))
+          } else {
+            context.stroke(path, with: .color(state.color), lineWidth: shape.strokeWidth)
+          }
         }
       }
     }
     .frame(width: width, height: height)
-    .overlay { handles(scale: scale) }
-    .contentShape(Rectangle())
-    .onTapGesture { location in
-      if let onTap, let id = element(at: location) { onTap(id) }
-      onTapAt?(CGPoint(x: location.x / scale, y: location.y / scale))
-    }
-    // Held, not dragged: the press has to win before any movement, so a finger
-    // that starts scrolling still scrolls instead of selecting a bar. Once it
-    // wins, every movement reports — the selection lives under the finger.
-    .gesture(
-      LongPressGesture(minimumDuration: 0.35)
-        .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
-        .onChanged { value in
-          guard case .second(true, let drag?) = value else { return }
-          onHoldDrag?(CGPoint(x: drag.location.x / scale, y: drag.location.y / scale), false)
-        }
-        .onEnded { value in
-          guard case .second(true, let drag?) = value else { return }
-          onHoldDrag?(CGPoint(x: drag.location.x / scale, y: drag.location.y / scale), true)
-        }
-    )
   }
 
   /// The grab handles at the selection's ends, draggable across bars.
@@ -157,38 +212,20 @@ struct EngravedScoreView: View {
     .gesture(
       DragGesture(minimumDistance: 0)
         .onChanged { value in
-          onHandleDrag?(
-            CGPoint(x: value.location.x / scale, y: value.location.y / scale),
-            isLeading, false)
+          onHandleDrag?(pagePoint(value.location, scale: scale), isLeading, false)
         }
         .onEnded { value in
-          onHandleDrag?(
-            CGPoint(x: value.location.x / scale, y: value.location.y / scale),
-            isLeading, true)
+          onHandleDrag?(pagePoint(value.location, scale: scale), isLeading, true)
         }
     )
   }
 
-  /// The ink for one shape: its highlight if it has one, otherwise the page's.
-  private func colour(for shape: EngravedShape) -> Color {
-    // The note first: a stem and a flag have identifiers of their own, and
-    // matching on those alone paints a note head and leaves the rest grey.
-    if let note = shape.noteID, let state = highlights[note] { return state.color }
-    if let id = shape.elementID, let state = highlights[id] { return state.color }
-
-    let ink = Color(PlatformColor.staffInk(colorScheme))
-    guard let quiet = quietStaff, shape.staffNumber == quiet else { return ink }
-
-    return ink.opacity(0.22)
+  /// A point on screen taken back into the page's own coordinates.
+  private func pagePoint(_ location: CGPoint, scale: CGFloat) -> CGPoint {
+    CGPoint(x: location.x / scale, y: location.y / scale)
   }
 
-  /// The element under a point on screen, in the page's own coordinates.
-  private func element(at location: CGPoint) -> String? {
-    let scale = width / max(page.size.width, 1)
-    return nearest(to: CGPoint(x: location.x / scale, y: location.y / scale))
-  }
-
-  /// The element whose box is nearest a point, for tapping a passage.
+  /// The element whose box is nearest a point, for tapping a note.
   private func nearest(to point: CGPoint) -> String? {
     var best: (id: String, distance: CGFloat)?
 
@@ -197,9 +234,11 @@ struct EngravedScoreView: View {
       let box = shape.path.boundingBoxOfPath
       guard box.width > 0 || box.height > 0 else { continue }
 
-      let centre = CGPoint(x: box.midX, y: box.midY)
-      let distance = hypot(centre.x - point.x, centre.y - point.y)
-      if distance < (best?.distance ?? .greatestFiniteMagnitude) {
+      let dx = max(box.minX - point.x, 0, point.x - box.maxX)
+      let dy = max(box.minY - point.y, 0, point.y - box.maxY)
+      let distance = dx * dx + dy * dy
+
+      if distance < (best?.distance ?? .infinity) {
         best = (id, distance)
       }
     }

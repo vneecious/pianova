@@ -2,7 +2,11 @@ import CoreGraphics
 import Foundation
 
 /// One drawable piece of an engraved page.
-public struct EngravedShape: Equatable {
+///
+/// `@unchecked` because of the `CGPath`: it is immutable once parsed, which is
+/// what makes sharing it across threads safe — the compiler just cannot see
+/// that.
+public struct EngravedShape: Equatable, @unchecked Sendable {
   /// The outline, already placed on the page.
   public let path: CGPath
 
@@ -49,66 +53,103 @@ public struct EngravedShape: Equatable {
 }
 
 /// A page of engraved music, ready to draw.
-public struct EngravedPage: Equatable {
+///
+/// Every lookup is a table built once when the page is read. They used to be
+/// scans over every shape, and a page has thousands — done per frame, that is
+/// what a frozen screen is made of.
+public struct EngravedPage: Equatable, @unchecked Sendable {
+  /// Tells this parse apart from any other, for caching what is drawn from it.
+  public let id: String
+
   /// The page's own coordinate system, from its `viewBox`.
   public let size: CGSize
 
   /// Everything on it, in drawing order.
   public let shapes: [EngravedShape]
 
-  /// Where a given element sits, for scrolling to it or drawing over it.
-  /// - Parameter id: The element identifier.
-  /// - Returns: Its bounding box, or `nil` if it is not on this page.
   /// The systems on this page, top to bottom, with where each sits.
-  public var systems: [(id: String, frame: CGRect)] {
-    var boxes: [String: CGRect] = [:]
-
-    for shape in shapes {
-      guard let system = shape.systemID else { continue }
-      let box = shape.path.boundingBoxOfPath
-      boxes[system] = boxes[system].map { $0.union(box) } ?? box
-    }
-
-    return boxes.map { (id: $0.key, frame: $0.value) }.sorted { $0.frame.minY < $1.frame.minY }
-  }
+  public let systems: [(id: String, frame: CGRect)]
 
   /// How tall a system is here, taking the tallest as the measure.
   ///
   /// Used to work out how much has to fit on screen: reading ahead means the
   /// next line being visible, and that is impossible if one line fills the view.
-  public var systemHeight: CGFloat {
-    systems.map(\.frame.height).max() ?? size.height
+  public let systemHeight: CGFloat
+
+  /// Which shapes belong to each note or element identifier.
+  public let ownersIndex: [String: [Int]]
+
+  /// Where each bar sits, for selections and hit-testing.
+  public let measureFrames: [String: CGRect]
+
+  /// Reads a page from its shapes, building every lookup once.
+  /// - Parameters:
+  ///   - size: The page's own coordinate system.
+  ///   - shapes: Everything on it, in drawing order.
+  public init(size: CGSize, shapes: [EngravedShape]) {
+    self.id = UUID().uuidString
+    self.size = size
+    self.shapes = shapes
+
+    var owners: [String: [Int]] = [:]
+    var measures: [String: CGRect] = [:]
+    var systemBoxes: [String: CGRect] = [:]
+
+    for (index, shape) in shapes.enumerated() {
+      let box = shape.path.boundingBoxOfPath
+
+      if let note = shape.noteID { owners[note, default: []].append(index) }
+      if let element = shape.elementID, element != shape.noteID {
+        owners[element, default: []].append(index)
+      }
+      if let measure = shape.measureID {
+        measures[measure] = measures[measure].map { $0.union(box) } ?? box
+      }
+      if let system = shape.systemID {
+        systemBoxes[system] = systemBoxes[system].map { $0.union(box) } ?? box
+      }
+    }
+
+    self.ownersIndex = owners
+    self.measureFrames = measures
+    self.systems =
+      systemBoxes
+      .map { (id: $0.key, frame: $0.value) }
+      .sorted { $0.frame.minY < $1.frame.minY }
+    self.systemHeight = systems.map(\.frame.height).max() ?? size.height
+  }
+
+  /// Two parses are the same page only if they are the same parse.
+  public static func == (left: EngravedPage, right: EngravedPage) -> Bool {
+    left.id == right.id
   }
 
   /// Which bar a given element was drawn in.
   /// - Parameter id: A note or element identifier.
   /// - Returns: The bar's identifier, or `nil` if it is not on this page.
   public func measure(containing id: String) -> String? {
-    shapes.first { $0.noteID == id || $0.elementID == id }?.measureID
+    ownersIndex[id]?.first.map { shapes[$0] }?.measureID
   }
 
   /// Where a bar sits, for drawing a selection over it.
   /// - Parameter id: The bar's identifier.
   /// - Returns: Its bounding box, or `nil` if it is not on this page.
   public func measureFrame(_ id: String) -> CGRect? {
-    let boxes = shapes.filter { $0.measureID == id }.map { $0.path.boundingBoxOfPath }
-    guard let first = boxes.first else { return nil }
-    return boxes.dropFirst().reduce(first) { $0.union($1) }
+    measureFrames[id]
   }
 
   /// Which system a given element was drawn in.
   /// - Parameter id: A note or element identifier.
   /// - Returns: The system's identifier, or `nil` if it is not on this page.
   public func system(containing id: String) -> String? {
-    shapes.first { $0.noteID == id || $0.elementID == id }?.systemID
+    ownersIndex[id]?.first.map { shapes[$0] }?.systemID
   }
 
   /// Where a given element sits, for scrolling to it or drawing over it.
   /// - Parameter id: A note or element identifier.
   /// - Returns: Its bounding box, or `nil` if it is not on this page.
   public func frame(of id: String) -> CGRect? {
-    let boxes = shapes.filter { $0.noteID == id || $0.elementID == id }
-      .map { $0.path.boundingBoxOfPath }
+    let boxes = (ownersIndex[id] ?? []).map { shapes[$0].path.boundingBoxOfPath }
     guard let first = boxes.first else { return nil }
     return boxes.dropFirst().reduce(first) { $0.union($1) }
   }

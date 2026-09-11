@@ -490,9 +490,8 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      **fora da pauta desfaz a seleção**, como tocar fora do texto. Nenhum
      gesto de ajuste confirma nada: ajustar e confirmar são atos diferentes.
 108. A confirmação é o botão **Estudar**, flutuando junto à seleção como o
-     menu de edição do iOS flutua junto ao texto — ou um toque **dentro do
-     próprio trecho**, que é o atalho de quem já decidiu. São os dois únicos
-     caminhos para o modo estudo.
+     menu de edição do iOS flutua junto ao texto. É o único caminho para o
+     modo estudo — nenhum toque na pauta confirma nada por acidente.
 109. O modo estudo é **sem distração**: só os compassos escolhidos ficam na
      tela, regravados. Estudo é trabalho de lupa, e o resto da peça na tela é
      o que a lupa existe para tirar.
@@ -508,6 +507,12 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      volta é **imediata**. A peça inteira já foi gravada uma vez; sair do
      estudo a restaura, não a regrava.
 114. O preview toca **o que está em estudo** — aqueles compassos, aquela mão.
+115. A **pinça** aproxima e afasta a partitura, e a página **reflui**: mais
+     perto, menos compassos por linha; mais longe, mais — como regravar, não
+     como esticar uma foto.
+116. A tinta da página é **desenhada uma vez** e reaproveitada; por cima dela
+     só se redesenha o que muda — destaques, seleção, alças. Uma peça longa
+     não pode custar a tela inteira a cada tecla.
 
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o
