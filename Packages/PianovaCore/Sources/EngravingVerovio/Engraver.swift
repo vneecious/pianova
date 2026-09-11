@@ -14,10 +14,12 @@ import VerovioToolkit
 public final class Engraver: ScoreEngraver, @unchecked Sendable {
   private let toolkit: VerovioToolkit
 
-  /// One caller at a time: the toolkit shares mutable state across every
-  /// call, and two loads racing — a size slider re-engraving per step while
-  /// the previous engrave still runs — corrupt it and crash inside the
-  /// engraver. Recursive because reading events asks for pitches within.
+  /// One caller at a time.
+  ///
+  /// The toolkit shares mutable state across every call, and two loads
+  /// racing — a size slider re-engraving per step while the previous engrave
+  /// still runs — corrupt it and crash inside the engraver. Recursive
+  /// because reading events asks for pitches within.
   private let lock = NSRecursiveLock()
 
   /// Creates an engraver, pointed at its own resources.
