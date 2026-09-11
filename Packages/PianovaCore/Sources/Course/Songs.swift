@@ -193,6 +193,101 @@ public enum Songs {
         m(n(60, .quarter, true), n(60, .quarter, true)),
       ]))
 
+  /// A march up and down the whole C major scale, written for the course.
+  ///
+  /// Own composition: the scale is the melody, thumb-under and all — a piece
+  /// that cannot be played without the movement the unit exists to teach.
+  public static let escalaReal = Score(
+    title: "Escala Real", composer: "Pianova",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        m(n(60), n(62), n(64), n(65)),
+        m(n(67), n(69), n(71), n(72)),
+        m(n(72, .half), n(71), n(69)),
+        m(n(67, .half), n(65, .half)),
+        m(n(64), n(65), n(67), n(69)),
+        m(n(67), n(65), n(64), n(62)),
+        m(n(60), n(64), n(67), n(64)),
+        m(n(60, .whole)),
+      ]))
+
+  /// The galop from Offenbach's Orphée aux enfers, arranged for the course.
+  ///
+  /// Own simplified setting of the public-domain melody: running eighths in
+  /// the five-finger position, with the left hand marking the pulse.
+  public static let canCan = Score(
+    title: "Can-Can", composer: "Offenbach",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        m(
+          n(64, .quarter), n(64, .quarter), n(64, .eighth), n(65, .eighth), n(64, .eighth),
+          n(62, .eighth)),
+        m(
+          n(60, .quarter), n(60, .quarter), n(60, .eighth), n(62, .eighth), n(60, .eighth),
+          n(59, .eighth)),
+        m(
+          n(57, .eighth), n(59, .eighth), n(60, .eighth), n(62, .eighth), n(64, .eighth),
+          n(62, .eighth), n(65, .eighth), n(64, .eighth)),
+        m(
+          n(62, .eighth), n(60, .eighth), n(62, .eighth), n(64, .eighth), n(62, .quarter),
+          n(59, .quarter)),
+        m(
+          n(64, .quarter), n(64, .quarter), n(64, .eighth), n(65, .eighth), n(64, .eighth),
+          n(62, .eighth)),
+        m(
+          n(60, .quarter), n(60, .quarter), n(60, .eighth), n(62, .eighth), n(60, .eighth),
+          n(59, .eighth)),
+        m(
+          n(57, .eighth), n(59, .eighth), n(60, .eighth), n(62, .eighth), n(64, .eighth),
+          n(62, .eighth), n(60, .eighth), n(59, .eighth)),
+        m(n(60, .half), n(60, .half)),
+      ]),
+    leftHand: Part(
+      clef: .bass,
+      measures: [
+        m(n(48, .half), n(55, .half)),
+        m(n(48, .half), n(55, .half)),
+        m(n(53, .half), n(55, .half)),
+        m(n(55, .half), n(55, .half)),
+        m(n(48, .half), n(55, .half)),
+        m(n(48, .half), n(55, .half)),
+        m(n(53, .half), n(55, .half)),
+        m(n(48, .whole)),
+      ]))
+
+  /// The three chords every song leans on, written for the course.
+  ///
+  /// Own composition: I, IV and V7 of C major, blocked in the left hand under
+  /// a melody that spells them out — root position, the unit's whole subject.
+  public static let tresAcordes = Score(
+    title: "Os Três Acordes", composer: "Pianova",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        m(n(60), n(64), n(67, .half)),
+        m(n(60), n(65), n(69, .half)),
+        m(n(59), n(65), n(67, .half)),
+        m(n(60, .whole)),
+        m(n(67), n(64), n(60, .half)),
+        m(n(69), n(65), n(60, .half)),
+        m(n(67), n(65), n(59, .half)),
+        m(n(60, .whole)),
+      ]),
+    leftHand: Part(
+      clef: .bass,
+      measures: [
+        m(chord([48, 52, 55], .whole)),
+        m(chord([48, 53, 57], .whole)),
+        m(chord([47, 53, 55], .whole)),
+        m(chord([48, 52, 55], .whole)),
+        m(chord([48, 52, 55], .whole)),
+        m(chord([48, 53, 57], .whole)),
+        m(chord([47, 53, 55], .whole)),
+        m(chord([48, 52, 55], .whole)),
+      ]))
+
   /// *Mary Had a Little Lamb*, a traditional melody.
   ///
   /// Sits entirely in a five-finger position from middle C, which is why nearly
@@ -702,6 +797,7 @@ public enum Songs {
   public static let all: [Score] = [
     auClairDeLaLune, auClairDeLaLuneBass, auClairDeLaLuneTwoHands, maryHadALittleLamb,
     eveningBell, cantoAntigo, fanfarra, cortejo, surpresa, manha,
+    escalaReal, canCan, tresAcordes,
     twinkle, frereJacques, jingleBells, lightlyRow, odeToJoy, rowYourBoat,
     newWorldTheme, londonBridge, happyBirthday, taps, reveille, auraLee,
     whenTheSaints, michaelRow, twinkleInG, odeToJoyInG, greensleeves, nobodyKnows,

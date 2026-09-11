@@ -491,6 +491,7 @@ public enum Course {
       steps: [
         .reading(noteIDs: ["s-degrees"]),
         .bothHands(rightRange: 60...72, leftRange: 48...60, length: 6),
+        .song(Songs.escalaReal),
         .technique(Technique.cScale),
         .theory(count: 5),
       ]),
@@ -514,6 +515,7 @@ public enum Course {
       title: "Substituição de dedo",
       subtitle: "Trocar de dedo sem soltar a tecla",
       steps: [
+        .song(Songs.canCan),
         .song(Songs.trumpetVoluntary),
         .technique(Technique.chordWarmup),
         .theory(count: 5),
@@ -546,6 +548,7 @@ public enum Course {
       title: "Ler uma cifra",
       subtitle: "A melodia escrita, a harmonia nomeada",
       steps: [
+        .song(Songs.tresAcordes),
         .song(Songs.homeOnTheRange),
         .technique(Technique.chordEtude),
         .theory(count: 5),
