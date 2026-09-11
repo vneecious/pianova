@@ -60,8 +60,22 @@ public final class EngravedPlayController: ObservableObject {
   /// note whenever a piece has a rest.
   private var columnOfEvent: [Int] = []
 
-  /// Which staff each event belongs to.
-  private var staffOfEvent: [Int] = []
+  /// What each staff carries at each column, for judging note by note.
+  ///
+  /// Where the hands play together, the studied hand answers for its own
+  /// notes and no others — classifying whole events by one staff made a
+  /// one-hand study wait for the other hand exactly where they coincide.
+  private var upperOfColumn: [Set<Pitch>] = []
+  private var lowerOfColumn: [Set<Pitch>] = []
+
+  /// Which staff each drawn note sits on, to highlight only the hand in study.
+  private var staffOfElement: [String: Int] = [:]
+
+  /// The notes each judged event actually asks for, hand filter applied.
+  private var judgedPitches: [Set<Pitch>] = []
+
+  /// The hands in study, kept for filtering what the cursor lights up.
+  private var currentHands: PracticeHands = .both
 
   /// Which events are actually being judged.
   ///
@@ -102,7 +116,9 @@ public final class EngravedPlayController: ObservableObject {
     var pages: [EngravedPage]
     var events: [EngravedEvent]
     var columnOfEvent: [Int]
-    var staffOfEvent: [Int]
+    var upperOfColumn: [Set<Pitch>]
+    var lowerOfColumn: [Set<Pitch>]
+    var staffOfElement: [String: Int]
     var barOfColumn: [Int]
     var eventOfColumn: [Int: Int]
     var columnOfElement: [String: Int]
@@ -183,13 +199,11 @@ public final class EngravedPlayController: ObservableObject {
 
     let columnOfEvent = score.soundingColumns
 
-    // Which hand an event belongs to comes from the score, not the drawing: the
+    // Which hand a note belongs to comes from the score, not the drawing: the
     // upper staff's notes are the right hand's, whatever register they sit in.
     let columns = score.columns
-    let staffOfEvent = columnOfEvent.map { column -> Int in
-      guard columns.indices.contains(column) else { return 1 }
-      return columns[column].upper.isEmpty ? 2 : 1
-    }
+    let upperOfColumn = columns.map { Set($0.upper) }
+    let lowerOfColumn = columns.map { Set($0.lower) }
 
     let barOfColumn = columns.indices.map { score.measureNumber(atColumn: $0) }
 
@@ -214,11 +228,21 @@ public final class EngravedPlayController: ObservableObject {
       for id in ids { barOfMeasureID[id] = bar }
     }
 
+    var staffOfElement: [String: Int] = [:]
+    for page in pages {
+      for shape in page.shapes {
+        guard let note = shape.noteID, let staff = shape.staffNumber else { continue }
+        staffOfElement[note] = staff
+      }
+    }
+
     return Engraving(
       pages: pages,
       events: events,
       columnOfEvent: columnOfEvent,
-      staffOfEvent: staffOfEvent,
+      upperOfColumn: upperOfColumn,
+      lowerOfColumn: lowerOfColumn,
+      staffOfElement: staffOfElement,
       barOfColumn: barOfColumn,
       eventOfColumn: Dictionary(
         columnOfEvent.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first }),
@@ -236,7 +260,9 @@ public final class EngravedPlayController: ObservableObject {
     pages = engraved.pages
     events = engraved.events
     columnOfEvent = engraved.columnOfEvent
-    staffOfEvent = engraved.staffOfEvent
+    upperOfColumn = engraved.upperOfColumn
+    lowerOfColumn = engraved.lowerOfColumn
+    staffOfElement = engraved.staffOfElement
     barOfColumn = engraved.barOfColumn
     eventOfColumn = engraved.eventOfColumn
     columnOfElement = engraved.columnOfElement
@@ -349,14 +375,30 @@ public final class EngravedPlayController: ObservableObject {
   ///   - range: The bars to work at, or `nil` for all of them.
   ///   - hands: Which hand is being practised.
   public func restrict(to range: PracticeRange?, hands: PracticeHands) {
-    judged = events.indices.filter { index in
-      guard staffOfEvent.indices.contains(index) else { return true }
-      guard hands.judges(staff: staffOfEvent[index]) else { return false }
+    currentHands = hands
+    judged = []
+    judgedPitches = []
 
-      guard let range, columnOfEvent.indices.contains(index),
-        barOfColumn.indices.contains(columnOfEvent[index])
-      else { return true }
-      return range.judges(bar: barOfColumn[columnOfEvent[index]])
+    for index in events.indices {
+      guard columnOfEvent.indices.contains(index) else { continue }
+      let column = columnOfEvent[index]
+
+      if let range, barOfColumn.indices.contains(column),
+        !range.judges(bar: barOfColumn[column])
+      {
+        continue
+      }
+
+      // Note by note, never event by event: where the hands play together,
+      // the studied hand answers for its own notes only.
+      let asked = hands.sounding(
+        of: Set(events[index].pitches),
+        upper: upperOfColumn.indices.contains(column) ? upperOfColumn[column] : [],
+        lower: lowerOfColumn.indices.contains(column) ? lowerOfColumn[column] : [])
+      guard !asked.isEmpty else { continue }
+
+      judged.append(index)
+      judgedPitches.append(asked)
     }
 
     quietStaff = hands.quietStaff
@@ -425,7 +467,7 @@ public final class EngravedPlayController: ObservableObject {
   /// Starts the passage again from its first note.
   private func restart() {
     session = ExerciseSession(
-      exercise: Exercise(items: judged.map { ExerciseItem(pitches: Set(events[$0].pitches)) }))
+      exercise: Exercise(items: judgedPitches.map { ExerciseItem(pitches: $0) }))
     lastWasWrong = false
     refresh()
   }
@@ -445,12 +487,27 @@ public final class EngravedPlayController: ObservableObject {
         continue
       }
 
-      for id in events[index].elementIDs { marks[id] = state }
+      for id in litElements(of: index) { marks[id] = state }
     }
 
     highlights = marks
     focus =
       judged.indices.contains(session.cursorIndex)
-      ? events[judged[session.cursorIndex]].elementIDs.first : nil
+      ? litElements(of: judged[session.cursorIndex]).first : nil
+  }
+
+  /// The drawn notes of one event that belong to the hand in study.
+  ///
+  /// The resting hand's note at the same moment stays faded — lighting it up
+  /// as "current" would ask for it with one voice while excusing it with
+  /// another.
+  private func litElements(of event: Int) -> [String] {
+    guard events.indices.contains(event) else { return [] }
+
+    return events[event].elementIDs
+      .filter { id in
+        guard let staff = staffOfElement[id] else { return true }
+        return currentHands.judges(staff: staff)
+      }
   }
 }

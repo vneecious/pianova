@@ -137,3 +137,28 @@ private func fourBars(pickup: Bool = false) -> Score {
   #expect(column.pitches(for: .right) == column.upper)
   #expect(column.pitches(for: .left) == column.lower)
 }
+
+// MARK: - Rule 110: a mão em estudo é julgada nota a nota
+
+/// Rule 110 — num momento em que as duas mãos tocam juntas, estudar uma mão
+/// julga só as notas dela.
+///
+/// Classificar o momento inteiro como "de uma pauta" fazia o estudo de uma
+/// mão esperar também as notas da outra — exatamente onde as mãos coincidem,
+/// que é o que se está estudando.
+@Test func aSharedMomentIsJudgedNoteByNote() {
+  let upper: Set<Pitch> = [Pitch(64), Pitch(67)]
+  let lower: Set<Pitch> = [Pitch(48)]
+  let all = upper.union(lower)
+
+  #expect(PracticeHands.right.sounding(of: all, upper: upper, lower: lower) == upper)
+  #expect(PracticeHands.left.sounding(of: all, upper: upper, lower: lower) == lower)
+  #expect(PracticeHands.both.sounding(of: all, upper: upper, lower: lower) == all)
+}
+
+/// Rule 110 — um momento só da outra mão fica vazio, e vazio é "não julgado".
+@Test func aMomentOfTheOtherHandAloneJudgesNothing() {
+  let lower: Set<Pitch> = [Pitch(48), Pitch(52)]
+
+  #expect(PracticeHands.right.sounding(of: lower, upper: [], lower: lower).isEmpty)
+}

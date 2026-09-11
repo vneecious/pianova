@@ -32,6 +32,27 @@ public enum PracticeHands: String, CaseIterable, Identifiable, Sendable {
     }
   }
 
+  /// The notes of one moment that this hand is answerable for.
+  ///
+  /// Judged note by note, never moment by moment: where the hands play
+  /// together, the studied hand answers for its own notes and no others —
+  /// classifying the whole moment by one staff made a one-hand study wait
+  /// for the other hand exactly where the hands coincide.
+  /// - Parameters:
+  ///   - pitches: Everything sounding at the moment.
+  ///   - upper: What the upper staff carries there.
+  ///   - lower: What the lower staff carries there.
+  /// - Returns: The notes this hand is judged on; empty means "not judged".
+  public func sounding(
+    of pitches: Set<Pitch>, upper: Set<Pitch>, lower: Set<Pitch>
+  ) -> Set<Pitch> {
+    switch self {
+    case .both: return pitches
+    case .right: return pitches.intersection(upper)
+    case .left: return pitches.intersection(lower)
+    }
+  }
+
   /// The staff left as reference, to be drawn faded.
   ///
   /// Faded and not removed: the other hand is what this one has to fit into,
