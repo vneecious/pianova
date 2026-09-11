@@ -93,9 +93,19 @@ public struct ScoreLibrary {
     // library fills up with it anyway.
     let score = try MusicXMLImporter.score(at: url)
 
+    // A file that already lives here is already imported. Clearing the
+    // destination before copying used to eat it: source and destination were
+    // the same file, the removal deleted the original, and the copy had
+    // nothing left to copy.
+    let target = destination(for: url)
+    guard
+      url.standardizedFileURL.resolvingSymlinksInPath()
+        != target.standardizedFileURL.resolvingSymlinksInPath()
+    else { return score }
+
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-    try? FileManager.default.removeItem(at: destination(for: url))
-    try FileManager.default.copyItem(at: url, to: destination(for: url))
+    try? FileManager.default.removeItem(at: target)
+    try FileManager.default.copyItem(at: url, to: target)
 
     return score
   }

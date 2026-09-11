@@ -129,3 +129,31 @@ private func write(_ text: String, named name: String) -> URL {
   let kept = try Data(contentsOf: library.files()[0])
   #expect(String(data: kept, encoding: .utf8) == "novo")
 }
+
+/// Rule 125 — importar um arquivo que já mora na biblioteca não pode comê-lo.
+///
+/// O caminho antigo removia o destino antes de copiar; quando origem e
+/// destino eram o mesmo arquivo — escolher no seletor a própria pasta
+/// Pianova — a remoção apagava o original e a cópia não tinha o que copiar.
+@Test func importingFromTheLibraryItselfKeepsTheFile() throws {
+  let folder = FileManager.default.temporaryDirectory
+    .appendingPathComponent("library-self-\(UUID().uuidString)", isDirectory: true)
+  try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>
+        <type>whole</type></note>
+    </measure></part></score-partwise>
+    """
+  let file = folder.appendingPathComponent("propria.musicxml")
+  try Data(xml.utf8).write(to: file)
+
+  let library = ScoreLibrary(folder: folder, legacy: folder)
+  _ = try library.add(file)
+
+  #expect(FileManager.default.fileExists(atPath: file.path), "o arquivo sumiu")
+  #expect(library.files().count == 1)
+}
