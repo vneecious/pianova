@@ -149,7 +149,12 @@ struct RepertoireView: View {
   /// Publishers disagree: some export `.musicxml`, some `.xml`, and the plain
   /// XML type has to be allowed or half the files on IMSLP cannot be picked.
   private static var musicXMLTypes: [UTType] {
-    [UTType(filenameExtension: "musicxml"), .xml, .init(filenameExtension: "mxl")]
+    // `.data` is deliberately included. Without it the picker greys out
+    // anything whose extension the system does not already know, and a
+    // `.musicxml` file on a device that has never seen one is exactly that —
+    // the picker opens onto a list where nothing can be chosen. Refusing a
+    // wrong file with a reason is better than not being able to pick it.
+    [UTType(filenameExtension: "musicxml"), .xml, .init(filenameExtension: "mxl"), .data]
       .compactMap { $0 }
   }
 

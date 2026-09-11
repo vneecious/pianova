@@ -83,6 +83,8 @@
 			);
 			name = Pianova;
 			packageProductDependencies = (
+				A11CF61D0000000000000010 /* Engraving */,
+				A11CF61D0000000000000011 /* EngravingVerovio */,
 				D865B90016D3FC78C4D09CCD /* PianovaUI */,
 				D83D30D53A62A7527A4DCB28 /* MIDIInput */,
 				0F7133BC89BFD4FCB8366A1B /* Sound */,
@@ -162,12 +164,15 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Pianova;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pianova.app;
 				PRODUCT_NAME = Pianova;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 2;
 			};
@@ -199,12 +204,15 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Pianova;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pianova.app;
 				PRODUCT_NAME = Pianova;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 2;
 			};
@@ -287,6 +295,14 @@
 		F01653B789EB3F22B880EDCB /* Course */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Course;
+		};
+		A11CF61D0000000000000010 /* Engraving */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Engraving;
+		};
+		A11CF61D0000000000000011 /* EngravingVerovio */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EngravingVerovio;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
