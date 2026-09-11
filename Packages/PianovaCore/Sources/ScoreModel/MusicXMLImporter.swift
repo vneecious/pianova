@@ -229,10 +229,24 @@ public enum MusicXMLImporter {
       let orderedPitches = Array(Set(pitches)).sorted { $0.midiNoteNumber < $1.midiNoteNumber }
       let fingers = orderedPitches.map { fingerOfPitch[$0] ?? 0 }
 
+      // A tuplet's real duration is a fraction no plain figure holds (rule
+      // 134). The written ratio undoes the squeeze: the plain figure is
+      // matched from span × actual / normal, and the ratio rides along.
+      var written = duration(divisions: span, perQuarter: parser.divisions)
+      if let raw = marked.first(where: { $0.timeModActual != nil }),
+        let actual = raw.timeModActual, let normal = raw.timeModNormal,
+        actual > 0, normal > 0, raw.divisions == span, (span * actual) % normal == 0
+      {
+        let plain = duration(divisions: span * actual / normal, perQuarter: parser.divisions)
+        written = Duration(
+          plain.value, dotted: plain.isDotted,
+          tuplet: TupletRatio(actual: actual, normal: normal))
+      }
+
       notes.append(
         ScoreNote(
           pitches: orderedPitches,
-          duration: duration(divisions: span, perQuarter: parser.divisions),
+          duration: written,
           isTiedToNext: struck.first?.isTiedToNext ?? false,
           fingers: fingers.allSatisfy { $0 == 0 } ? [] : fingers,
           pedal: marked.compactMap(\.pedal).first,
@@ -240,6 +254,8 @@ public enum MusicXMLImporter {
           ottava: marked.compactMap(\.ottava).first,
           slurStart: marked.contains { $0.slurStart },
           slurStop: marked.contains { $0.slurStop },
+          tupletStart: marked.contains { $0.tupletStart },
+          tupletStop: marked.contains { $0.tupletStop },
           dynamic: marked.compactMap(\.dynamic).first,
           words: marked.compactMap(\.words).first,
           articulations: marked.reduce(into: Set<Articulation>()) {

@@ -307,6 +307,111 @@ private let simple = Score(
   #expect(xml.contains("<slur type=\"stop\""))
 }
 
+// MARK: - Rule 133: acidentes impressos
+
+/// Rule 133 — fora da armadura o sustenido é impresso; repetido no mesmo
+/// compasso, não; cancelado, vira bequadro.
+@Test func accidentalsFollowKeyAndMeasure() {
+  let score = Score(
+    title: "Acidentes", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(Pitch(68), .quarter),  // Sol#4: imprime sharp
+          ScoreNote(Pitch(68), .quarter),  // repetido no compasso: nada
+          ScoreNote(Pitch(67), .quarter),  // Sol4 de volta: bequadro
+          ScoreNote(Pitch(69), .quarter),  // Lá4: nada
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.components(separatedBy: "<accidental>sharp</accidental>").count - 1 == 1)
+  #expect(xml.components(separatedBy: "<accidental>natural</accidental>").count - 1 == 1)
+}
+
+/// Rule 133 — o que a armadura já diz não é reimpresso.
+@Test func keySignatureAccidentalsAreNotReprinted() {
+  let score = Score(
+    title: "Armadura", composer: "—", key: .g,
+    rightHand: Part(
+      clef: .treble,
+      measures: [Measure([ScoreNote(Pitch(78), .whole)])]))  // Fá#5 em Sol maior
+
+  #expect(!MusicXMLExporter.musicXML(for: score).contains("<accidental>"))
+}
+
+/// Rule 133 — o compasso seguinte esquece: o acidente é reimpresso.
+@Test func aNewBarReprintsTheAccidental() {
+  let score = Score(
+    title: "Compassos", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([ScoreNote(Pitch(68), .whole)]),
+        Measure([ScoreNote(Pitch(68), .whole)]),
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.components(separatedBy: "<accidental>sharp</accidental>").count - 1 == 2)
+}
+
+/// Rule 133 — a grace também imprime o acidente que exige, e participa do
+/// compasso: a nota real depois dela não o repete.
+@Test func aGraceCarriesItsAccidental() {
+  let score = Score(
+    title: "Grace acidentada", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(
+            pitches: [Pitch(68)], duration: Duration(.whole),
+            graces: [GraceNote(pitch: Pitch(68), finger: 2)])
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.components(separatedBy: "<accidental>sharp</accidental>").count - 1 == 1)
+  let accidentalAt = xml.range(of: "<accidental>sharp</accidental>")!.lowerBound
+  let mainAt = xml.range(of: "<duration>")!.lowerBound
+  #expect(accidentalAt < mainAt, "o acidente impresso é o da grace, que vem antes")
+}
+
+// MARK: - Rule 134: quiálteras
+
+/// Rule 134 — a tercina sai com a razão e o colchete que a edição escreveu.
+@Test func tupletsExportWithRatioAndBracket() {
+  let triplet = Duration(.eighth, tuplet: TupletRatio(actual: 3, normal: 2))
+  let score = Score(
+    title: "Tercina", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(
+            pitches: [Pitch(64)], duration: triplet, tupletStart: true),
+          ScoreNote(pitches: [Pitch(68)], duration: triplet),
+          ScoreNote(
+            pitches: [Pitch(71)], duration: triplet, tupletStop: true),
+          ScoreNote(Pitch(76), .half),
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(
+    xml.contains(
+      "<time-modification><actual-notes>3</actual-notes>"
+        + "<normal-notes>2</normal-notes></time-modification>"))
+  #expect(xml.contains("<tuplet type=\"start\""))
+  #expect(xml.contains("<tuplet type=\"stop\""))
+}
+
 /// Rule 132 — o trilo sai como <trill-mark> dentro de <ornaments>, não
 /// misturado às articulações.
 @Test func aTrillExportsAsOrnament() {

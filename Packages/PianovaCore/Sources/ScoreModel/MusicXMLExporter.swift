@@ -8,9 +8,10 @@ import Foundation
 public enum MusicXMLExporter {
   /// How many divisions one crotchet is split into.
   ///
-  /// Four lets a semiquaver be a whole number, which is the shortest figure the
-  /// model has. Writing fractions instead would force rounding on the way out.
-  public static let divisions = 4
+  /// Sixty keeps every figure whole, tuplets included: a triplet quaver is 20,
+  /// a quintuplet semiquaver 12. Four sufficed until tuplets arrived; a
+  /// fraction rounded on the way out is a bar that does not add up.
+  public static let divisions = 60
 
   /// Writes a score.
   ///
@@ -33,6 +34,37 @@ public enum MusicXMLExporter {
       <part id="P1">\(bars)</part>
       </score-partwise>
       """
+  }
+
+  /// Which alteration the key and the bar so far imply for each written line.
+  ///
+  /// The classic reading rule (rule 133): the key signature alters its letter
+  /// in every octave, an accidental alters its own line until the barline, and
+  /// only a note that contradicts what is in force prints one.
+  private struct AccidentalState {
+    private var inForce: [String: Int] = [:]
+    private let fromKey: [String: Int]
+
+    init(key: KeySignature) {
+      let alter = key.usesSharps ? 1 : -1
+      fromKey = Dictionary(
+        uniqueKeysWithValues: key.alteredLetters.map {
+          (String(describing: $0).uppercased(), alter)
+        })
+    }
+
+    /// The accidental this note must print, if the reading needs one.
+    mutating func accidental(letter: String, octave: Int, alter: Int) -> String? {
+      let line = "\(letter)\(octave)"
+      let implied = inForce[line] ?? fromKey[letter] ?? 0
+      inForce[line] = alter
+      guard alter != implied else { return nil }
+      switch alter {
+      case 1: return "sharp"
+      case -1: return "flat"
+      default: return "natural"
+      }
+    }
   }
 
   private static func measure(_ index: Int, score: Score) -> String {
@@ -63,14 +95,19 @@ public enum MusicXMLExporter {
         + "<repeat direction=\"forward\"/></barline>"
     }
 
-    body += bar.notes.map { note($0, staff: lower == nil ? nil : 1, voice: 1) }.joined()
+    // Each staff reads its own accidentals, and each bar starts clean.
+    var upperState = AccidentalState(key: score.key)
+    body += bar.notes
+      .map { note($0, staff: lower == nil ? nil : 1, voice: 1, accidentals: &upperState) }
+      .joined()
 
     if let lower {
       // Rewind to the bar's start and write the second staff over the same
       // time — which is how one instrument's two staves share a measure.
       let barLength = Int((bar.beats * Double(divisions)).rounded())
       body += "<backup><duration>\(barLength)</duration></backup>"
-      body += lower.notes.map { note($0, staff: 2, voice: 2) }.joined()
+      var lowerState = AccidentalState(key: score.key)
+      body += lower.notes.map { note($0, staff: 2, voice: 2, accidentals: &lowerState) }.joined()
     }
 
     if bar.repeatEnd {
@@ -88,30 +125,49 @@ public enum MusicXMLExporter {
     return "<clef\(attribute)>\(sign)</clef>"
   }
 
-  private static func note(_ event: ScoreNote, staff: Int?, voice: Int) -> String {
+  private static func note(
+    _ event: ScoreNote, staff: Int?, voice: Int, accidentals: inout AccidentalState
+  ) -> String {
     let length = Int((event.duration.beats * Double(divisions)).rounded())
     let type = typeName(event.duration.value)
     let dot = event.duration.isDotted ? "<dot/>" : ""
     let voiceTag = "<voice>\(voice)</voice>"
     let staffTag = staff.map { "<staff>\($0)</staff>" } ?? ""
 
+    // The tuplet's ratio rides every note of it (rule 134).
+    let timeMod = event.duration.tuplet.map {
+      "<time-modification><actual-notes>\($0.actual)</actual-notes>"
+        + "<normal-notes>\($0.normal)</normal-notes></time-modification>"
+    }
+    let timeModTag = timeMod ?? ""
+
     guard !event.isRest else {
       return directions(before: event, staff: staff)
         + "<note><rest/><duration>\(length)</duration>\(voiceTag)"
-        + "<type>\(type)</type>\(dot)\(staffTag)</note>"
+        + "<type>\(type)</type>\(dot)\(timeModTag)\(staffTag)</note>"
     }
 
     // A chord is written as one note followed by others marked `<chord/>`,
     // which is how MusicXML says "these share a moment".
-    return directions(before: event, staff: staff)
-      + graceNotes(of: event, staff: staff, voice: voice)
-      + event.pitches.enumerated()
-      .map { index, pitch in
-        let chord = index == 0 ? "" : "<chord/>"
-        return "<note>\(chord)\(self.pitch(pitch))<duration>\(length)</duration>\(voiceTag)"
-          + "<type>\(type)</type>\(dot)\(staffTag)\(notations(of: event, pitchIndex: index))</note>"
-      }
-      .joined()
+    let graces = graceNotes(of: event, staff: staff, voice: voice, accidentals: &accidentals)
+    var body = directions(before: event, staff: staff) + graces
+
+    for (index, pitch) in event.pitches.enumerated() {
+      let chord = index == 0 ? "" : "<chord/>"
+      let spelled = self.spelled(pitch)
+      let accidental =
+        accidentals.accidental(
+          letter: spelled.letter, octave: spelled.octave, alter: spelled.alter
+        )
+        .map { "<accidental>\($0)</accidental>" } ?? ""
+
+      body +=
+        "<note>\(chord)\(pitchXML(spelled))<duration>\(length)</duration>\(voiceTag)"
+        + "<type>\(type)</type>\(dot)\(accidental)\(timeModTag)\(staffTag)"
+        + "\(notations(of: event, pitchIndex: index))</note>"
+    }
+
+    return body
   }
 
   /// What is written before the note: pedal, octave line, dynamic, words.
@@ -170,28 +226,41 @@ public enum MusicXMLExporter {
   /// in — beamed as one group, fingered as the edition fingered them, and
   /// slurred into the note they decorate. The slur takes number 2 so it never
   /// collides with the phrase slur riding number 1.
-  private static func graceNotes(of event: ScoreNote, staff: Int?, voice: Int) -> String {
+  private static func graceNotes(
+    of event: ScoreNote, staff: Int?, voice: Int, accidentals: inout AccidentalState
+  ) -> String {
     let staffTag = staff.map { "<staff>\($0)</staff>" } ?? ""
     let count = event.graces.count
+    var body = ""
 
-    return event.graces.enumerated()
-      .map { index, grace in
-        var beams = ""
-        if count > 1 {
-          let position = index == 0 ? "begin" : (index == count - 1 ? "end" : "continue")
-          beams = "<beam number=\"1\">\(position)</beam><beam number=\"2\">\(position)</beam>"
-        }
-
-        var inner = index == 0 ? "<slur type=\"start\" number=\"2\"/>" : ""
-        if grace.finger > 0 {
-          inner += "<technical><fingering>\(grace.finger)</fingering></technical>"
-        }
-        let notations = inner.isEmpty ? "" : "<notations>\(inner)</notations>"
-
-        return "<note><grace/>\(pitch(grace.pitch))<voice>\(voice)</voice>"
-          + "<type>16th</type>\(staffTag)\(beams)\(notations)</note>"
+    for (index, grace) in event.graces.enumerated() {
+      var beams = ""
+      if count > 1 {
+        let position = index == 0 ? "begin" : (index == count - 1 ? "end" : "continue")
+        beams = "<beam number=\"1\">\(position)</beam><beam number=\"2\">\(position)</beam>"
       }
-      .joined()
+
+      var inner = index == 0 ? "<slur type=\"start\" number=\"2\"/>" : ""
+      if grace.finger > 0 {
+        inner += "<technical><fingering>\(grace.finger)</fingering></technical>"
+      }
+      let notations = inner.isEmpty ? "" : "<notations>\(inner)</notations>"
+
+      // A grace reads like any note: it prints the accidental it needs, and
+      // the note it decorates then need not repeat it.
+      let spelled = self.spelled(grace.pitch)
+      let accidental =
+        accidentals.accidental(
+          letter: spelled.letter, octave: spelled.octave, alter: spelled.alter
+        )
+        .map { "<accidental>\($0)</accidental>" } ?? ""
+
+      body +=
+        "<note><grace/>\(pitchXML(spelled))<voice>\(voice)</voice>"
+        + "<type>16th</type>\(accidental)\(staffTag)\(beams)\(notations)</note>"
+    }
+
+    return body
   }
 
   /// What is written on the note itself: fingering, slur, articulations.
@@ -216,6 +285,10 @@ public enum MusicXMLExporter {
       // The ornament's little slur closes on the note it decorates.
       if !event.graces.isEmpty { inner += "<slur type=\"stop\" number=\"2\"/>" }
 
+      // The tuplet's bracket opens and closes with its notes (rule 134).
+      if event.tupletStart { inner += "<tuplet type=\"start\" number=\"1\"/>" }
+      if event.tupletStop { inner += "<tuplet type=\"stop\" number=\"1\"/>" }
+
       // The trill is an ornament and lives in its own container; mixing it
       // into <articulations> makes engravers drop it.
       let marks = event.articulations
@@ -236,16 +309,23 @@ public enum MusicXMLExporter {
     return inner.isEmpty ? "" : "<notations>\(inner)</notations>"
   }
 
-  private static func pitch(_ pitch: Pitch) -> String {
+  /// How a key is written: letter, alteration, octave.
+  ///
+  /// The model carries sounding keys, not spellings, so black keys are spelt
+  /// as sharps — the reading every key signature this app teaches implies.
+  private static func spelled(_ pitch: Pitch) -> (letter: String, alter: Int, octave: Int) {
     let letters = ["C", "C", "D", "D", "E", "F", "F", "G", "G", "A", "A", "B"]
     let sharps = [false, true, false, true, false, false, true, false, true, false, true, false]
 
     let number = Int(pitch.midiNoteNumber)
     let index = number % 12
-    let octave = number / 12 - 1
 
-    let alter = sharps[index] ? "<alter>1</alter>" : ""
-    return "<pitch><step>\(letters[index])</step>\(alter)<octave>\(octave)</octave></pitch>"
+    return (letters[index], sharps[index] ? 1 : 0, number / 12 - 1)
+  }
+
+  private static func pitchXML(_ spelled: (letter: String, alter: Int, octave: Int)) -> String {
+    let alter = spelled.alter != 0 ? "<alter>\(spelled.alter)</alter>" : ""
+    return "<pitch><step>\(spelled.letter)</step>\(alter)<octave>\(spelled.octave)</octave></pitch>"
   }
 
   private static func typeName(_ value: NoteValue) -> String {

@@ -45,6 +45,53 @@ import Testing
   #expect(wide, "entre as formas do pedal tem que existir a barra horizontal")
 }
 
+// MARK: - Rule 133: acidentes chegam à página
+
+/// Rule 133 — um sol sustenido fora da armadura imprime o sustenido.
+@Test func anAccidentalIsDrawnOnThePage() throws {
+  let score = Score(
+    title: "Sustenido", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [Measure([ScoreNote(Pitch(68), .whole)])]))
+
+  let engraver = Engraver()
+  #expect(engraver.load(musicXML: MusicXMLExporter.musicXML(for: score)))
+
+  let page = try #require(engraver.page(1))
+  #expect(
+    page.shapes.contains { $0.kind?.contains("accid") == true },
+    "o sustenido tem que virar glifo na página")
+}
+
+// MARK: - Rule 134: quiálteras chegam à página
+
+/// Rule 134 — a tercina desenha número (e colchete quando fora de barra).
+@Test func aTupletIsDrawnOnThePage() throws {
+  let triplet = Duration(.eighth, tuplet: TupletRatio(actual: 3, normal: 2))
+  let score = Score(
+    title: "Tercina", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(64)], duration: triplet, tupletStart: true),
+          ScoreNote(pitches: [Pitch(67)], duration: triplet),
+          ScoreNote(pitches: [Pitch(71)], duration: triplet, tupletStop: true),
+          ScoreNote(Pitch(76), .half),
+        ])
+      ]))
+
+  let engraver = Engraver()
+  #expect(engraver.load(musicXML: MusicXMLExporter.musicXML(for: score)))
+
+  let page = try #require(engraver.page(1))
+  #expect(
+    page.shapes.contains { $0.kind?.contains("tuplet") == true },
+    "a tercina tem que desenhar seu número na página")
+}
+
 // MARK: - Rule 127: ornamentos desenhados, fora do julgamento
 
 /// Rule 127 — a grace aparece na página, mas não no mapa de eventos; a nota

@@ -25,6 +25,14 @@ extension MusicXMLImporter {
     var slurStart = false
     /// Whether a phrase slur ends here.
     var slurStop = false
+    /// The tuplet ratio written on this note, as actual over normal.
+    var timeModActual: Int?
+    /// See ``timeModActual``.
+    var timeModNormal: Int?
+    /// Whether a tuplet bracket opens here.
+    var tupletStart = false
+    /// Whether a tuplet bracket closes here.
+    var tupletStop = false
     /// A dynamic written at this note.
     var dynamic: String?
     /// A word written at this note.
@@ -179,6 +187,9 @@ extension MusicXMLImporter {
       case "slur":
         if attributes["type"] == "start" { event.slurStart = true }
         if attributes["type"] == "stop" { event.slurStop = true }
+      case "tuplet":
+        if attributes["type"] == "start" { event.tupletStart = true }
+        if attributes["type"] == "stop" { event.tupletStop = true }
       case "staccato":
         event.articulations.insert(.staccato)
       case "accent":
@@ -286,6 +297,10 @@ extension MusicXMLImporter {
         if let finger = Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) {
           event.fingers.append(finger)
         }
+      case "actual-notes":
+        if inNote { event.timeModActual = Int(value) }
+      case "normal-notes":
+        if inNote { event.timeModNormal = Int(value) }
       case "note":
         inNote = false
         event.part = max(partIndex, 0)

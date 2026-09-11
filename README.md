@@ -579,6 +579,15 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      atravessam o cano e são desenhados onde a edição os pôs. Como toda
      notação de leitura, não mudam o julgamento: o trilo é ornamento e
      ornamento não é cobrado (regra 127).
+133. Os **acidentes são impressos como a leitura exige**: a armadura e o
+     compasso mandam. Um sustenido fora da armadura é impresso; a repetição
+     dele no mesmo compasso não é; o cancelamento imprime bequadro. Sem o
+     acidente escrito o gravador não imprime nada, e um sol sustenido se lê
+     como sol.
+134. As **quiálteras são desenhadas como escritas**: a figura, a razão
+     (3 no tempo de 2, 5 no tempo de 4) e o colchete com o número atravessam
+     o cano, e a duração real entra no modelo — um terço do tempo é um terço
+     do tempo, não a figura inteira mais próxima.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

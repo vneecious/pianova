@@ -51,7 +51,28 @@ public enum NoteValue: String, CaseIterable, Sendable, Comparable {
   }
 }
 
-/// A written duration: a figure, possibly with an augmentation dot.
+/// A tuplet's ratio: how many written figures fit the time of how many.
+///
+/// A triplet is 3 in the time of 2; a quintuplet, 5 in the time of 4. This is
+/// MusicXML's `time-modification`, and what the bracket's number means.
+public struct TupletRatio: Equatable, Sendable {
+  /// How many figures are written.
+  public let actual: Int
+
+  /// How many of the same figure the time really holds.
+  public let normal: Int
+
+  /// Creates a ratio.
+  /// - Parameters:
+  ///   - actual: How many figures are written.
+  ///   - normal: How many the time really holds.
+  public init(actual: Int, normal: Int) {
+    self.actual = actual
+    self.normal = normal
+  }
+}
+
+/// A written duration: a figure, possibly dotted, possibly in a tuplet.
 public struct Duration: Equatable, Sendable {
   /// The figure.
   public let value: NoteValue
@@ -59,21 +80,29 @@ public struct Duration: Equatable, Sendable {
   /// Whether an augmentation dot follows it.
   public let isDotted: Bool
 
+  /// The tuplet this figure belongs to, or `nil` when the time is plain.
+  public let tuplet: TupletRatio?
+
   /// Creates a duration.
   /// - Parameters:
   ///   - value: The figure.
   ///   - isDotted: Whether an augmentation dot follows it.
-  public init(_ value: NoteValue, dotted isDotted: Bool = false) {
+  ///   - tuplet: The tuplet the figure belongs to, if any.
+  public init(_ value: NoteValue, dotted isDotted: Bool = false, tuplet: TupletRatio? = nil) {
     self.value = value
     self.isDotted = isDotted
+    self.tuplet = tuplet
   }
 
   /// How many beats it lasts.
   ///
   /// The dot adds half the figure's own value, which is what makes a dotted
-  /// minim worth three beats rather than four.
+  /// minim worth three beats rather than four. A tuplet squeezes the figure:
+  /// a triplet quaver lasts two thirds of a plain one.
   public var beats: Double {
-    isDotted ? value.beats * 1.5 : value.beats
+    let dotted = isDotted ? value.beats * 1.5 : value.beats
+    guard let tuplet else { return dotted }
+    return dotted * Double(tuplet.normal) / Double(tuplet.actual)
   }
 
   /// How it should be read aloud.

@@ -135,6 +135,12 @@ public struct ScoreNote: Equatable, Sendable {
   /// Whether a phrase slur ends on this note.
   public let slurStop: Bool
 
+  /// Whether a tuplet bracket opens on this note.
+  public let tupletStart: Bool
+
+  /// Whether a tuplet bracket closes on this note.
+  public let tupletStop: Bool
+
   /// A dynamic written at this note — "p", "mf", "ff" — if any.
   public let dynamic: String?
 
@@ -158,6 +164,8 @@ public struct ScoreNote: Equatable, Sendable {
   ///   - ottava: An octave line starting or stopping here, if any.
   ///   - slurStart: Whether a phrase slur begins here.
   ///   - slurStop: Whether a phrase slur ends here.
+  ///   - tupletStart: Whether a tuplet bracket opens here.
+  ///   - tupletStop: Whether a tuplet bracket closes here.
   ///   - dynamic: A dynamic written here, if any.
   ///   - words: A written word here, if any.
   ///   - articulations: The articulations written on this note.
@@ -166,6 +174,7 @@ public struct ScoreNote: Equatable, Sendable {
     pitches: [Pitch], duration: Duration, isTiedToNext: Bool = false, fingers: [Int] = [],
     pedal: PedalMark? = nil, pedalLine: Bool = false, ottava: OttavaMark? = nil,
     slurStart: Bool = false, slurStop: Bool = false,
+    tupletStart: Bool = false, tupletStop: Bool = false,
     dynamic: String? = nil, words: String? = nil,
     articulations: Set<Articulation> = [],
     graces: [GraceNote] = []
@@ -179,6 +188,8 @@ public struct ScoreNote: Equatable, Sendable {
     self.ottava = ottava
     self.slurStart = slurStart
     self.slurStop = slurStop
+    self.tupletStart = tupletStart
+    self.tupletStop = tupletStop
     self.dynamic = dynamic
     self.words = words
     self.articulations = articulations
@@ -399,13 +410,23 @@ public struct Score: Equatable, Sendable {
     var lengths: [Double: Duration] = [:]
     var moments: Set<Double> = []
 
+    // Moments are dictionary keys, and tuplets make them inexact: three
+    // triplet quavers accumulate to 0.99999…, which is not the 1.0 the other
+    // hand sits on, and the moment split in two. Quantising to a fine grid —
+    // 720 per crotchet holds thirds, fifths and every plain figure exactly —
+    // keeps one moment one key.
+    func quantized(_ beats: Double) -> Double {
+      (beats * 720).rounded() / 720
+    }
+
     for (part, isUpper) in [(rightHand, true), (leftHand, false)]
       .compactMap({ part, flag in
         part.map { ($0, flag) }
       })
     {
-      var time = 0.0
+      var elapsed = 0.0
       for note in part.notes {
+        let time = quantized(elapsed)
         moments.insert(time)
         if !note.pitches.isEmpty {
           if isUpper {
@@ -422,7 +443,7 @@ public struct Score: Equatable, Sendable {
         } else {
           lengths[time] = note.duration
         }
-        time += note.beats
+        elapsed += note.beats
       }
     }
 

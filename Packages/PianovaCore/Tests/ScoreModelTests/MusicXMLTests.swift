@@ -457,6 +457,42 @@ private let twoVoices = """
   #expect(!notes[0].isTiedToNext, "ligadura de expressão não é ligadura de valor")
 }
 
+/// Rule 134 — a quiáltera entra no modelo como escrita: figura, razão e
+/// colchete, e o compasso fecha a conta.
+@Test func tupletsSurviveImportAsWritten() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>60</divisions>
+      <time><beats>3</beats><beat-type>4</beat-type></time></attributes>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>20</duration>
+        <type>eighth</type>
+        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>
+        <notations><tuplet type="start"/></notations></note>
+      <note><pitch><step>G</step><alter>1</alter><octave>4</octave></pitch><duration>20</duration>
+        <type>eighth</type>
+        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification></note>
+      <note><pitch><step>B</step><octave>4</octave></pitch><duration>20</duration>
+        <type>eighth</type>
+        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>
+        <notations><tuplet type="stop"/></notations></note>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>120</duration>
+        <type>half</type></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  let notes = try #require(score.rightHand.measures.first?.notes)
+
+  #expect(notes.count == 4)
+  #expect(notes[0].duration.value == .eighth)
+  #expect(notes[0].duration.tuplet == TupletRatio(actual: 3, normal: 2))
+  #expect(abs(notes[0].duration.beats - 1.0 / 3.0) < 0.001)
+  #expect(notes[0].tupletStart)
+  #expect(notes[2].tupletStop)
+  #expect(score.isWellFormed, "três terços e uma mínima fecham o 3/4")
+}
+
 /// Rule 132 — o trilo escrito na nota sobrevive à importação.
 @Test func aTrillSurvivesImport() throws {
   let xml = """
