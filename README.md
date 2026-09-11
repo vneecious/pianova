@@ -499,7 +499,8 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      também esmaece, dentro do trecho — esmaecer é a única linguagem para
      "isto não está em jogo agora", seja compasso, seja mão.
 111. Um trecho em estudo **repete sozinho** ao terminar, para que a repetição
-     não custe um gesto a cada volta.
+     não custe um gesto a cada volta. A **peça inteira não repete**: terminar
+     a peça é terminá-la — é o que deixa uma lição avançar.
 112. Fora do modo de seleção, tocar num compasso apenas escolhe **de onde
      ouvir**. Enquanto há seleção ou estudo, o botão de sair da peça some:
      sair do trecho e sair da peça são gestos diferentes.

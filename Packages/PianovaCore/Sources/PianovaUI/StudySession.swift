@@ -38,6 +38,12 @@ public final class StudySession: ObservableObject {
   /// What is being studied right now.
   public var study: Study { Study(range: phase == .studying ? range : nil, hands: hands) }
 
+  /// Whether finishing should start over, which is only ever true in study.
+  ///
+  /// Repetition belongs to a passage being worked at. The whole piece, played
+  /// to its end, is done — anything else keeps a lesson from ever advancing.
+  public var loopsNow: Bool { phase == .studying && loops }
+
   /// Begins a selection at one bar, as holding a photo does.
   ///
   /// Also mid-study: holding a bar always means "start choosing again".

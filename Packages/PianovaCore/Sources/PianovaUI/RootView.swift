@@ -5,20 +5,24 @@ import Sound
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The app shell: the course trail, free practice, and the lesson runner.
+/// The app shell: play, practise, and the trail.
+///
+/// Three places, in the order the player lives in them. Playing pieces is the
+/// reason for studying piano, so the app opens there; practising is one hub
+/// with its modes inside; the trail is the course, kept and last.
 public struct RootView: View {
   /// Where the app is.
   private enum Screen: Hashable {
+    /// Every piece in the app, playable on its own. Home.
+    case play
+    /// The practice hub: drill, reading, repeatable activities.
+    case practice
     /// The course trail.
     case trail
-    /// Pick any unlocked activity to repeat.
-    case free
     /// The endless drill, which never finishes.
     case drill
     /// Continuous reading, where the line does not wait.
     case reading
-    /// Every piece in the app, playable on its own.
-    case repertoire
     /// Running a lesson. Which one lives in `lessonController`.
     case lesson
   }
@@ -29,7 +33,7 @@ public struct RootView: View {
   /// owners and corrupted its reference count.
   @ObservedObject private var hub: MIDIHub
 
-  @State private var screen: Screen = .trail
+  @State private var screen: Screen = .play
   @State private var unlocksEverything = false
   @Environment(\.colorScheme) private var colorScheme
 
@@ -51,7 +55,7 @@ public struct RootView: View {
   public var body: some View {
     Group {
       switch screen {
-      case .trail, .free, .drill, .reading, .repertoire:
+      case .play, .practice, .trail, .drill, .reading:
         home
       case .lesson:
         lessonScreen
@@ -82,16 +86,20 @@ public struct RootView: View {
       Divider().overlay(Theme.border(colorScheme))
 
       switch screen {
-      case .free:
-        FreePracticeView(progress: progress) { start($0) }
+      case .practice:
+        PracticeHubView(
+          progress: progress,
+          onDrill: { screen = .drill },
+          onReading: { screen = .reading },
+          onPick: { start($0) })
       case .drill:
-        DrillView(controller: drill, hub: hub, onExit: { screen = .trail })
+        DrillView(controller: drill, hub: hub, onExit: { screen = .practice })
       case .reading:
-        ReadingView(hub: hub, tones: tones, onExit: { screen = .trail })
-      case .repertoire:
-        RepertoireView(hub: hub)
-      default:
+        ReadingView(hub: hub, tones: tones, onExit: { screen = .practice })
+      case .trail:
         CourseTrailView(progress: progress) { start($0) }
+      default:
+        RepertoireView(hub: hub)
       }
     }
   }
@@ -115,15 +123,13 @@ public struct RootView: View {
       Spacer()
 
       Picker("", selection: tabBinding) {
+        Text("Tocar").tag(Screen.play)
+        Text("Praticar").tag(Screen.practice)
         Text("Trilha").tag(Screen.trail)
-        Text("Livre").tag(Screen.free)
-        Text("Treino").tag(Screen.drill)
-        Text("Leitura").tag(Screen.reading)
-        Text("Repertório").tag(Screen.repertoire)
       }
       .pickerStyle(.segmented)
       .labelsHidden()
-      .frame(width: 420)
+      .frame(width: 300)
 
       Button {
         tones.isMuted.toggle()
@@ -134,28 +140,36 @@ public struct RootView: View {
       .buttonStyle(.borderless)
       .help(tones.isMuted ? "Som do teclado desligado" : "Som do teclado ligado")
 
-      Button {
-        unlocksEverything.toggle()
-      } label: {
-        Image(systemName: unlocksEverything ? "lock.open" : "lock")
-          .foregroundStyle(unlocksEverything ? ItemState.current.color : .secondary)
-      }
-      .buttonStyle(.borderless)
-      .help(
-        unlocksEverything
-          ? "Trilha destravada — todas as lições abertas"
-          : "Destravar a trilha inteira, para testar")
+      metronomeControl
 
+      settingsMenu
+    }
+    .padding(.horizontal, 32)
+    .padding(.vertical, 20)
+  }
+
+  /// Everything set once and left alone, folded into one menu.
+  ///
+  /// These were seven bare icons in a row — a cockpit, when what the top bar
+  /// owes the player is the two live controls (sound, pulse) and one door to
+  /// the rest.
+  private var settingsMenu: some View {
+    Menu {
       Button {
         appearance = appearance.next
       } label: {
-        Image(systemName: appearance.symbol)
-          .foregroundStyle(.secondary)
+        Label("Tema: \(appearance.title)", systemImage: appearance.symbol)
       }
-      .buttonStyle(.borderless)
-      .help("Tema: \(appearance.title)")
 
-      metronomeControl
+      Button {
+        tones.routesToInstrument.toggle()
+      } label: {
+        Label(
+          tones.isRoutingToInstrument
+            ? "Som saindo pelo piano — trocar para o app"
+            : "Som saindo pelo app — trocar para o piano",
+          systemImage: tones.isRoutingToInstrument ? "pianokeys.inverse" : "pianokeys")
+      }
 
       Button {
         let types = [UTType(filenameExtension: "sf2"), UTType(filenameExtension: "dls"), .data]
@@ -167,37 +181,34 @@ public struct RootView: View {
           try? tones.installBank(from: url)
         }
       } label: {
-        Image(systemName: "waveform")
-          .foregroundStyle(tones.loadedBankName == nil ? .secondary : ItemState.done.color)
+        Label(
+          tones.loadedBankName.map { "Piano amostrado: \($0)" }
+            ?? "Instalar um banco de som (.sf2)",
+          systemImage: "waveform")
       }
-      .buttonStyle(.borderless)
-      .help(
-        tones.loadedBankName.map { "Piano amostrado: \($0)" }
-          ?? "Sem banco de som — instalar um .sf2")
-
-      Button {
-        tones.routesToInstrument.toggle()
-      } label: {
-        Image(systemName: tones.isRoutingToInstrument ? "pianokeys.inverse" : "pianokeys")
-          .foregroundStyle(tones.isRoutingToInstrument ? ItemState.current.color : .secondary)
-      }
-      .buttonStyle(.borderless)
-      .help(
-        tones.isRoutingToInstrument
-          ? "Som saindo pelo seu piano — toque para ouvir o app"
-          : "Som saindo pelo app — toque para usar o seu piano")
 
       Button {
         hub.start()
         tones.connectInstrument()
       } label: {
-        Image(systemName: "arrow.clockwise")
+        Label("Procurar o instrumento de novo", systemImage: "arrow.clockwise")
       }
-      .buttonStyle(.borderless)
-      .help("Procurar o instrumento de novo")
+
+      Divider()
+
+      Button {
+        unlocksEverything.toggle()
+      } label: {
+        Label(
+          unlocksEverything ? "Travar a trilha de novo" : "Destravar a trilha inteira",
+          systemImage: unlocksEverything ? "lock.open" : "lock")
+      }
+    } label: {
+      Image(systemName: "ellipsis.circle")
+        .foregroundStyle(.secondary)
     }
-    .padding(.horizontal, 32)
-    .padding(.vertical, 20)
+    .menuStyle(.borderlessButton)
+    .fixedSize()
   }
 
   /// The metronome: a switch, and its dial once it is running.
@@ -259,7 +270,13 @@ public struct RootView: View {
 
   private var tabBinding: Binding<Screen> {
     Binding(
-      get: { screen == .lesson ? .trail : screen },
+      get: {
+        switch screen {
+        case .lesson: return .trail
+        case .drill, .reading: return .practice
+        default: return screen
+        }
+      },
       set: { screen = $0 })
   }
 

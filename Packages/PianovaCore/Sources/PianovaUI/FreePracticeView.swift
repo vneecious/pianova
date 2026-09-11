@@ -3,7 +3,8 @@ import SwiftUI
 
 /// Pick any unlocked lesson and repeat it, without touching the course.
 ///
-/// The trail decides what comes next; this decides what you feel like drilling.
+/// The trail decides what comes next; this decides what you feel like
+/// drilling. Lives inside the practice hub, which owns the scrolling.
 struct FreePracticeView: View {
   /// How far the player has got.
   let progress: CourseProgress
@@ -12,23 +13,19 @@ struct FreePracticeView: View {
   let onPick: (Lesson) -> Void
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: 10) {
-        if unlocked.isEmpty {
-          Text("Complete a primeira lição para liberar a prática livre.")
-            .font(.system(size: 13))
-            .foregroundStyle(.secondary)
-            .padding(.top, 12)
-        }
-
-        ForEach(unlocked, id: \.id) { lesson in
-          row(lesson)
-        }
+    VStack(alignment: .leading, spacing: 10) {
+      if unlocked.isEmpty {
+        Text("Complete a primeira lição para liberar a prática livre.")
+          .font(.system(size: 13))
+          .foregroundStyle(.secondary)
+          .padding(.top, 12)
       }
-      .padding(.horizontal, 32)
-      .padding(.vertical, 24)
-      .frame(maxWidth: .infinity, alignment: .leading)
+
+      ForEach(unlocked, id: \.id) { lesson in
+        row(lesson)
+      }
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   private var unlocked: [Lesson] {

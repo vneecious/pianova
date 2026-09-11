@@ -178,3 +178,35 @@ import Testing
   #expect(session.phase == .selecting)
   #expect(session.range == PracticeRange(first: 9, last: 9))
 }
+
+// MARK: - Rule 111: repetir é coisa de trecho
+
+/// Rule 111 — a peça inteira não repete: terminar é terminar.
+///
+/// O laço ligado fora do estudo era o que prendia a lição num loop eterno —
+/// a peça acabava, recomeçava, e o passo nunca se dava por concluído.
+@MainActor @Test func theWholePieceNeverLoops() {
+  let session = StudySession()
+
+  #expect(session.loops, "a preferência nasce ligada")
+  #expect(session.loopsNow == false, "mas fora do estudo ela não vale")
+}
+
+/// Rule 111 — no estudo, o trecho repete sozinho.
+@MainActor @Test func aPassageInStudyLoops() {
+  let session = StudySession()
+  session.begin(at: 2)
+  session.commit()
+
+  #expect(session.loopsNow)
+}
+
+/// Concluir o estudo desliga a repetição junto.
+@MainActor @Test func finishingStopsTheLooping() {
+  let session = StudySession()
+  session.begin(at: 2)
+  session.commit()
+  session.finish()
+
+  #expect(session.loopsNow == false)
+}

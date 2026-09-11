@@ -77,7 +77,7 @@ struct EngravedPieceView: View {
     .onChange(of: session.phase) { _, _ in applyStudy() }
     .onChange(of: session.range) { _, _ in refreshSelection() }
     .onChange(of: session.hands) { _, _ in applyStudy() }
-    .onChange(of: session.loops) { _, value in controller.loops = value }
+    .onChange(of: session.loops) { _, _ in controller.loops = session.loopsNow }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if !hub.isConnected {
         PianoKeyboardView { controller.play($0) }
@@ -85,7 +85,7 @@ struct EngravedPieceView: View {
     }
     .onAppear {
       controller.onFinished = onFinished
-      controller.loops = session.loops
+      controller.loops = session.loopsNow
       reload()
       hub.setListener(owner: controller) { [controller] event in
         guard case .pressed(let pitch, _) = event else { return }
@@ -143,9 +143,10 @@ struct EngravedPieceView: View {
     controller.renderInks()
   }
 
-  /// Applies what study means now: what is judged, what is faded.
+  /// Applies what study means now: what is judged, what is faded, what loops.
   private func applyStudy() {
     let studying = session.phase == .studying
+    controller.loops = session.loopsNow
     controller.restrict(
       to: studying ? session.range : nil,
       hands: studying ? session.hands : .both)
