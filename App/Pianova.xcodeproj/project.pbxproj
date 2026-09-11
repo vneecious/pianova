@@ -14,6 +14,7 @@
 		649404DEE637E4612341D66F /* Sound in Frameworks */ = {isa = PBXBuildFile; productRef = 0F7133BC89BFD4FCB8366A1B /* Sound */; };
 		6911F7CFCBF52565FC5C4477 /* PianovaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049449ABB884E3391B0552F0 /* PianovaApp.swift */; };
 		8C33BE3F4BB34956E6508147 /* Progress in Frameworks */ = {isa = PBXBuildFile; productRef = C2ACA18C19FDC14E1C6F2058 /* Progress */; };
+		A5510C0000000000000000A2 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A5510C0000000000000000A1 /* Assets.xcassets */; };
 		AEAB722CA30C727EA59782C8 /* ExerciseEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 382AAE16610AE5BE62A1C8C8 /* ExerciseEngine */; };
 /* End PBXBuildFile section */
 
@@ -21,6 +22,7 @@
 		049449ABB884E3391B0552F0 /* PianovaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PianovaApp.swift; sourceTree = "<group>"; };
 		BFB533D0BE2E3514E642598C /* Pianova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pianova.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A11CF61D0000000000000001 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
+		A5510C0000000000000000A1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +64,7 @@
 			isa = PBXGroup;
 			children = (
 				049449ABB884E3391B0552F0 /* PianovaApp.swift */,
+				A5510C0000000000000000A1 /* Assets.xcassets */,
 			);
 			path = PianovaApp;
 			sourceTree = "<group>";
@@ -138,6 +141,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A5510C0000000000000000A2 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -162,6 +166,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = PianovaApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 0.1;
@@ -197,6 +202,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = PianovaApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 0.1;
