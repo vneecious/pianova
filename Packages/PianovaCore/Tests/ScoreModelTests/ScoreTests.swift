@@ -164,3 +164,34 @@ import Testing
   #expect(score.key.fifths == 1)
   #expect(score.isWellFormed)
 }
+
+// MARK: - Rule 127: os ornamentos de cada coluna, para o julgamento excusar
+
+/// Rule 127 — a partitura sabe quais alturas são ornamento em cada coluna:
+/// é o que deixa o julgamento não punir quem lê a grace e a toca.
+@Test func columnsKnowTheirOrnamentPitches() {
+  let score = Score(
+    title: "Ornamentada", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(Pitch(72), .quarter),
+          ScoreNote(
+            pitches: [Pitch(76)], duration: Duration(.quarter),
+            graces: [GraceNote(pitch: Pitch(76)), GraceNote(pitch: Pitch(77))]),
+          ScoreNote(Pitch(74), .quarter),
+        ])
+      ]),
+    leftHand: Part(
+      clef: .bass,
+      measures: [Measure([ScoreNote(Pitch(48), .half, dotted: true)])]))
+
+  let graces = score.columnGraces
+
+  #expect(graces.count == score.columns.count)
+  #expect(graces[0].isEmpty)
+  #expect(graces[1] == Set([Pitch(76), Pitch(77)]), "a coluna decorada conhece suas graces")
+  #expect(graces[2].isEmpty)
+}

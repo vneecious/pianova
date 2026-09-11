@@ -74,7 +74,10 @@ public enum InkRasterizer {
         context.fillPath()
       } else {
         context.setLineWidth(shape.strokeWidth)
+        // The octave line is dashed; drawn solid it reads as something else.
+        context.setLineDash(phase: 0, lengths: shape.dashes)
         context.strokePath()
+        if !shape.dashes.isEmpty { context.setLineDash(phase: 0, lengths: []) }
       }
     }
 

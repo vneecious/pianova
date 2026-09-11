@@ -476,6 +476,29 @@ public struct Score: Equatable, Sendable {
       }
   }
 
+  /// The ornament pitches decorating each column (rule 127).
+  ///
+  /// Judging uses this in reverse: an ornament is never demanded, and played
+  /// it is never wrong — whoever reads the grace and plays it is not
+  /// punished for the note the edition wrote.
+  public var columnGraces: [Set<Pitch>] {
+    var decorating: [Double: Set<Pitch>] = [:]
+
+    for part in [rightHand, leftHand].compactMap({ $0 }) {
+      var elapsed = 0.0
+      for note in part.notes {
+        // The same quantised grid the columns use, so the keys meet.
+        let time = (elapsed * 720).rounded() / 720
+        if !note.graces.isEmpty {
+          decorating[time, default: []].formUnion(note.graces.map(\.pitch))
+        }
+        elapsed += note.beats
+      }
+    }
+
+    return columns.map { decorating[$0.beats] ?? [] }
+  }
+
   /// Indices of the columns that actually have to be played.
   ///
   /// The staff shows rests; the engine cannot ask for one. This maps between

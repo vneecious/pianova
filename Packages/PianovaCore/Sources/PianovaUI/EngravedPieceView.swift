@@ -276,10 +276,27 @@ struct EngravedPieceView: View {
         // Only when the cursor leaves the system on screen. Inside it, the
         // reader's eye does the moving and the page stays put.
         guard system != shownSystem else { return }
+        let previous = shownSystem
         shownSystem = system
 
-        withAnimation(.easeInOut(duration: 0.45)) {
-          scroller.scrollTo(system, anchor: .top)
+        // A lazy page far off screen has no anchors yet: scrolling straight
+        // to a system there is silence — which is why the loop played on
+        // while the page stayed behind. Jumping pages, glide to the page
+        // row first (its id always exists), then settle on the system.
+        let target = pageIndex(containingSystem: system)
+        if let target, target != previous.flatMap(pageIndex(containingSystem:)) {
+          withAnimation(.easeInOut(duration: 0.45)) {
+            scroller.scrollTo(target, anchor: .top)
+          }
+          DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            withAnimation(.easeInOut(duration: 0.25)) {
+              scroller.scrollTo(system, anchor: .top)
+            }
+          }
+        } else {
+          withAnimation(.easeInOut(duration: 0.45)) {
+            scroller.scrollTo(system, anchor: .top)
+          }
         }
       }
       // The pill floats over the scroll, not inside the page: pinned to the
@@ -474,6 +491,12 @@ struct EngravedPieceView: View {
   /// Which system a note was drawn in, across every page.
   private func system(containing id: String) -> String? {
     controller.pages.compactMap { $0.system(containing: id) }.first
+  }
+
+  /// Which page row holds a system, for scrolling to pages the lazy list
+  /// has not built yet.
+  private func pageIndex(containingSystem id: String) -> Int? {
+    controller.pages.firstIndex { page in page.systems.contains { $0.id == id } }
   }
 }
 

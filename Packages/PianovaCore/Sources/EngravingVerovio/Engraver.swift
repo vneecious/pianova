@@ -94,23 +94,42 @@ public final class Engraver: ScoreEngraver, @unchecked Sendable {
       let hasOrnaments = real.count < starting.count
 
       if hasOrnaments && ornamentRunStart == nil { ornamentRunStart = time }
-      guard !real.isEmpty else { continue }
+
+      // The map expands repeats and marks the second pass with cloned
+      // identifiers ("-rend2"); the model plays linear (a repeat is
+      // notation), so each drawn note crosses the bridge once.
+      let fresh = real.filter { !isRepeatClone($0) }
+      guard !fresh.isEmpty else {
+        // Nothing begins here for the bridge: an ornament-only moment, or
+        // the repeat's second pass over notes already mapped.
+        if !real.isEmpty { ornamentRunStart = nil }
+        continue
+      }
 
       // A note delayed by the graces before it belongs at the moment the run
       // began; a note with no run pending is already where it was written.
       let written = ornamentRunStart ?? time
       if !hasOrnaments { ornamentRunStart = nil }
 
-      let pitches = real.compactMap(pitch(of:))
+      let pitches = fresh.compactMap(pitch(of:))
       if let last = events.last, abs(last.time - written) < 0.0005 {
         events[events.count - 1] = EngravedEvent(
-          time: last.time, elementIDs: last.elementIDs + real, pitches: last.pitches + pitches)
+          time: last.time, elementIDs: last.elementIDs + fresh, pitches: last.pitches + pitches)
       } else {
-        events.append(EngravedEvent(time: written, elementIDs: real, pitches: pitches))
+        events.append(EngravedEvent(time: written, elementIDs: fresh, pitches: pitches))
       }
     }
 
     return events
+  }
+
+  /// Whether an identifier is the repeat expansion's clone of a drawn note.
+  ///
+  /// The engraver names the second pass by suffixing the first pass's
+  /// identifier ("-rend2", "-rend3"); its own generated identifiers carry no
+  /// dash, so the suffix is unambiguous.
+  private func isRepeatClone(_ id: String) -> Bool {
+    id.range(of: #"-rend\d+$"#, options: .regularExpression) != nil
   }
 
   /// Whether a drawn element is an ornament — a grace note in the engraving.

@@ -78,6 +78,73 @@ import Testing
   #expect(try run(withMarks: false) == 3, "sem marca escrita, agrupa por tempo: três pares")
 }
 
+// MARK: - Repetição é notação: a ponte não duplica a volta
+
+/// A volta expandida pelo gravador não pode inflar o mapa de eventos.
+///
+/// O modelo toca linear (a repetição é desenho); o mapa de eventos do
+/// gravador expande a volta e re-refere as mesmas notas desenhadas. A ponte
+/// deduplica: cada nota desenhada soa uma vez, e o zip evento↔coluna fecha.
+@Test func repeatsDoNotDuplicateTheEventMap() throws {
+  let score = Score(
+    title: "Volta", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure(
+          [
+            ScoreNote(Pitch(60), .quarter), ScoreNote(Pitch(64), .quarter),
+            ScoreNote(Pitch(67), .quarter),
+          ],
+          repeatStart: true, repeatEnd: true),
+        Measure([ScoreNote(Pitch(72), .half, dotted: true)]),
+      ]))
+
+  let engraver = Engraver()
+  #expect(engraver.load(musicXML: MusicXMLExporter.musicXML(for: score)))
+
+  let events = engraver.events()
+  #expect(
+    events.count == score.soundingColumns.count,
+    Comment(
+      rawValue:
+        "a volta expandida não pode inflar o mapa: \(events.count) eventos para "
+        + "\(score.soundingColumns.count) colunas"))
+}
+
+// MARK: - Rule 129: a linha de oitava chega inteira
+
+/// Rule 129 — a linha da 8va é tracejada e fecha com o gancho vertical.
+///
+/// No SVG a linha é um path com stroke-dasharray e o gancho é um polyline —
+/// um parser que ignora os dois desenha uma linha sólida sem fim marcado.
+@Test func theOctaveLineIsDashedAndHooked() throws {
+  let score = Score(
+    title: "Oitava", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(84)], duration: Duration(.half), ottava: .startAbove),
+          ScoreNote(pitches: [Pitch(88)], duration: Duration(.half), ottava: .stop),
+        ])
+      ]))
+
+  let engraver = Engraver()
+  #expect(engraver.load(musicXML: MusicXMLExporter.musicXML(for: score)))
+  let page = try #require(engraver.page(1))
+
+  let octave = page.shapes.filter { $0.kind?.contains("octave") == true }
+  #expect(octave.contains { !$0.dashes.isEmpty }, "a linha da oitava é tracejada")
+  #expect(
+    octave.contains { shape in
+      let box = shape.path.boundingBox
+      return shape.dashes.isEmpty && !shape.isFilled && box.height > box.width
+    },
+    "o gancho vertical do fim tem que chegar à página")
+}
+
 // MARK: - Rule 133: acidentes chegam à página
 
 /// Rule 133 — um sol sustenido fora da armadura imprime o sustenido.

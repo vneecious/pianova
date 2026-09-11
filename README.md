@@ -561,7 +561,10 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      até onde a edição a levar. O julgamento não vê nada disso: a ponte com
      a gravura remove os ornamentos do mapa de eventos e recola a nota
      decorada no tempo escrito, para que destaque e cobrança sigam casados
-     coluna a coluna — execução de ornamento continua assunto para depois.
+     coluna a coluna — e vale nos dois sentidos: o ornamento não é cobrado,
+     e **tocá-lo também não é erro**. Quem lê a grace e a executa não pode
+     ser punido pela nota que a edição mandou tocar. Execução julgada de
+     ornamento continua assunto para depois.
 128. O **pedal escrito atravessa o cano inteiro** e é desenhado como os
      **sinais clássicos**: Ped. onde pisa, o asterisco onde solta — e cada um
      no seu instante: o asterisco que a edição pôs no **fim do compasso**
@@ -571,7 +574,9 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      desenhar a linha se um dia ela voltar.)
 129. A **oitava (8va/8vb)** é respeitada como notação: as alturas continuam
      sendo as que soam — o julgamento não muda — e a gravura desenha a linha
-     de oitava em vez de empilhar linhas suplementares.
+     de oitava em vez de empilhar linhas suplementares. A linha é
+     **tracejada** e termina no **gancho vertical** que marca onde a oitava
+     acaba, como toda edição impressa.
 130. As **ligaduras de expressão** do arquivo são preservadas e desenhadas.
      Elas não mudam o julgamento (ligadura de expressão não é ligadura de
      valor); mudam a leitura, e leitura é o que a página serve.

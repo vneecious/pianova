@@ -60,6 +60,10 @@ public final class EngravedPlayController: ObservableObject {
   /// note whenever a piece has a rest.
   private var columnOfEvent: [Int] = []
 
+  /// The ornament pitches decorating each column, excused from judgement
+  /// (rule 127): played, a grace neither advances nor punishes.
+  private var gracesOfColumn: [Set<Pitch>] = []
+
   /// What each staff carries at each column, for judging note by note.
   ///
   /// Where the hands play together, the studied hand answers for its own
@@ -118,6 +122,7 @@ public final class EngravedPlayController: ObservableObject {
     var columnOfEvent: [Int]
     var upperOfColumn: [Set<Pitch>]
     var lowerOfColumn: [Set<Pitch>]
+    var gracesOfColumn: [Set<Pitch>]
     var staffOfElement: [String: Int]
     var barOfColumn: [Int]
     var eventOfColumn: [Int: Int]
@@ -203,6 +208,7 @@ public final class EngravedPlayController: ObservableObject {
     // upper staff's notes are the right hand's, whatever register they sit in.
     let columns = score.columns
     let upperOfColumn = columns.map { Set($0.upper) }
+    let gracesOfColumn = score.columnGraces
     let lowerOfColumn = columns.map { Set($0.lower) }
 
     let barOfColumn = columns.indices.map { score.measureNumber(atColumn: $0) }
@@ -242,6 +248,7 @@ public final class EngravedPlayController: ObservableObject {
       columnOfEvent: columnOfEvent,
       upperOfColumn: upperOfColumn,
       lowerOfColumn: lowerOfColumn,
+      gracesOfColumn: gracesOfColumn,
       staffOfElement: staffOfElement,
       barOfColumn: barOfColumn,
       eventOfColumn: Dictionary(
@@ -262,6 +269,7 @@ public final class EngravedPlayController: ObservableObject {
     columnOfEvent = engraved.columnOfEvent
     upperOfColumn = engraved.upperOfColumn
     lowerOfColumn = engraved.lowerOfColumn
+    gracesOfColumn = engraved.gracesOfColumn
     staffOfElement = engraved.staffOfElement
     barOfColumn = engraved.barOfColumn
     eventOfColumn = engraved.eventOfColumn
@@ -417,6 +425,22 @@ public final class EngravedPlayController: ObservableObject {
   /// - Parameter pitch: The key that was struck.
   public func play(_ pitch: Pitch) {
     guard var session else { return }
+
+    // An ornament is read and may well be played, but it is never judged
+    // (rule 127): at a decorated moment, a grace pitch that is not itself
+    // demanded neither advances nor punishes.
+    if judged.indices.contains(session.cursorIndex) {
+      let event = judged[session.cursorIndex]
+      if columnOfEvent.indices.contains(event) {
+        let column = columnOfEvent[event]
+        if gracesOfColumn.indices.contains(column),
+          gracesOfColumn[column].contains(pitch),
+          !judgedPitches[session.cursorIndex].contains(pitch)
+        {
+          return
+        }
+      }
+    }
 
     let outcome = session.press(pitch, at: Date().timeIntervalSinceReferenceDate)
     self.session = session

@@ -202,7 +202,9 @@ struct EngravedScoreView: View {
           if shape.isFilled {
             context.fill(path, with: .color(state.color))
           } else {
-            context.stroke(path, with: .color(state.color), lineWidth: shape.strokeWidth)
+            context.stroke(
+              path, with: .color(state.color),
+              style: StrokeStyle(lineWidth: shape.strokeWidth, dash: shape.dashes))
           }
         }
       }

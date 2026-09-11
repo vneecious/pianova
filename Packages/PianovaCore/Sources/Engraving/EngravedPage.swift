@@ -18,6 +18,11 @@ public struct EngravedShape: Equatable, @unchecked Sendable {
   /// Line weight, when it is stroked.
   public let strokeWidth: CGFloat
 
+  /// The dash pattern, in page units — empty for a solid line.
+  ///
+  /// The octave line is dashed; drawn solid it reads as something else.
+  public let dashes: [CGFloat]
+
   /// Identifier of the nearest element that has one.
   ///
   /// This is the handle the cursor holds: the engraver gives every note an id,
@@ -327,11 +332,16 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
         symbolPath.addPath(path, transform: SVGTransform.parse(attributes["transform"]))
       } else {
         let width = attributes["stroke-width"].flatMap(Double.init) ?? 0
+        let dashes = (attributes["stroke-dasharray"] ?? "")
+          .split(whereSeparator: { $0 == " " || $0 == "," })
+          .compactMap { Double($0) }
+          .map { CGFloat($0) * scaleOf(transform) }
         shapes.append(
           EngravedShape(
             path: placed,
             isFilled: width == 0,
             strokeWidth: CGFloat(width) * scaleOf(transform),
+            dashes: dashes,
             elementID: ids.last ?? nil,
             kind: kinds.last ?? nil,
             noteID: notes.last ?? nil,
@@ -357,7 +367,30 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
       let placedPolygon = polygon.copy(using: [transform]) ?? polygon
       shapes.append(
         EngravedShape(
-          path: placedPolygon, isFilled: true, strokeWidth: 0,
+          path: placedPolygon, isFilled: true, strokeWidth: 0, dashes: [],
+          elementID: ids.last ?? nil, kind: kinds.last ?? nil,
+          noteID: notes.last ?? nil, measureID: measures.last ?? nil,
+          staffNumber: staves.last ?? nil, systemID: systemStack.last ?? nil))
+
+    case "polyline":
+      // The octave line's closing hook is a polyline: an open stroked run,
+      // not a filled polygon. Dropped, the line has no marked end.
+      guard let points = attributes["points"] else { break }
+      let run = points.split(whereSeparator: { $0 == " " || $0 == "\n" })
+        .compactMap { pair -> CGPoint? in
+          let numbers = pair.split(separator: ",").compactMap { Double($0) }
+          return numbers.count == 2 ? CGPoint(x: numbers[0], y: numbers[1]) : nil
+        }
+      guard run.count >= 2 else { break }
+
+      let open = CGMutablePath()
+      open.addLines(between: run)
+      let placedRun = open.copy(using: [transform]) ?? open
+      let runWidth = attributes["stroke-width"].flatMap(Double.init) ?? 0
+      shapes.append(
+        EngravedShape(
+          path: placedRun, isFilled: false,
+          strokeWidth: CGFloat(runWidth) * scaleOf(transform), dashes: [],
           elementID: ids.last ?? nil, kind: kinds.last ?? nil,
           noteID: notes.last ?? nil, measureID: measures.last ?? nil,
           staffNumber: staves.last ?? nil, systemID: systemStack.last ?? nil))
@@ -375,7 +408,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
       let placed = rect.copy(using: [transform]) ?? rect
       shapes.append(
         EngravedShape(
-          path: placed, isFilled: true, strokeWidth: 0,
+          path: placed, isFilled: true, strokeWidth: 0, dashes: [],
           elementID: ids.last ?? nil, kind: kinds.last ?? nil,
           noteID: notes.last ?? nil, measureID: measures.last ?? nil,
           staffNumber: staves.last ?? nil, systemID: systemStack.last ?? nil))
@@ -388,7 +421,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
       let placed = glyph.copy(using: [transform]) ?? glyph
       shapes.append(
         EngravedShape(
-          path: placed, isFilled: true, strokeWidth: 0,
+          path: placed, isFilled: true, strokeWidth: 0, dashes: [],
           elementID: ids.last ?? nil, kind: kinds.last ?? nil,
           noteID: notes.last ?? nil, measureID: measures.last ?? nil,
           staffNumber: staves.last ?? nil, systemID: systemStack.last ?? nil))
