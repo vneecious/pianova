@@ -194,12 +194,12 @@ struct EngravedPieceView: View {
         dragHandle(to: point, isLeading: isLeading, ended: ended, pageIndex: index)
       },
       quietStaff: controller.quietStaff,
+      annotations: AnyView(annotationLayer(pageIndex: index)),
       studyMeasures: studyMeasures,
       width: drawnWidth
     )
     .overlay(alignment: .top) { systemAnchors(for: page) }
     .overlay(alignment: .topLeading) { selectionMarker(for: page, pageIndex: index) }
-    .overlay { annotationLayer(pageIndex: index) }
     .padding(.vertical, 18)
     .asPage(colorScheme)
     .id(index)

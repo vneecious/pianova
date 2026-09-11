@@ -53,6 +53,15 @@ struct EngravedScoreView: View {
   /// The staff not being practised, whose ink is drawn faded.
   var quietStaff: Int?
 
+  /// The pencil's annotation canvas, layered between the music and the
+  /// gestures.
+  ///
+  /// It must sit ABOVE the page (the pencil draws on top) but BELOW the
+  /// selection handles: the canvas hit-tests every touch, and handles buried
+  /// under it never receive their drags — selection could be made and never
+  /// adjusted.
+  var annotations: AnyView?
+
   /// The bars in study; everything else on the page is scrimmed down.
   ///
   /// Empty means no study. Study happens on the page itself — same page,
@@ -86,6 +95,7 @@ struct EngravedScoreView: View {
     }
     .animation(.easeInOut(duration: 0.25), value: studyMeasures.isEmpty)
     .frame(width: width, height: height)
+    .overlay { if let annotations { annotations } }
     .overlay { touches(scale: scale) }
     .overlay { handles(scale: scale) }
   }
