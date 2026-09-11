@@ -109,3 +109,49 @@ private func parsedPage() -> EngravedPage? { EngravedPageParser.page(from: sampl
   #expect(SVGTransform.parse(nil) == .identity)
   #expect(SVGTransform.parse("rotate(45)") == .identity, "o que eu não leio, eu ignoro")
 }
+
+// MARK: - A nota inteira, não só a cabeça
+
+/// Tudo dentro de uma nota pertence a ela, mesmo tendo id próprio.
+///
+/// No SVG do gravador a haste carrega um identificador seu. Casar só por
+/// elemento pinta a cabeça e deixa haste e bandeirola na cor antiga — que na
+/// tela vira "uma bolinha colorida".
+@Test func everythingInsideANoteBelongsToIt() throws {
+  let page = try #require(parsedPage())
+
+  let head = try #require(page.shapes.first { $0.kind == "notehead" })
+  let stem = try #require(page.shapes.first { $0.kind == "stem" })
+
+  #expect(head.noteID == "note-1")
+  #expect(stem.noteID == "note-1", "a haste é da nota, apesar do id próprio")
+  #expect(stem.elementID == "stem-1", "e continua tendo o seu")
+}
+
+/// O contorno de uma nota é a união de tudo que é dela.
+@Test func aNoteFrameCoversAllOfIt() throws {
+  let page = try #require(parsedPage())
+
+  let whole = try #require(page.frame(of: "note-1"))
+  let head = try #require(page.shapes.first { $0.kind == "notehead" }).path.boundingBoxOfPath
+  let stem = try #require(page.shapes.first { $0.kind == "stem" }).path.boundingBoxOfPath
+
+  // Comparado com a união, e não com `contains`, que exclui a borda — a haste
+  // cai exatamente nela e o teste falharia por artefato, não por defeito.
+  #expect(whole == head.union(stem))
+  #expect(whole.width >= stem.width)
+  #expect(whole.width >= head.width)
+}
+
+/// O que está fora de uma nota não é atribuído a nenhuma.
+@Test func whatIsOutsideANoteHasNoNote() {
+  let bare = """
+    <svg><svg class="definition-scale" viewBox="0 0 100 100">
+      <g id="bar-1" class="barLine"><path d="M10 0 L10 50" stroke-width="4"/></g>
+    </svg></svg>
+    """
+
+  let page = EngravedPageParser.page(from: bare)
+  #expect(page?.shapes.first?.noteID == nil)
+  #expect(page?.shapes.first?.elementID == "bar-1")
+}

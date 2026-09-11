@@ -58,10 +58,12 @@ struct EngravedScoreView: View {
 
   /// The ink for one shape: its highlight if it has one, otherwise the page's.
   private func colour(for shape: EngravedShape) -> Color {
-    guard let id = shape.elementID, let state = highlights[id] else {
-      return Color(PlatformColor.staffInk(colorScheme))
-    }
-    return state.color
+    // The note first: a stem and a flag have identifiers of their own, and
+    // matching on those alone paints a note head and leaves the rest grey.
+    if let note = shape.noteID, let state = highlights[note] { return state.color }
+    if let id = shape.elementID, let state = highlights[id] { return state.color }
+
+    return Color(PlatformColor.staffInk(colorScheme))
   }
 
   /// The element whose box is nearest a point, for tapping a passage.
@@ -69,7 +71,7 @@ struct EngravedScoreView: View {
     var best: (id: String, distance: CGFloat)?
 
     for shape in page.shapes {
-      guard let id = shape.elementID else { continue }
+      guard let id = shape.noteID ?? shape.elementID else { continue }
       let box = shape.path.boundingBoxOfPath
       guard box.width > 0 || box.height > 0 else { continue }
 

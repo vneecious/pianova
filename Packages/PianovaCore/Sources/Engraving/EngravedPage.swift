@@ -22,6 +22,13 @@ public struct EngravedShape: Equatable {
 
   /// What the engraver called it — `note`, `stem`, `barLine`, and so on.
   public let kind: String?
+
+  /// Identifier of the note this belongs to, if any.
+  ///
+  /// Separate from ``elementID`` because a stem and a flag carry identifiers of
+  /// their own: highlighting by element alone paints the note head and leaves
+  /// the rest of the note in the old colour.
+  public let noteID: String?
 }
 
 /// A page of engraved music, ready to draw.
@@ -36,7 +43,8 @@ public struct EngravedPage: Equatable {
   /// - Parameter id: The element identifier.
   /// - Returns: Its bounding box, or `nil` if it is not on this page.
   public func frame(of id: String) -> CGRect? {
-    let boxes = shapes.filter { $0.elementID == id }.map { $0.path.boundingBoxOfPath }
+    let boxes = shapes.filter { $0.noteID == id || $0.elementID == id }
+      .map { $0.path.boundingBoxOfPath }
     guard let first = boxes.first else { return nil }
     return boxes.dropFirst().reduce(first) { $0.union($1) }
   }
@@ -55,6 +63,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
   private var transforms: [CGAffineTransform] = [.identity]
   private var ids: [String?] = [nil]
   private var kinds: [String?] = [nil]
+  private var notes: [String?] = [nil]
 
   private var definingSymbol: String?
   private var symbolPath = CGMutablePath()
@@ -96,6 +105,11 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
     ids.append(attributes["id"] ?? ids.last ?? nil)
     kinds.append(attributes["class"] ?? kinds.last ?? nil)
 
+    // Everything inside a `note` belongs to that note, whatever identifiers it
+    // carries of its own.
+    let isNote = (attributes["class"] ?? "").split(separator: " ").contains("note")
+    notes.append(isNote ? (attributes["id"] ?? notes.last ?? nil) : (notes.last ?? nil))
+
     switch name {
     case "g":
       // A `<g>` inside `<defs>` is a glyph waiting to be reused.
@@ -119,7 +133,8 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
             isFilled: width == 0,
             strokeWidth: CGFloat(width) * scaleOf(transform),
             elementID: ids.last ?? nil,
-            kind: kinds.last ?? nil))
+            kind: kinds.last ?? nil,
+            noteID: notes.last ?? nil))
       }
 
     case "use":
@@ -131,7 +146,8 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
       shapes.append(
         EngravedShape(
           path: placed, isFilled: true, strokeWidth: 0,
-          elementID: ids.last ?? nil, kind: kinds.last ?? nil))
+          elementID: ids.last ?? nil, kind: kinds.last ?? nil,
+          noteID: notes.last ?? nil))
 
     case "defs":
       isInsideDefs = true
@@ -160,6 +176,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
     if transforms.count > 1 { transforms.removeLast() }
     if ids.count > 1 { ids.removeLast() }
     if kinds.count > 1 { kinds.removeLast() }
+    if notes.count > 1 { notes.removeLast() }
   }
 
   private var isInsideDefs = false

@@ -45,6 +45,13 @@ struct EngravedPieceView: View {
     .onDisappear { hub.clearListener(owner: controller) }
   }
 
+  /// How tall one scroll anchor band is, in page units.
+  ///
+  /// The page is banded so the cursor can be followed *within* a page. Scrolling
+  /// to the page itself centres the whole thing, which on the very first note
+  /// means jumping to the middle of the piece.
+  private static let bandHeight: CGFloat = 400
+
   /// Every page, stacked, with the cursor kept in view.
   private var pages: some View {
     ScrollViewReader { scroller in
@@ -52,17 +59,44 @@ struct EngravedPieceView: View {
         LazyVStack(spacing: 20) {
           ForEach(Array(controller.pages.enumerated()), id: \.offset) { index, page in
             EngravedScoreView(page: page, highlights: controller.highlights)
+              .overlay(alignment: .top) { anchors(for: page, page: index) }
               .id(index)
           }
         }
         .padding(.horizontal, 8)
       }
       .onChange(of: controller.focus) { _, id in
-        guard let id,
-          let index = controller.pages.firstIndex(where: { $0.frame(of: id) != nil })
-        else { return }
-        withAnimation(.easeOut(duration: 0.3)) { scroller.scrollTo(index, anchor: .center) }
+        guard let id, let target = anchor(of: id) else { return }
+        withAnimation(.easeOut(duration: 0.3)) { scroller.scrollTo(target, anchor: .center) }
       }
     }
+  }
+
+  /// Invisible markers down a page, so a note can be scrolled to precisely.
+  private func anchors(for engraved: EngravedPage, page index: Int) -> some View {
+    let bands = max(Int(engraved.size.height / Self.bandHeight), 1)
+
+    return GeometryReader { proxy in
+      VStack(spacing: 0) {
+        ForEach(0..<bands, id: \.self) { band in
+          Color.clear
+            .frame(height: proxy.size.height / CGFloat(bands))
+            .id("p\(index)-b\(band)")
+        }
+      }
+    }
+    .allowsHitTesting(false)
+  }
+
+  /// Which marker sits nearest a note.
+  private func anchor(of id: String) -> String? {
+    for (index, engraved) in controller.pages.enumerated() {
+      guard let frame = engraved.frame(of: id) else { continue }
+
+      let bands = max(Int(engraved.size.height / Self.bandHeight), 1)
+      let band = Int(frame.midY / engraved.size.height * CGFloat(bands))
+      return "p\(index)-b\(min(max(band, 0), bands - 1))"
+    }
+    return nil
   }
 }
