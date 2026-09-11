@@ -195,16 +195,18 @@ struct ReadingView: View {
       Divider()
       header
 
-      ZStack(alignment: .topLeading) {
-        StaffView(
-          clef: controller.clef,
-          noteGroups: controller.session.notes.map { Array($0.pitches) },
-          states: states,
-          durations: controller.session.notes.map(\.duration),
-          staffSpace: 18)
-
-        playhead
-      }
+      // The staff draws its own guide line: it is the only one who knows the
+      // real layout. A line drawn outside was built without the durations and
+      // without the preamble, so it ran in equal columns from the page edge —
+      // misaligned with every note and reading as far too fast.
+      StaffView(
+        clef: controller.clef,
+        noteGroups: controller.session.notes.map { Array($0.pitches) },
+        states: states,
+        durations: controller.session.notes.map(\.duration),
+        staffSpace: 18,
+        playhead: playheadPosition
+      )
       .padding(.horizontal, 8)
 
       if !hub.isConnected {
@@ -309,22 +311,11 @@ struct ReadingView: View {
     }
   }
 
-  @ViewBuilder
-  private var playhead: some View {
-    if controller.phase == .playing {
-      GeometryReader { proxy in
-        let layout = StaffLayout(
-          staffSpace: 18,
-          width: proxy.size.width,
-          columnCount: controller.session.notes.count)
-        let position = controller.playheadPosition
-
-        Rectangle()
-          .fill(ItemState.current.color.opacity(0.55))
-          .frame(width: 2)
-          .offset(x: layout.playheadX(column: position.column, progress: position.progress))
-      }
-    }
+  /// Where the guide line is, while the line is being played.
+  private var playheadPosition: PlayheadPosition? {
+    guard controller.phase == .playing else { return nil }
+    let position = controller.playheadPosition
+    return PlayheadPosition(column: position.column, progress: position.progress)
   }
 
   /// Colour every note by what actually happened to it.
