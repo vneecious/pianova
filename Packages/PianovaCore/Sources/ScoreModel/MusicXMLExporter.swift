@@ -96,15 +96,36 @@ public enum MusicXMLExporter {
     }
 
     // Each staff reads its own accidentals, and each bar starts clean.
+    // A release the next bar opens with is written here instead, anchored to
+    // this bar's last beat — under the last chord, not squeezed at the
+    // barline (rule 128).
+    func staffBody(
+      _ notes: [Measure], part: Part?, staff: Int?, voice: Int,
+      state: inout AccidentalState
+    ) -> String {
+      let events = notes[0].notes
+      let beams = beamMarks(for: notes[0], beat: score.timeSignature.beatValue.beats)
+      let release = nextBarOpensWithRelease(part, after: index)
+
+      var text = events.enumerated()
+        .map { position, event in
+          let stop =
+            release && events.count > 1 && position == events.count - 1
+            ? pedalStop(staff: staff) : ""
+          return stop
+            + note(
+              event, staff: staff, voice: voice, beam: beams[position],
+              suppressPedalStop: position == 0 && index > 0,
+              accidentals: &state)
+        }
+        .joined()
+      if release && events.count <= 1 { text += pedalStop(staff: staff) }
+      return text
+    }
+
     var upperState = AccidentalState(key: score.key)
-    let upperBeams = beamMarks(for: bar, beat: score.timeSignature.beatValue.beats)
-    body += bar.notes.enumerated()
-      .map { index, event in
-        note(
-          event, staff: lower == nil ? nil : 1, voice: 1, beam: upperBeams[index],
-          accidentals: &upperState)
-      }
-      .joined()
+    body += staffBody(
+      [bar], part: score.rightHand, staff: lower == nil ? nil : 1, voice: 1, state: &upperState)
 
     if let lower {
       // Rewind to the bar's start and write the second staff over the same
@@ -112,12 +133,7 @@ public enum MusicXMLExporter {
       let barLength = Int((bar.beats * Double(divisions)).rounded())
       body += "<backup><duration>\(barLength)</duration></backup>"
       var lowerState = AccidentalState(key: score.key)
-      let lowerBeams = beamMarks(for: lower, beat: score.timeSignature.beatValue.beats)
-      body += lower.notes.enumerated()
-        .map { index, event in
-          note(event, staff: 2, voice: 2, beam: lowerBeams[index], accidentals: &lowerState)
-        }
-        .joined()
+      body += staffBody([lower], part: score.leftHand, staff: 2, voice: 2, state: &lowerState)
     }
 
     if bar.repeatEnd {
@@ -127,6 +143,26 @@ public enum MusicXMLExporter {
     }
 
     return "<measure number=\"\(index + 1)\">\(body)</measure>"
+  }
+
+  /// Whether the next bar opens on a release that belongs at THIS bar's end.
+  ///
+  /// The importer anchors a bar-final release to the next bar's first note —
+  /// there is nothing later to hang it on. Writing it back there would glue
+  /// the star to the next Ped. (rule 128), so the exporter looks one bar
+  /// ahead and puts the stop where the edition had it.
+  private static func nextBarOpensWithRelease(_ part: Part?, after index: Int) -> Bool {
+    guard let part, part.measures.indices.contains(index + 1),
+      let pedal = part.measures[index + 1].notes.first?.pedal
+    else { return false }
+    return pedal == .up || pedal == .change
+  }
+
+  /// A pedal release, written at the current point of the bar.
+  private static func pedalStop(staff: Int?) -> String {
+    let staffTag = staff.map { "<staff>\($0)</staff>" } ?? ""
+    return "<direction placement=\"below\"><direction-type>"
+      + "<pedal type=\"stop\" line=\"no\"/></direction-type>\(staffTag)</direction>"
   }
 
   private static func clef(_ clef: Clef, number: Int?) -> String {
@@ -174,6 +210,7 @@ public enum MusicXMLExporter {
 
   private static func note(
     _ event: ScoreNote, staff: Int?, voice: Int, beam: BeamMark?,
+    suppressPedalStop: Bool = false,
     accidentals: inout AccidentalState
   ) -> String {
     let length = Int((event.duration.beats * Double(divisions)).rounded())
@@ -190,7 +227,7 @@ public enum MusicXMLExporter {
     let timeModTag = timeMod ?? ""
 
     guard !event.isRest else {
-      return directions(before: event, staff: staff)
+      return directions(before: event, staff: staff, suppressPedalStop: suppressPedalStop)
         + "<note><rest/><duration>\(length)</duration>\(voiceTag)"
         + "<type>\(type)</type>\(dot)\(timeModTag)\(staffTag)</note>"
     }
@@ -214,7 +251,8 @@ public enum MusicXMLExporter {
     // A chord is written as one note followed by others marked `<chord/>`,
     // which is how MusicXML says "these share a moment".
     let graces = graceNotes(of: event, staff: staff, voice: voice, accidentals: &accidentals)
-    var body = directions(before: event, staff: staff) + graces
+    var body =
+      directions(before: event, staff: staff, suppressPedalStop: suppressPedalStop) + graces
 
     for (index, pitch) in event.pitches.enumerated() {
       let chord = index == 0 ? "" : "<chord/>"
@@ -236,7 +274,9 @@ public enum MusicXMLExporter {
   }
 
   /// What is written before the note: pedal, octave line, dynamic, words.
-  private static func directions(before event: ScoreNote, staff: Int?) -> String {
+  private static func directions(
+    before event: ScoreNote, staff: Int?, suppressPedalStop: Bool = false
+  ) -> String {
     var parts: [String] = []
     let staffTag = staff.map { "<staff>\($0)</staff>" } ?? ""
 
@@ -247,8 +287,12 @@ public enum MusicXMLExporter {
           + "</direction-type></direction>")
     }
     if let dynamic = event.dynamic {
+      // Piano dynamics live between the staves (rule 136): below the upper
+      // staff for the melody's, above the lower one for the bass's.
+      let placement = staff == 2 ? "above" : "below"
       parts.append(
-        "<direction placement=\"below\"><direction-type><dynamics><\(dynamic)/></dynamics>"
+        "<direction placement=\"\(placement)\"><direction-type>"
+          + "<dynamics><\(dynamic)/></dynamics>"
           + "</direction-type>\(staffTag)</direction>")
     }
     if let ottava = event.ottava {
@@ -263,14 +307,14 @@ public enum MusicXMLExporter {
           + "\(staffTag)</direction>")
     }
     if let pedal = event.pedal {
-      // The style the edition chose: a line with corner hooks, or Ped. with
-      // the release star. The engraver pairs a line's start and stop by their
-      // staff, so the staff tag below is what keeps the lane alive.
-      let line = event.pedalLine ? "yes" : "no"
-
+      // Classic signs, whatever style the file used (rule 128): Ped. where
+      // it goes down, the star where it lifts. A release the importer
+      // anchored to this bar's FIRST note really belongs at the previous
+      // bar's end — the caller suppresses it here and the previous bar
+      // writes it in place, so star and Ped. never glue.
       func mark(_ kind: String) -> String {
         "<direction placement=\"below\"><direction-type>"
-          + "<pedal type=\"\(kind)\" line=\"\(line)\"/>"
+          + "<pedal type=\"\(kind)\" line=\"no\"/>"
           + "</direction-type>\(staffTag)</direction>"
       }
 
@@ -278,9 +322,12 @@ public enum MusicXMLExporter {
       // and the files themselves write it — the engraver refused a bare
       // change on a line pedal and dropped the whole lane.
       switch pedal {
-      case .down: parts.append(mark("start"))
-      case .up: parts.append(mark("stop"))
-      case .change: parts.append(mark("stop") + mark("start"))
+      case .down:
+        parts.append(mark("start"))
+      case .up:
+        if !suppressPedalStop { parts.append(mark("stop")) }
+      case .change:
+        parts.append(suppressPedalStop ? mark("start") : mark("stop") + mark("start"))
       }
     }
 

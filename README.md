@@ -559,11 +559,13 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      ornamentos do mapa de eventos e recola a nota decorada no tempo escrito,
      para que destaque e cobrança sigam casados coluna a coluna — execução de
      ornamento continua assunto para depois.
-128. O **pedal escrito atravessa o cano inteiro**: o importador preserva as
-     marcas do arquivo, o modelo as carrega ancoradas às notas, e a gravura
-     desenha o estilo que a edição pediu — **linha com cantoneiras** quando o
-     arquivo escreve o pedal em linha, Ped. e o asterisco de soltar quando
-     escreve em sinais.
+128. O **pedal escrito atravessa o cano inteiro** e é desenhado como os
+     **sinais clássicos**: Ped. onde pisa, o asterisco onde solta — e cada um
+     no seu instante: o asterisco que a edição pôs no **fim do compasso**
+     fica no fim do compasso, nunca colado no Ped. do compasso seguinte.
+     É como o MuseScore e as edições de Chopin mostram. (Pedal escrito em
+     linha no arquivo é traduzido para esses mesmos sinais; a página sabe
+     desenhar a linha se um dia ela voltar.)
 129. A **oitava (8va/8vb)** é respeitada como notação: as alturas continuam
      sendo as que soam — o julgamento não muda — e a gravura desenha a linha
      de oitava em vez de empilhar linhas suplementares.
@@ -595,7 +597,10 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      tipógrafo faria — o gravador sozinho não agrupa nada, e colcheia de
      bandeirola em bandeirola não é partitura impressa.
 136. As **palavras de andamento e expressão** ("Allegretto", "dolce") são
-     escritas **acima da pauta**, como toda edição impressa as põe.
+     escritas **acima da pauta**, como toda edição impressa as põe. As
+     **dinâmicas** de um sistema de piano ficam **entre as pautas**: abaixo
+     da pauta de cima quando presas à melodia, acima da pauta de baixo
+     quando presas ao baixo.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

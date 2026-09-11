@@ -194,8 +194,9 @@ private let simple = Score(
   #expect(xml.contains("<pedal type=\"stop\""))
 }
 
-/// Rule 128 — pedal escrito em linha sai como linha, não como sinais.
-@Test func pedalLineStyleExportsAsLine() {
+/// Rule 128 — pedal escrito em linha no arquivo sai traduzido para os
+/// sinais clássicos, que é como a edição de referência o mostra.
+@Test func aLinePedalBecomesClassicSigns() {
   let score = Score(
     title: "Pedal em linha", composer: "—",
     rightHand: Part(
@@ -210,9 +211,50 @@ private let simple = Score(
 
   let xml = MusicXMLExporter.musicXML(for: score)
 
-  #expect(xml.contains("<pedal type=\"start\" line=\"yes\""))
-  #expect(xml.contains("<pedal type=\"stop\" line=\"yes\""))
-  #expect(!xml.contains("line=\"no\""))
+  #expect(xml.contains("<pedal type=\"start\" line=\"no\""))
+  #expect(xml.contains("<pedal type=\"stop\" line=\"no\""))
+  #expect(!xml.contains("line=\"yes\""))
+}
+
+/// Rule 128 — o asterisco de fim de compasso fica no fim do compasso: a
+/// retomada ancorada na cabeça do compasso seguinte vira solta-lá/pisa-cá,
+/// nunca dois sinais colados.
+@Test func aCrossBarReleaseStaysAtItsBarEnd() {
+  func bar(_ pedal: PedalMark?) -> Measure {
+    Measure([
+      ScoreNote(pitches: [Pitch(45)], duration: Duration(.quarter), pedal: pedal),
+      ScoreNote(pitches: [Pitch(52)], duration: Duration(.quarter)),
+      ScoreNote(pitches: [Pitch(52)], duration: Duration(.quarter)),
+    ])
+  }
+  let score = Score(
+    title: "Retomada", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(clef: .bass, measures: [bar(.down), bar(.change), bar(.up)]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+  let bars = xml.components(separatedBy: "<measure number=")
+
+  func count(_ needle: String, in text: String) -> Int {
+    text.components(separatedBy: needle).count - 1
+  }
+
+  // Compasso 1: pisa no início; o solta da retomada vem para cá, ancorado
+  // no último tempo — sob o último acorde, não espremido na barra.
+  #expect(count("<pedal type=\"start\"", in: bars[1]) == 1)
+  #expect(count("<pedal type=\"stop\"", in: bars[1]) == 1)
+  let stopAt = bars[1].range(of: "<pedal type=\"stop\"")!.lowerBound
+  let lastNoteAt = bars[1].range(of: "<note>", options: .backwards)!.lowerBound
+  let firstNoteAt = bars[1].range(of: "<note>")!.lowerBound
+  #expect(firstNoteAt < stopAt, "o stop vem depois do início do compasso")
+  #expect(stopAt < lastNoteAt, "o stop ancora no último tempo, antes da última nota")
+
+  // Compasso 2: só o novo Ped., mais o stop do fim (que pertence ao 3).
+  #expect(count("<pedal type=\"start\"", in: bars[2]) == 1)
+  #expect(count("<pedal type=\"stop\"", in: bars[2]) == 1)
+
+  // Compasso 3: nada — o solta dele já ficou escrito no fim do compasso 2.
+  #expect(count("<pedal", in: bars[3]) == 0)
 }
 
 /// Rule 128 — pedal em sinais continua saindo como sinais.
@@ -397,6 +439,30 @@ private let simple = Score(
   let xml = MusicXMLExporter.musicXML(for: score)
 
   #expect(xml.contains("<direction placement=\"above\"><direction-type><words>Allegretto"))
+}
+
+/// Rule 136 — dinâmica de piano fica entre as pautas: presa ao baixo sai
+/// acima da pauta de baixo; presa à melodia, abaixo da de cima.
+@Test func dynamicsSitBetweenTheStaves() {
+  let score = Score(
+    title: "Dinâmica", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [Measure([ScoreNote(pitches: [Pitch(72)], duration: Duration(.whole))])]),
+    leftHand: Part(
+      clef: .bass,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(45)], duration: Duration(.whole), dynamic: "mp")
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(
+    xml.contains(
+      "<direction placement=\"above\"><direction-type><dynamics><mp/></dynamics>"
+        + "</direction-type><staff>2</staff></direction>"))
 }
 
 // MARK: - Rule 133: acidentes impressos
