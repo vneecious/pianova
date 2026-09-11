@@ -338,8 +338,14 @@ public final class EngravedPlayController: ObservableObject {
   /// - Parameter page: The page.
   /// - Returns: Its cache key, tied to the staff at rest.
   public func inkKey(for page: EngravedPage) -> String {
-    "\(page.id)|\(quietStaff ?? 0)"
+    "\(page.id)|\(quietStaff ?? 0)|\(showsTexts ? 1 : 0)"
   }
+
+  /// Whether the page's written texts — fingering above all — are drawn.
+  ///
+  /// Reading with fingers and reading without are stages of studying the
+  /// same piece, so this is the player's choice and it is remembered.
+  public var showsTexts = true
 
   /// Renders any page whose ink is not yet an image, off the main thread.
   public func renderInks() {
@@ -347,9 +353,11 @@ public final class EngravedPlayController: ObservableObject {
       let key = inkKey(for: page)
       guard inkMasks[key] == nil else { continue }
       let quiet = quietStaff
+      let texts = showsTexts
 
       Task.detached(priority: .userInitiated) {
-        let masks = InkRasterizer.masks(for: page, pixelWidth: 2400, quietStaff: quiet)
+        let masks = InkRasterizer.masks(
+          for: page, pixelWidth: 2400, quietStaff: quiet, includeTexts: texts)
         await MainActor.run { self.inkMasks[key] = masks }
       }
     }

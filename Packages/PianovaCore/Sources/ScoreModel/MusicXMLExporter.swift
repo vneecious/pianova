@@ -20,7 +20,10 @@ public enum MusicXMLExporter {
 
     let declarations =
       parts.map { id, _ in
-        "<score-part id=\"\(id)\"><part-name>Piano</part-name></score-part>"
+        // An empty part name on purpose: Verovio prints whatever is here at
+        // the head of the first system, and in a piano app the word "Piano"
+        // over the staff is noise.
+        "<score-part id=\"\(id)\"><part-name></part-name></score-part>"
       }
       .joined()
 

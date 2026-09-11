@@ -78,6 +78,10 @@ struct EngravedPieceView: View {
     .onChange(of: session.range) { _, _ in refreshSelection() }
     .onChange(of: session.hands) { _, _ in applyStudy() }
     .onChange(of: session.loops) { _, _ in controller.loops = session.loopsNow }
+    .onChange(of: showsFingering) { _, value in
+      controller.showsTexts = value
+      controller.renderInks()
+    }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if !hub.isConnected {
         PianoKeyboardView { controller.play($0) }
@@ -86,6 +90,7 @@ struct EngravedPieceView: View {
     .onAppear {
       controller.onFinished = onFinished
       controller.loops = session.loopsNow
+      controller.showsTexts = showsFingering
       reload()
       hub.setListener(owner: controller) { [controller] event in
         guard case .pressed(let pitch, _) = event else { return }
@@ -125,6 +130,15 @@ struct EngravedPieceView: View {
 
   /// The pinch as it happens, shown by scaling until the reflow lands.
   @State private var liveZoom: CGFloat = 1
+
+  /// Whether written fingering is drawn, remembered between sessions.
+  @AppStorage("pianova.showsFingering") private var showsFingering = true
+
+  /// The tool the pencil holds, remembered between sessions.
+  @AppStorage("pianova.annotationTool") private var annotationTool = "pen"
+
+  /// The player's pencil marks, one canvas per page.
+  private let annotations = AnnotationStore()
 
   /// The bars marked on the page while a passage is being chosen.
   ///
@@ -177,9 +191,30 @@ struct EngravedPieceView: View {
     )
     .overlay(alignment: .top) { systemAnchors(for: page) }
     .overlay(alignment: .topLeading) { selectionMarker(for: page, pageIndex: index) }
+    .overlay { annotationLayer(pageIndex: index) }
     .padding(.vertical, 18)
     .asPage(colorScheme)
     .id(index)
+  }
+
+  /// The pencil's drawing surface over one page.
+  ///
+  /// The pencil draws and the finger never does, so there is no mode: the
+  /// layer is simply always there on the iPad, and absent where no pencil is.
+  @ViewBuilder
+  private func annotationLayer(pageIndex: Int) -> some View {
+    #if canImport(UIKit) && canImport(PencilKit)
+    AnnotationLayer(
+      saved: annotations.drawing(
+        title: score.title, units: controller.pageUnits, page: pageIndex),
+      tool: AnnotationTool(rawValue: annotationTool) ?? .pen,
+      onChange: { data in
+        annotations.save(
+          data, title: score.title, units: controller.pageUnits, page: pageIndex)
+      }
+    )
+    .id("\(score.title)|\(controller.pageUnits)|\(pageIndex)")
+    #endif
   }
 
   /// The bars kept sharp while studying; everything else is scrimmed.

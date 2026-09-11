@@ -89,6 +89,9 @@ struct PieceView: View {
     switch session.phase {
     case .browsing:
       HStack(spacing: 12) {
+        annotateMenu
+        fingeringToggle
+
         if startFrom > 0 {
           Button("Do começo") { startFrom = 0 }
             .buttonStyle(.plain)
@@ -136,6 +139,55 @@ struct PieceView: View {
     case .selecting: return session.range?.label ?? "Escolhendo trecho"
     case .studying: return session.range?.label ?? score.title
     }
+  }
+
+  /// Whether written fingering is drawn, remembered between sessions.
+  @AppStorage("pianova.showsFingering") private var showsFingering = true
+
+  /// The tool the pencil holds, remembered between sessions.
+  @AppStorage("pianova.annotationTool") private var annotationTool = "pen"
+
+  /// Shows or hides the written fingering — stages of studying the same piece.
+  private var fingeringToggle: some View {
+    Button {
+      showsFingering.toggle()
+    } label: {
+      Image(systemName: showsFingering ? "hand.raised.fill" : "hand.raised.slash")
+        .font(.system(size: 13))
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(showsFingering ? Theme.accent : .secondary)
+    .help(showsFingering ? "Ocultar a digitação" : "Mostrar a digitação")
+  }
+
+  /// The pencil's tools: what it draws with, and the way out of a mess.
+  private var annotateMenu: some View {
+    Menu {
+      #if canImport(UIKit) && canImport(PencilKit)
+      ForEach(AnnotationTool.allCases, id: \.rawValue) { tool in
+        Button {
+          annotationTool = tool.rawValue
+        } label: {
+          Label(tool.title, systemImage: tool.symbol)
+        }
+      }
+
+      Divider()
+      #endif
+
+      Button(role: .destructive) {
+        AnnotationStore().clear(title: score.title)
+      } label: {
+        Label("Apagar anotações da peça", systemImage: "trash")
+      }
+    } label: {
+      Image(systemName: "pencil.tip.crop.circle")
+        .font(.system(size: 14))
+        .foregroundStyle(.secondary)
+    }
+    .menuStyle(.borderlessButton)
+    .fixedSize()
+    .help("Anotar com a caneta")
   }
 
   /// One line saying what the current gesture does, per phase.

@@ -539,6 +539,15 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      dedo (1 a 5), o exportador a escreve no MusicXML e a gravura a mostra
      como uma edição pedagógica mostra — número junto à nota. O importador
      **preserva** a digitação que vier no arquivo; nada a inventa.
+123. A digitação é **desligável** num toque, e a escolha fica lembrada. Ler
+     com dedos e ler sem dedos são fases do estudo da mesma peça.
+124. Nenhum rótulo de parte é impresso na página: num app de piano, escrever
+     "Piano" no alto da pauta é ruído.
+125. A partitura aceita **anotações à caneta**: a Apple Pencil desenha sobre
+     a página a qualquer momento, o dedo nunca desenha — dedo rola, seleciona
+     e toca, como sempre. As anotações **persistem por peça e por zoom**
+     (a página que reflui é outra página), e o botão Anotar traz a paleta de
+     ferramentas para trocar tinta ou apagar.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

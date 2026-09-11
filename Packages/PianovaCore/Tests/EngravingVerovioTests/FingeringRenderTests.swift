@@ -49,3 +49,16 @@ import Testing
   #expect(finger.position.y > 0)
   #expect(finger.fontSize > 0)
 }
+
+/// Rule 124 — nenhum "Piano" impresso no alto do sistema.
+@Test func noPartLabelIsPrinted() {
+  let score = Score(
+    title: "Sem rótulo", composer: "—",
+    rightHand: Part(clef: .treble, measures: [Measure([ScoreNote(Pitch(60), .whole)])]))
+
+  let engraver = Engraver()
+  engraver.load(musicXML: MusicXMLExporter.musicXML(for: score))
+  let page = engraver.page(1)
+
+  #expect(page?.texts.contains { $0.text.localizedCaseInsensitiveContains("piano") } == false)
+}

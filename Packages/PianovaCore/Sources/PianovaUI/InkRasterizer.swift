@@ -29,20 +29,25 @@ public enum InkRasterizer {
   ///   - page: The page to draw.
   ///   - pixelWidth: How many pixels across, trading sharpness for memory.
   ///   - quietStaff: The staff at rest, split into its own mask, or `nil`.
+  ///   - includeTexts: Whether written texts — fingering above all — are drawn.
   /// - Returns: The masks, as sharp as asked for.
-  public static func masks(for page: EngravedPage, pixelWidth: Int, quietStaff: Int?) -> Masks {
+  public static func masks(
+    for page: EngravedPage, pixelWidth: Int, quietStaff: Int?, includeTexts: Bool = true
+  ) -> Masks {
     Masks(
-      loud: render(page: page, pixelWidth: pixelWidth) { staff in
+      loud: render(page: page, pixelWidth: pixelWidth, includeTexts: includeTexts) { staff in
         quietStaff == nil || staff != quietStaff
       },
       quiet: quietStaff == nil
         ? nil
-        : render(page: page, pixelWidth: pixelWidth) { $0 == quietStaff })
+        : render(page: page, pixelWidth: pixelWidth, includeTexts: includeTexts) {
+          $0 == quietStaff
+        })
   }
 
   /// Draws the shapes and texts whose staff passes a filter, alpha-only.
   private static func render(
-    page: EngravedPage, pixelWidth: Int, include: (Int?) -> Bool
+    page: EngravedPage, pixelWidth: Int, includeTexts: Bool, include: (Int?) -> Bool
   ) -> CGImage? {
     let scale = CGFloat(pixelWidth) / max(page.size.width, 1)
     let pixelHeight = Int((page.size.height * scale).rounded(.up))
@@ -76,7 +81,7 @@ public enum InkRasterizer {
     // Text runs — fingering numbers, tempo words. The engraver writes them as
     // SVG text, and until the parser learned to read it every number was
     // dropped in silence.
-    for run in page.texts where include(run.staffNumber) {
+    for run in page.texts where includeTexts && include(run.staffNumber) {
       drewAnything = true
       draw(run, in: context)
     }
