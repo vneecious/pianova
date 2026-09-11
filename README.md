@@ -411,6 +411,19 @@ bandeirolas soltas se leem como duas notas sem relação, e obrigam a contar.
 87. Em compasso composto (6/8, 9/8, 12/8) o agrupamento é **de três em três**,
     porque ali o tempo é a semínima pontuada.
 88. O grupo **nunca atravessa a barra de compasso**.
+89. Cada **nível de barra** cobre só as notas que o carregam: a primeira
+    atravessa o grupo, a segunda aparece apenas sobre as semicolcheias. Uma
+    barra só sobre um grupo misto desenha semicolcheia como colcheia, que é
+    outro ritmo.
+
+### Partituras importadas ficam
+
+90. Uma partitura importada **sobrevive ao fechamento do app**. Importar algo
+    que some ao fechar obriga a reimportar toda sessão.
+91. O que é guardado é o **arquivo original**, relido a cada abertura. O arquivo
+    é a fonte da verdade; guardar a interpretação dele congelaria os erros de
+    leitura que ainda vamos corrigir.
+92. Uma partitura importada pode ser **removida** da lista.
 
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o

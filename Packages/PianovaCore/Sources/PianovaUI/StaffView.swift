@@ -645,21 +645,33 @@ public struct StaffView: View, @MainActor Animatable {
     let ink = PlatformColor.ink(for: steps.first?.state ?? .pending, in: colorScheme)
     let thickness = staffSpace * Bravura.Glyph.beamThickness
 
-    // The beam itself, plus a second one for a run of semiquavers.
-    let count =
-      group.compactMap { durations.indices.contains($0) ? durations[$0].value : nil }
-      .map(BeamGrouping.beams(for:)).min() ?? 1
+    let values = group.compactMap { durations.indices.contains($0) ? durations[$0].value : nil }
+    let deepest = values.map(BeamGrouping.beams(for:)).max() ?? 1
 
-    for level in 0..<max(count, 1) {
-      let drop = CGFloat(level) * thickness * 1.8 * (stemUp ? 1 : -1)
-      var path = Path()
-      path.move(to: CGPoint(x: steps[0].x, y: beamStart + drop))
-      path.addLine(to: CGPoint(x: steps[steps.count - 1].x, y: beamEnd + drop))
-      path.addLine(
-        to: CGPoint(x: steps[steps.count - 1].x, y: beamEnd + drop + thickness))
-      path.addLine(to: CGPoint(x: steps[0].x, y: beamStart + drop + thickness))
-      path.closeSubpath()
-      context.fill(path, with: .color(Color(ink)))
+    // Each level is drawn over the notes that actually carry it: the primary
+    // beam spans the group, the second appears only over the semiquavers.
+    // Taking the minimum instead drew a run of semiquavers as if it were
+    // quavers, which is a different rhythm.
+    func beamY(_ index: Int, drop: CGFloat) -> CGFloat {
+      let fraction = steps.count > 1 ? CGFloat(index) / CGFloat(steps.count - 1) : 0
+      return beamStart + slant * fraction + drop
+    }
+
+    for level in 1...max(deepest, 1) {
+      let drop = CGFloat(level - 1) * thickness * 1.8 * (stemUp ? 1 : -1)
+
+      for run in BeamGrouping.runs(values: values, level: level) where run.count >= 2 {
+        let from = min(run.lowerBound, steps.count - 1)
+        let to = min(run.upperBound - 1, steps.count - 1)
+
+        var path = Path()
+        path.move(to: CGPoint(x: steps[from].x, y: beamY(from, drop: drop)))
+        path.addLine(to: CGPoint(x: steps[to].x, y: beamY(to, drop: drop)))
+        path.addLine(to: CGPoint(x: steps[to].x, y: beamY(to, drop: drop) + thickness))
+        path.addLine(to: CGPoint(x: steps[from].x, y: beamY(from, drop: drop) + thickness))
+        path.closeSubpath()
+        context.fill(path, with: .color(Color(ink)))
+      }
     }
 
     for (index, point) in steps.enumerated() {

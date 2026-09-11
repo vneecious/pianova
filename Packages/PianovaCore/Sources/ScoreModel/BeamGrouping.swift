@@ -103,6 +103,35 @@ public enum BeamGrouping {
   }
 }
 
+extension BeamGrouping {
+  /// Runs inside a group that carry a beam at a given level.
+  ///
+  /// The primary beam spans the whole group; the second exists only over the
+  /// semiquavers. Taking the minimum across the group instead — one beam for
+  /// everything — draws a run of semiquavers as if it were quavers, which is a
+  /// different rhythm.
+  /// - Parameters:
+  ///   - values: The figures of the group, in order.
+  ///   - level: Which beam, counting from 1.
+  /// - Returns: Ranges within the group that carry that beam.
+  public static func runs(values: [NoteValue], level: Int) -> [Range<Int>] {
+    var runs: [Range<Int>] = []
+    var start: Int?
+
+    for (index, value) in values.enumerated() {
+      if beams(for: value) >= level {
+        if start == nil { start = index }
+      } else if let begin = start {
+        runs.append(begin..<index)
+        start = nil
+      }
+    }
+    if let begin = start { runs.append(begin..<values.count) }
+
+    return runs
+  }
+}
+
 extension Score {
   /// Runs of columns that share a beam.
   public var beamGroups: [Range<Int>] {

@@ -158,3 +158,30 @@ private enum Songs {
         ])
       ]))
 }
+
+// MARK: - Rule 89: each beam covers what carries it
+
+/// A run of semiquavers carries two beams; a run of quavers, one.
+@Test func eachLevelCoversWhatCarriesIt() {
+  let values: [NoteValue] = [.eighth, .eighth, .sixteenth, .sixteenth]
+
+  #expect(BeamGrouping.runs(values: values, level: 1) == [0..<4], "a primeira atravessa tudo")
+  #expect(BeamGrouping.runs(values: values, level: 2) == [2..<4], "a segunda só as semicolcheias")
+}
+
+/// Semiquavers split by a quaver give two separate second beams.
+@Test func aSecondBeamCanBreakInTheMiddle() {
+  let values: [NoteValue] = [.sixteenth, .sixteenth, .eighth, .sixteenth, .sixteenth]
+
+  #expect(BeamGrouping.runs(values: values, level: 2) == [0..<2, 3..<5])
+}
+
+/// Nothing carries a beam that deep, so there is nothing to draw.
+@Test func thereIsNoThirdBeam() {
+  #expect(BeamGrouping.runs(values: [.sixteenth, .sixteenth], level: 3).isEmpty)
+}
+
+/// A group of plain quavers has one beam and no second.
+@Test func quaversHaveNoSecondBeam() {
+  #expect(BeamGrouping.runs(values: [.eighth, .eighth], level: 2).isEmpty)
+}

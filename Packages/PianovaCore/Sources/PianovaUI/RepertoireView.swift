@@ -20,7 +20,10 @@ struct RepertoireView: View {
   /// The piece open right now, if any.
   @State private var playing: Score?
 
-  /// Pieces the player imported this session.
+  /// The library of imported pieces, kept between sessions.
+  private let library = ScoreLibrary()
+
+  /// Pieces the player imported, read from the library.
   @State private var imported: [Score] = []
 
   /// Whether the file importer is on screen.
@@ -122,6 +125,7 @@ struct RepertoireView: View {
       .frame(maxWidth: 720, alignment: .leading)
       .padding(32)
     }
+    .onAppear { imported = library.scores().reversed() }
     .fileImporter(
       isPresented: $isImporting,
       allowedContentTypes: Self.musicXMLTypes,
@@ -168,7 +172,7 @@ struct RepertoireView: View {
     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
     do {
-      imported.insert(try MusicXMLImporter.score(at: url), at: 0)
+      imported.insert(try library.add(url), at: 0)
     } catch let error as MusicXMLError {
       importError = error.message
     } catch {
@@ -192,6 +196,19 @@ struct RepertoireView: View {
         }
 
         Spacer(minLength: 0)
+
+        if imported.contains(where: { $0.title == score.title }) {
+          Button {
+            library.remove(titled: score.title)
+            imported.removeAll { $0.title == score.title }
+          } label: {
+            Image(systemName: "trash")
+              .font(.system(size: 12))
+              .foregroundStyle(.secondary)
+          }
+          .buttonStyle(.plain)
+          .help("Remover do repertório")
+        }
 
         if score.isTwoHanded {
           Text("duas mãos")

@@ -354,15 +354,100 @@ public struct GrandStaffView: View, @MainActor Animatable {
           continue
         }
 
+        let isBeamed = beamGroups.contains { $0.contains(index) }
+
         for pitch in group.sorted(by: { $0.midiNoteNumber < $1.midiNoteNumber }) {
           drawNote(
             pitch, state: state,
-            duration: durations.indices.contains(index) ? durations[index] : nil,
+            duration: isBeamed
+              ? nil : (durations.indices.contains(index) ? durations[index] : nil),
             at: noteX, font: font, in: cgContext, canvasHeight: size.height)
         }
       }
 
       cgContext.restoreGState()
+
+      for group in beamGroups {
+        drawBeamGroup(group, in: context, layout: layout, shift: shift)
+      }
+    }
+  }
+
+  /// Draws the beamed runs of one group, one beam per staff.
+  ///
+  /// A group can straddle the two staves — the right hand running quavers while
+  /// the left holds — and a beam never crosses from one staff to the other. So
+  /// the run is split by staff and each side gets its own beam.
+  private func drawBeamGroup(
+    _ group: Range<Int>,
+    in context: GraphicsContext,
+    layout: StaffLayout,
+    shift: CGFloat
+  ) {
+    for clef in [Clef.treble, Clef.bass] {
+      let points = group.compactMap { index -> (x: CGFloat, step: Int, state: ItemState)? in
+        guard let pitch = noteGroups[index].first(where: { $0.grandStaffClef == clef })
+        else { return nil }
+        return (
+          layout.x(ofColumn: index) - shift,
+          pitch.staffStep(in: clef),
+          index < states.count ? states[index] : .pending
+        )
+      }
+      guard points.count >= 2 else { continue }
+
+      let staff = geometry(for: clef)
+      let average = Double(points.map(\.step).reduce(0, +)) / Double(points.count)
+      let stemUp = average < 4
+      let reach = staffSpace * 3.5
+
+      let ends = points.map { point -> CGFloat in
+        let baseline = staff.y(for: point.step)
+        return stemUp ? baseline - reach : baseline + reach
+      }
+      guard let first = ends.first, let last = ends.last else { continue }
+
+      let cap = staffSpace * 1.2
+      let slant = min(max(last - first, -cap), cap)
+      let beamStart = stemUp ? min(ends.min() ?? first, first) : max(ends.max() ?? first, first)
+
+      let ink = PlatformColor.ink(for: points[0].state, in: colorScheme)
+      let thickness = staffSpace * Bravura.Glyph.beamThickness
+
+      let values = group.compactMap { durations.indices.contains($0) ? durations[$0].value : nil }
+      let deepest = values.map(BeamGrouping.beams(for:)).max() ?? 1
+
+      func beamY(_ index: Int, drop: CGFloat) -> CGFloat {
+        let fraction = points.count > 1 ? CGFloat(index) / CGFloat(points.count - 1) : 0
+        return beamStart + slant * fraction + drop
+      }
+
+      for level in 1...max(deepest, 1) {
+        let drop = CGFloat(level - 1) * thickness * 1.8 * (stemUp ? 1 : -1)
+
+        for run in BeamGrouping.runs(values: values, level: level) where run.count >= 2 {
+          let from = min(run.lowerBound, points.count - 1)
+          let to = min(run.upperBound - 1, points.count - 1)
+
+          var path = Path()
+          path.move(to: CGPoint(x: points[from].x, y: beamY(from, drop: drop)))
+          path.addLine(to: CGPoint(x: points[to].x, y: beamY(to, drop: drop)))
+          path.addLine(to: CGPoint(x: points[to].x, y: beamY(to, drop: drop) + thickness))
+          path.addLine(to: CGPoint(x: points[from].x, y: beamY(from, drop: drop) + thickness))
+          path.closeSubpath()
+          context.fill(path, with: .color(Color(ink)))
+        }
+      }
+
+      for (index, point) in points.enumerated() {
+        let fraction = points.count > 1 ? CGFloat(index) / CGFloat(points.count - 1) : 0
+        var stem = Path()
+        stem.move(to: CGPoint(x: point.x, y: staff.y(for: point.step)))
+        stem.addLine(to: CGPoint(x: point.x, y: beamStart + slant * fraction + thickness / 2))
+        context.stroke(
+          stem, with: .color(Color(PlatformColor.ink(for: point.state, in: colorScheme))),
+          lineWidth: staffSpace * Bravura.Glyph.stemThickness * 2)
+      }
     }
   }
 
