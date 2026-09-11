@@ -138,8 +138,10 @@ struct EngravedPieceView: View {
   /// included, and never re-engraves. Kept per visit, not persisted.
   @State private var pinch: CGFloat = 1
 
-  /// The pinch as it happens, shown by scaling until the finger lifts.
+  /// The pinch as it happens: scale, where it started, and its pan.
   @State private var liveZoom: CGFloat = 1
+  @State private var liveAnchor: UnitPoint = .center
+  @State private var livePan: CGSize = .zero
 
   /// Where the scroll sits, for anchoring the lens where the reader was.
   ///
@@ -365,33 +367,20 @@ struct EngravedPieceView: View {
           }
         }
       }
-      // The pinch is a lens and nothing else (rule 115): it scales while it
-      // lasts, and letting go keeps the magnification — no re-engrave, no
-      // reflow, nothing moves or is lost.
-      .scaleEffect(liveZoom, anchor: .top)
-      .simultaneousGesture(
-        MagnificationGesture()
-          .onChanged { liveZoom = $0 }
-          .onEnded { value in
-            let before = pinch
-            pinch = min(max(pinch * value, 1.0), 3.0)
-            liveZoom = 1
-
-            // The lens keeps what was being looked at: the content grew
-            // around the top-left, so the offset is corrected to zoom about
-            // the viewport's centre instead of walking back to the start.
-            let ratio = pinch / before
-            guard ratio != 1 else { return }
-            let centre = CGPoint(x: viewport.width / 2, y: viewport.height / 2)
-            let offset = scrollOffset.value
-            let target = CGPoint(
-              x: max((offset.x + centre.x) * ratio - centre.x, 0),
-              y: max((offset.y + centre.y) * ratio - centre.y, 0))
-            DispatchQueue.main.async {
-              scrollPosition.scrollTo(point: target)
-            }
-          }
-      )
+      // The pinch is a lens and nothing else (rule 115): while it lasts the
+      // page scales about the fingers and rides their pan — the reading a
+      // pinch gives a page under real hands. Letting go keeps the
+      // magnification, the layout catches up, and the offset lands so the
+      // point between the fingers stays put.
+      .scaleEffect(liveZoom, anchor: liveAnchor)
+      .offset(livePan)
+      .overlay {
+        #if canImport(UIKit)
+        PinchCatcher { scale, start, centre, ended in
+          livePinch(scale: scale, start: start, centre: centre, ended: ended, viewport: viewport)
+        }
+        #endif
+      }
     }
   }
 
@@ -558,6 +547,41 @@ struct EngravedPieceView: View {
   /// has not built yet.
   private func pageIndex(containingSystem id: String) -> Int? {
     controller.pages.firstIndex { page in page.systems.contains { $0.id == id } }
+  }
+
+  /// The lens under real fingers (rule 115).
+  ///
+  /// While the pinch lasts everything is visual — scale about where it
+  /// began, pan with the fingers, at gesture speed. On release the layout is
+  /// redone at the new width and the scroll is placed so the point between
+  /// the fingers stays where they left it.
+  private func livePinch(
+    scale: CGFloat, start: CGPoint, centre: CGPoint, ended: Bool, viewport: CGSize
+  ) {
+    guard viewport.width > 0, viewport.height > 0 else { return }
+
+    if !ended {
+      liveZoom = scale
+      liveAnchor = UnitPoint(x: start.x / viewport.width, y: start.y / viewport.height)
+      livePan = CGSize(width: centre.x - start.x, height: centre.y - start.y)
+      return
+    }
+
+    let before = pinch
+    pinch = min(max(pinch * scale, 1.0), 3.0)
+    let ratio = pinch / before
+    liveZoom = 1
+    liveAnchor = .center
+    livePan = .zero
+
+    guard ratio != 1 || centre != start else { return }
+    let offset = scrollOffset.value
+    let target = CGPoint(
+      x: max((offset.x + start.x) * ratio - start.x - (centre.x - start.x), 0),
+      y: max((offset.y + start.y) * ratio - start.y - (centre.y - start.y), 0))
+    DispatchQueue.main.async {
+      scrollPosition.scrollTo(point: target)
+    }
   }
 }
 

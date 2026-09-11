@@ -65,8 +65,11 @@ struct AnnotationLayer: UIViewRepresentable {
 
     // The canvas is a scroll view underneath, and waking it with the pencil
     // panned its own content — the ink slid sideways with a flicker. An
-    // overlay the size of the page has nowhere to scroll to.
+    // overlay the size of the page has nowhere to scroll to, and no inset to
+    // adjust: the system inset kicked in on pen contact and shoved every
+    // stroke sideways, the one being written included.
     canvas.isScrollEnabled = false
+    canvas.contentInsetAdjustmentBehavior = .never
 
     if let saved, let drawing = try? PKDrawing(data: saved) {
       canvas.drawing = drawing
