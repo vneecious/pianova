@@ -60,9 +60,13 @@ struct PieceView: View {
           .font(.system(size: 11))
       }
 
-      Text(preview.isPlaying ? "Toque num compasso para ouvir dali." : mode.detail)
-        .font(.system(size: 11))
-        .foregroundStyle(.secondary)
+      Text(
+        preview.isPlaying
+          ? "Toque num compasso para ouvir dali."
+          : "Toque num compasso para estudá-lo; noutro para estender o trecho."
+      )
+      .font(.system(size: 11))
+      .foregroundStyle(.secondary)
 
       Spacer()
     }

@@ -471,6 +471,21 @@ representa isso. Competir com um gravador de verdade não é trabalho de semanas
 104. O sistema que está sendo tocado fica **no alto**, para que todo o resto da
      tela seja música que ainda vem.
 
+## Estudar, não executar
+
+Tocar a peça do início ao fim é **performance**. Estudo é trabalho cirúrgico em
+dois a quatro compassos, uma mão de cada vez, devagar, repetindo. O app precisa
+servir ao segundo e permitir o primeiro, e não o contrário.
+
+105. Um **trecho** pode ser isolado: toca-se num compasso para escolhê-lo, e
+     noutro para estender a seleção até ele.
+106. Um trecho isolado pode ser estudado com **uma mão só**.
+107. Um trecho em estudo **repete sozinho** ao terminar, para que a repetição
+     não custe um gesto a cada volta.
+108. O que se estuda é **regravado**, não recortado na tela: o trecho vira uma
+     partitura sua, com clave, armadura e numeração de compasso preservadas.
+109. Sempre há um caminho de volta para a **peça inteira**, num gesto.
+
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o
 > OpenSheetMusicDisplay (TypeScript num `WKWebView`). Ambas entregam o layout

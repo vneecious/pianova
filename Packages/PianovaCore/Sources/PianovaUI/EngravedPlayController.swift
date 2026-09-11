@@ -36,6 +36,15 @@ public final class EngravedPlayController: ObservableObject {
   /// Called once the whole piece has been played.
   public var onFinished: () -> Void = {}
 
+  /// Whether a finished passage starts again on its own.
+  ///
+  /// Repetition is the work. Making it cost a gesture each time is how it stops
+  /// happening.
+  public var loops = false
+
+  /// What was last engraved, so a loop can start it over.
+  private var loaded: (score: Score, engraver: ScoreEngraver)?
+
   /// Creates an empty controller, ready to be handed a piece.
   public init() {}
 
@@ -44,6 +53,7 @@ public final class EngravedPlayController: ObservableObject {
   ///   - score: The piece.
   ///   - engraver: Who draws it.
   public func load(_ score: Score, using engraver: ScoreEngraver) {
+    loaded = (score, engraver)
     let xml = MusicXMLExporter.musicXML(for: score)
 
     guard engraver.load(musicXML: xml) else {
@@ -111,7 +121,15 @@ public final class EngravedPlayController: ObservableObject {
     lastWasWrong = outcome == .wrong
     refresh()
 
-    if outcome == .finished { onFinished() }
+    guard outcome == .finished else { return }
+
+    if loops, let loaded {
+      // Rebuilt rather than rewound: the passage is a piece of its own, and
+      // starting it again is starting it again.
+      load(loaded.score, using: loaded.engraver)
+    } else {
+      onFinished()
+    }
   }
 
   /// Rebuilds the highlights from where the cursor now is.

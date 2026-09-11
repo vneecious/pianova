@@ -41,6 +41,26 @@ struct EngravedPieceView: View {
     // As a safe-area inset rather than a sibling: the scroll view then knows
     // the keyboard is there and stops scrolling music underneath it. Stacked
     // below, the keyboard simply covered the last system.
+    // The passage controls live over the music rather than beside it: they
+    // belong to the selection and go away with it.
+    .safeAreaInset(edge: .top, spacing: 0) {
+      if let range {
+        PracticeBar(
+          range: range, hands: $hands, loops: $loops,
+          hasBothHands: score.isTwoHanded,
+          onClear: {
+            self.range = nil
+            selectedMeasure = nil
+          }
+        )
+        .padding(.horizontal, 8)
+        .padding(.bottom, 10)
+        .transition(.move(edge: .top).combined(with: .opacity))
+      }
+    }
+    .onChange(of: hands) { _, _ in reload() }
+    .onChange(of: range) { _, _ in reload() }
+    .onChange(of: loops) { _, value in controller.loops = value }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if !hub.isConnected {
         PianoKeyboardView { controller.play($0) }
@@ -48,7 +68,8 @@ struct EngravedPieceView: View {
     }
     .onAppear {
       controller.onFinished = onFinished
-      if let engraver { controller.load(score, using: engraver) }
+      controller.loops = loops
+      if let engraver { controller.load(studied, using: engraver) }
       hub.setListener(owner: controller) { [controller] event in
         guard case .pressed(let pitch, _) = event else { return }
         controller.play(pitch)
@@ -80,6 +101,24 @@ struct EngravedPieceView: View {
 
   /// The bar the player last tapped, marked on the page.
   @State private var selectedMeasure: String?
+
+  /// The passage being worked at, or `nil` for the whole piece.
+  @State private var range: PracticeRange?
+
+  /// Which hands the passage is worked at with.
+  @State private var hands: PracticeHands = .both
+
+  /// Whether the passage starts again on its own.
+  @State private var loops = true
+
+  /// What is actually engraved: the passage, or the piece.
+  private var studied: Score { score.extracting(range, hands: hands) }
+
+  /// Bars picked out on the page, so a whole passage reads as selected.
+  private var selection: Set<String> {
+    guard range == nil else { return [] }
+    return selectedMeasure.map { [$0] } ?? []
+  }
 
   /// Every page, stacked, with the cursor kept in view.
   private var pages: some View {
@@ -119,10 +158,7 @@ struct EngravedPieceView: View {
             EngravedScoreView(
               page: page,
               highlights: controller.highlights,
-              onTap: { id in
-                selectedMeasure = page.measure(containing: id)
-                if let column = controller.column(of: id) { onPickStart?(column) }
-              },
+              onTap: { id in choose(id, on: page) },
               selectedMeasure: selectedMeasure,
               width: drawnWidth
             )
@@ -172,6 +208,34 @@ struct EngravedPieceView: View {
       }
     }
     .allowsHitTesting(false)
+  }
+
+  /// Picks a bar, or extends the passage to reach it.
+  ///
+  /// The second tap extends rather than replaces, which is how selecting a
+  /// stretch works everywhere else and saves inventing a gesture for it.
+  private func choose(_ id: String, on page: EngravedPage) {
+    guard let column = controller.column(of: id) else { return }
+    let bar = studied.measureNumber(atColumn: column)
+
+    withAnimation(.easeOut(duration: 0.22)) {
+      if let current = range, current.count == 1, current.first != bar {
+        range = PracticeRange(first: current.first, last: bar)
+      } else if range?.count ?? 0 > 1 {
+        range = PracticeRange(first: bar, last: bar)
+      } else {
+        range = PracticeRange(first: bar, last: bar)
+      }
+      selectedMeasure = page.measure(containing: id)
+    }
+
+    onPickStart?(column)
+  }
+
+  /// Re-engraves whatever is being studied now.
+  private func reload() {
+    guard let engraver else { return }
+    controller.load(studied, using: engraver)
   }
 
   /// Which system a note was drawn in, across every page.
