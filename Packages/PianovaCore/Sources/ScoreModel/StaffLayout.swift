@@ -1,5 +1,10 @@
 import CoreGraphics
 
+/// Where the clef sits, given the staff size.
+///
+/// Free of `self` so the initialiser can use it while laying the columns out.
+private func clefXFor(_ staffSpace: CGFloat) -> CGFloat { staffSpace * 0.6 }
+
 /// Where the columns of a staff sit horizontally.
 ///
 /// One source of truth for the across-the-page maths. A playhead drawn from its
@@ -82,7 +87,51 @@ public struct StaffLayout: Equatable, Sendable {
     self.scrolls = scrolls
     self.durations = durations
     self.justifies = justifies
+
+    // Widths and their running totals are worked out once, here. They used to
+    // be recomputed on demand: `start(ofColumn:)` summed every column before
+    // it, and each width recomputed the justification by summing every column
+    // again — O(n³) per layout pass. At 545 columns that is on the order of a
+    // hundred million operations, every animation frame.
+    let count = self.columnCount
+    var natural: [CGFloat] = []
+    natural.reserveCapacity(count)
+
+    let noteArea = max(
+      width - (clefXFor(staffSpace) + staffSpace * 4 + self.preamble) - staffSpace * 2,
+      staffSpace)
+
+    if durations.isEmpty {
+      // No written rhythm: a drill, where the columns simply share the line.
+      let even = count > 0 ? max(Self.minimumSpacing * staffSpace, noteArea / CGFloat(count)) : 0
+      natural = Array(repeating: even, count: count)
+    } else {
+      let shortest = durations.map { CGFloat($0.beats) }.min() ?? 1
+      let smallestReadable = Self.minimumSpacing * staffSpace * 0.6
+      let base = max(Self.minimumSpacing * staffSpace, smallestReadable / max(shortest, 0.01))
+
+      for index in 0..<count {
+        let beats = durations.indices.contains(index) ? CGFloat(durations[index].beats) : 1
+        natural.append(base * beats)
+      }
+    }
+
+    let total = natural.reduce(0, +)
+    let scale = justifies && total > 0 && total < noteArea ? noteArea / total : 1
+
+    columnWidths = natural.map { $0 * scale }
+
+    var running: [CGFloat] = [0]
+    running.reserveCapacity(count + 1)
+    for value in columnWidths { running.append((running.last ?? 0) + value) }
+    columnStarts = running
   }
+
+  /// Width of each column, worked out once.
+  private let columnWidths: [CGFloat]
+
+  /// Running total of ``columnWidths``, with a leading zero.
+  private let columnStarts: [CGFloat]
 
   /// How wide one column is.
   ///
@@ -95,53 +144,19 @@ public struct StaffLayout: Equatable, Sendable {
   /// - Parameter column: Which column, counting from zero.
   /// - Returns: Its width in points.
   public func width(ofColumn column: Int) -> CGFloat {
-    naturalWidth(ofColumn: column) * justificationScale
-  }
-
-  /// How wide a column wants to be before the line is stretched.
-  private func naturalWidth(ofColumn column: Int) -> CGFloat {
-    guard durations.indices.contains(column) else { return spacing }
-    return proportionalBase * CGFloat(durations[column].beats)
-  }
-
-  /// Points per crotchet, chosen so the shortest figure present is legible.
-  ///
-  /// A floor applied per column would guarantee legibility and destroy the
-  /// proportions doing it: a quaver clamped up to the floor stops being half a
-  /// crotchet, and the spacing stops telling the truth about time. Scaling
-  /// everything from the shortest figure keeps the ratios exact and still
-  /// leaves the smallest note room to be drawn.
-  private var proportionalBase: CGFloat {
-    let shortest = durations.map { CGFloat($0.beats) }.min() ?? 1
-    let smallestReadable = Self.minimumSpacing * staffSpace * 0.6
-
-    return max(Self.minimumSpacing * staffSpace, smallestReadable / max(shortest, 0.01))
-  }
-
-  /// How much the line is stretched so it fills the width.
-  ///
-  /// Applied to every column equally, so stretching a system never changes
-  /// which note looks longer than which — the proportions are the reading.
-  private var justificationScale: CGFloat {
-    guard justifies, columnCount > 0 else { return 1 }
-
-    let natural = (0..<columnCount).reduce(0) { $0 + naturalWidth(ofColumn: $1) }
-    guard natural > 0, natural < noteAreaWidth else { return 1 }
-
-    return noteAreaWidth / natural
+    columnWidths.indices.contains(column) ? columnWidths[column] : spacing
   }
 
   /// Left edge of a column, measured from the start of the note area.
   /// - Parameter column: Which column, counting from zero.
   /// - Returns: Its left edge, in points from the note area start.
   public func start(ofColumn column: Int) -> CGFloat {
-    let capped = min(max(column, 0), columnCount)
-    guard capped > 0 else { return 0 }
-    return (0..<capped).reduce(0) { $0 + width(ofColumn: $1) }
+    let capped = min(max(column, 0), columnStarts.count - 1)
+    return capped >= 0 ? columnStarts[capped] : 0
   }
 
   /// Where the clef is drawn.
-  public var clefX: CGFloat { staffSpace * 0.6 }
+  public var clefX: CGFloat { clefXFor(staffSpace) }
 
   /// Where the key and time signatures begin, just past the clef.
   public var preambleStart: CGFloat { clefX + staffSpace * 3.2 }

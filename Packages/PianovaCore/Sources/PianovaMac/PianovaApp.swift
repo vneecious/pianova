@@ -4,6 +4,7 @@
 // the Mac only changes where the window opens, and lets the real instrument be
 // used during development without provisioning anything.
 
+import EngravingVerovio
 import MIDIInput
 import PianovaUI
 import Sound
@@ -15,6 +16,7 @@ struct PianovaApp: App {
   @StateObject private var tones: TonePlayer
   @StateObject private var metronome: Metronome
   @StateObject private var preview: ScorePlayer
+  private let engraver = Engraver()
   @StateObject private var profile = ProfileController()
 
   init() {
@@ -31,6 +33,9 @@ struct PianovaApp: App {
         .environmentObject(profile)
         .environmentObject(metronome)
         .environmentObject(preview)
+        // The only place the C++ engraver is named. Everything above it sees
+        // the protocol, so no other module is built for interop.
+        .environment(\.scoreEngraver, engraver)
     }
   }
 }

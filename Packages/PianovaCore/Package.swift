@@ -57,7 +57,10 @@ let package = Package(
       resources: [.process("Resources")]),
     .executableTarget(
       name: "PianovaMac",
-      dependencies: ["PianovaUI", "ExerciseEngine", "MIDIInput", "ScoreModel"]),
+      dependencies: [
+        "EngravingVerovio", "ExerciseEngine", "MIDIInput", "PianovaUI", "ScoreModel",
+      ],
+      swiftSettings: [.interoperabilityMode(.Cxx)]),
     .executableTarget(
       name: "PianovaImport",
       dependencies: ["ScoreModel"]),

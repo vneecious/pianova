@@ -1,3 +1,4 @@
+import Engraving
 import ExerciseEngine
 import ScoreModel
 import Sound
@@ -22,6 +23,11 @@ struct PieceView: View {
   /// Where the preview begins, chosen by tapping a system.
   @State private var startFrom = 0
 
+  @Environment(\.scoreEngraver) private var engraver
+
+  /// Which renderer is drawing, while the two are being compared.
+  @State private var renderer: ScoreRenderer = .own
+
   let score: Score
   let mode: PlayMode
   @ObservedObject var hub: MIDIHub
@@ -31,6 +37,19 @@ struct PieceView: View {
     VStack(alignment: .leading, spacing: 0) {
       transport
 
+      if renderer == .engraved {
+        engravedScore
+      } else {
+        ownRenderer
+      }
+    }
+    .onDisappear { preview.stop() }
+  }
+
+  /// The staff this app draws itself.
+  @ViewBuilder
+  private var ownRenderer: some View {
+    Group {
       switch mode {
       case .free:
         if preview.isPlaying {
@@ -68,7 +87,6 @@ struct PieceView: View {
           onFinished: onFinished)
       }
     }
-    .onDisappear { preview.stop() }
   }
 
   /// What the listen button says, naming the bar when it will not start at the
@@ -102,9 +120,23 @@ struct PieceView: View {
         .font(.system(size: 11))
         .foregroundStyle(.secondary)
 
+      if engraver != nil {
+        Picker("", selection: $renderer) {
+          ForEach(ScoreRenderer.allCases) { Text($0.title).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 220)
+      }
+
       Spacer()
     }
     .padding(.bottom, 14)
+  }
+
+  /// The same piece, drawn by a real engraver — and playable.
+  private var engravedScore: some View {
+    EngravedPieceView(hub: hub, score: score, onFinished: onFinished)
   }
 
   /// A piece becomes one item per onset, silences excluded.

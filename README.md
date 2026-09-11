@@ -456,6 +456,13 @@ representa isso. Competir com um gravador de verdade não é trabalho de semanas
 > MusicXML ao SVG; o Bach inteiro carrega em 64 ms e desenha uma página em 36.
 > A objeção de latência que sustentava a pauta própria não sobreviveu à medição.
 
+98. Na partitura gravada valem as **mesmas regras de interação**: o cursor marca
+    o que tocar agora, acerto avança, erro recua uma posição.
+99. A nota atual é destacada **pelo identificador que o gravador deu a ela**, e
+    a página rola sozinha para mantê-la visível.
+100. Uma peça de várias páginas mostra **todas**, empilhadas, e não só a
+     primeira.
+
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o
 > OpenSheetMusicDisplay (TypeScript num `WKWebView`). Ambas entregam o layout

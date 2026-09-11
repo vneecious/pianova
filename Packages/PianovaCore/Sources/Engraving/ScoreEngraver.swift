@@ -31,7 +31,7 @@ public struct EngravedEvent: Equatable, Sendable {
 /// and Swift's interop is viral — every module that can see it must be built
 /// for it, all the way up to the app. Behind this protocol, the screens see
 /// only values.
-public protocol ScoreEngraver: AnyObject {
+public protocol ScoreEngraver: AnyObject, Sendable {
   /// Lays out a piece.
   /// - Parameter musicXML: The piece, as MusicXML.
   /// - Returns: Whether it could be laid out.

@@ -9,7 +9,9 @@ import VerovioToolkit
 /// The engraver draws; it decides nothing. Which key was pressed, when, and
 /// whether that was right stays in Swift — the only thing crossing over is
 /// "this identifier is that pitch", through the timemap.
-public final class Engraver: ScoreEngraver {
+/// The engraver is used from one screen at a time, and the toolkit underneath
+/// holds the whole document, so it is not free to share across threads.
+public final class Engraver: ScoreEngraver, @unchecked Sendable {
   private let toolkit: VerovioToolkit
 
   /// Creates an engraver, pointed at its own resources.

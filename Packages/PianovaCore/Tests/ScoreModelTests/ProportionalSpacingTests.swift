@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 import Testing
 
 @testable import ScoreModel
@@ -221,4 +222,45 @@ private func mixed(width: CGFloat = 900) -> StaffLayout {
 /// Largura zero não justifica nada, em vez de dividir por zero.
 @Test func aZeroWidthLineIsNotStretched() {
   #expect(StaffLayout.justifiesLastSystem(naturalWidth: 100, available: 0) == false)
+}
+
+// MARK: - Custo de layout
+
+/// Uma peça longa é montada em tempo linear, não cúbico.
+///
+/// `start(ofColumn:)` somava todas as colunas anteriores, e cada largura
+/// recalculava a justificação somando todas as colunas de novo. Com as 545
+/// colunas do Bach isso era da ordem de cem milhões de operações por passada
+/// de layout — e o app ficava visivelmente lento.
+@Test func aLongPieceLaysOutQuickly() {
+  let columns = 545
+  let durations = Array(repeating: Duration(.sixteenth), count: columns)
+
+  let began = Date()
+  let layout = StaffLayout(
+    staffSpace: 16, width: 1200, columnCount: columns, scrolls: true, durations: durations)
+
+  // Percorrer tudo é o que a tela faz a cada quadro.
+  var total: CGFloat = 0
+  for index in 0..<columns {
+    total += layout.width(ofColumn: index) + layout.start(ofColumn: index)
+  }
+  let elapsed = Date().timeIntervalSince(began)
+
+  #expect(total > 0)
+  #expect(elapsed < 0.05, "montar a peça levou \(Int(elapsed * 1000)) ms")
+}
+
+/// Os totais acumulados batem com a soma das larguras.
+@Test func runningTotalsAgreeWithTheWidths() {
+  let durations = [Duration(.whole), Duration(.quarter), Duration(.eighth)]
+  let layout = StaffLayout(
+    staffSpace: 16, width: 900, columnCount: 3, scrolls: true, durations: durations)
+
+  var running: CGFloat = 0
+  for index in 0..<3 {
+    #expect(abs(layout.start(ofColumn: index) - running) < 0.001)
+    running += layout.width(ofColumn: index)
+  }
+  #expect(abs(layout.contentWidth - running) < 0.001)
 }
