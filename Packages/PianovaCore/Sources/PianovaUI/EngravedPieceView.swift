@@ -132,28 +132,19 @@ struct EngravedPieceView: View {
   /// Global and remembered: every piece opens at the size last chosen.
   @AppStorage("pianova.scoreUnits") private var scoreUnits = 2100
 
-  /// The magnifier: how far the pinch has zoomed in, 1 at rest (rule 115).
+  /// Where each page row sits in the column, for scrolling to a system.
   ///
-  /// A lens and nothing else — it scales what is on screen, annotations
-  /// included, and never re-engraves. Kept per visit, not persisted.
-  @State private var pinch: CGFloat = 1
-
-  /// The pinch as it happens: scale, where it started, and its pan.
-  @State private var liveZoom: CGFloat = 1
-  @State private var liveAnchor: UnitPoint = .center
-  @State private var livePan: CGSize = .zero
-
-  /// Where the scroll sits, for anchoring the lens where the reader was.
-  ///
-  /// A reference box on purpose: writing plain @State per scroll frame would
-  /// re-evaluate the whole body at 120 Hz for a value only the pinch reads.
-  private final class OffsetBox {
-    var value: CGPoint = .zero
+  /// A reference box on purpose: frames arrive per layout pass, and plain
+  /// @State would re-evaluate the body for a value only scrolling reads.
+  private final class FramesBox {
+    var value: [Int: CGRect] = [:]
   }
-  @State private var scrollOffset = OffsetBox()
+  @State private var rowFrames = FramesBox()
 
-  /// The handle that puts the scroll where the lens says.
-  @State private var scrollPosition = ScrollPosition()
+  #if canImport(UIKit)
+  /// The native scroll's remote control, for following the music.
+  @State private var zoomHandle = ZoomScrollHandle()
+  #endif
 
   /// Whether written fingering is drawn, remembered between sessions.
   @AppStorage("pianova.showsFingering") private var showsFingering = true
@@ -298,90 +289,92 @@ struct EngravedPieceView: View {
   private func scrollingPages(
     _ scroller: ScrollViewProxy, viewport: CGSize
   ) -> some View {
-    // The magnifier draws the pages larger, really larger — laid out, not
-    // stretched — and the second axis opens so the zoomed page can pan.
-    let drawnWidth = pageWidth(viewport: viewport) * pinch
+    let drawnWidth = pageWidth(viewport: viewport)
 
-    return Group {
-      // Both axes always: switching axes rebuilds the scroll view and throws
-      // the reader back to the start. At rest the content is exactly the
-      // viewport wide, so the horizontal axis simply has nowhere to go.
-      ScrollView([.vertical, .horizontal]) {
-        LazyVStack(spacing: 20) {
-          ForEach(Array(controller.pages.enumerated()), id: \.offset) { index, page in
-            pageRow(page, index: index, drawnWidth: drawnWidth)
-          }
-        }
-        .frame(minWidth: viewport.width)
-        .padding(.horizontal, 8)
-      }
-      .scrollPosition($scrollPosition)
-      .onScrollGeometryChange(for: CGPoint.self, of: { $0.contentOffset }) { _, new in
-        scrollOffset.value = new
-      }
-      .onChange(of: controller.focus) { _, id in
-        guard let id, let system = system(containing: id) else { return }
+    #if canImport(UIKit)
+    // The real thing (rule 115): the zoom IS the scroll view's, so letting
+    // go keeps the exact scale and the exact spot the fingers left.
+    return ZoomableScroll(
+      content: { pagesColumn(drawnWidth: drawnWidth, viewport: viewport) },
+      handle: zoomHandle
+    )
+    .onChange(of: controller.focus) { _, id in
+      guard let id, let system = system(containing: id) else { return }
 
-        // Only when the cursor leaves the system on screen. Inside it, the
-        // reader's eye does the moving and the page stays put.
-        guard system != shownSystem else { return }
-        let previous = shownSystem
-        shownSystem = system
-
-        // A lazy page far off screen has no anchors yet: scrolling straight
-        // to a system there is silence — which is why the loop played on
-        // while the page stayed behind. Jumping pages, glide to the page
-        // row first (its id always exists), then settle on the system.
-        let target = pageIndex(containingSystem: system)
-        if let target, target != previous.flatMap(pageIndex(containingSystem:)) {
-          withAnimation(.easeInOut(duration: 0.45)) {
-            scroller.scrollTo(target, anchor: .top)
-          }
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            withAnimation(.easeInOut(duration: 0.25)) {
-              scroller.scrollTo(system, anchor: .top)
-            }
-          }
-        } else {
-          withAnimation(.easeInOut(duration: 0.45)) {
-            scroller.scrollTo(system, anchor: .top)
-          }
-        }
-      }
-      // The pill floats over the scroll, not inside the page: pinned to the
-      // paper it was clipped by the paper's own edges — a selection on the
-      // last line hid its own confirmation. Out here it can also be clamped
-      // to the screen, which is what the edit menu does.
-      .overlayPreferenceValue(SelectionRectKey.self) { anchor in
-        GeometryReader { proxy in
-          if let anchor, session.phase == .selecting, !adjusting,
-            let range = session.range
-          {
-            let rect = proxy[anchor]
-            let above = rect.minY - 32
-            let x = min(max(rect.midX, 96), proxy.size.width - 96)
-            let y = above > 40 ? above : min(rect.maxY + 38, proxy.size.height - 40)
-
-            studyPill(for: range)
-              .position(x: x, y: max(y, 40))
-          }
-        }
-      }
-      // The pinch is a lens and nothing else (rule 115): while it lasts the
-      // page scales about the fingers and rides their pan — the reading a
-      // pinch gives a page under real hands. Letting go keeps the
-      // magnification, the layout catches up, and the offset lands so the
-      // point between the fingers stays put.
-      .scaleEffect(liveZoom, anchor: liveAnchor)
-      .offset(livePan)
-      .overlay {
-        #if canImport(UIKit)
-        PinchCatcher { scale, start, centre, ended in
-          livePinch(scale: scale, start: start, centre: centre, ended: ended, viewport: viewport)
-        }
-        #endif
+      // Only when the cursor leaves the system on screen. Inside it, the
+      // reader's eye does the moving and the page stays put.
+      guard system != shownSystem else { return }
+      shownSystem = system
+      scrollToSystem(system, drawnWidth: drawnWidth)
+    }
+    #else
+    return ScrollView(.vertical) {
+      pagesColumn(drawnWidth: drawnWidth, viewport: viewport)
+    }
+    .onChange(of: controller.focus) { _, id in
+      guard let id, let system = system(containing: id) else { return }
+      guard system != shownSystem else { return }
+      shownSystem = system
+      withAnimation(.easeInOut(duration: 0.45)) {
+        scroller.scrollTo(system, anchor: .top)
       }
     }
+    #endif
+  }
+
+  /// The pages, one column, with the study pill floating over the selection.
+  private func pagesColumn(drawnWidth: CGFloat, viewport: CGSize) -> some View {
+    VStack(spacing: 20) {
+      ForEach(Array(controller.pages.enumerated()), id: \.offset) { index, page in
+        pageRow(page, index: index, drawnWidth: drawnWidth)
+          .background(
+            GeometryReader { proxy in
+              Color.clear.preference(
+                key: PageFrameKey.self,
+                value: [index: proxy.frame(in: .named("pagesColumn"))])
+            }
+          )
+      }
+    }
+    .frame(minWidth: viewport.width)
+    .padding(.horizontal, 8)
+    .coordinateSpace(name: "pagesColumn")
+    .onPreferenceChange(PageFrameKey.self) { [box = rowFrames] frames in
+      box.value = frames
+    }
+    .overlayPreferenceValue(SelectionRectKey.self) { anchor in
+      GeometryReader { proxy in
+        if let anchor, session.phase == .selecting, !adjusting,
+          let range = session.range
+        {
+          let rect = proxy[anchor]
+          let above = rect.minY - 32
+          let x = min(max(rect.midX, 96), proxy.size.width - 96)
+          let y = above > 40 ? above : rect.maxY + 38
+
+          studyPill(for: range)
+            .position(x: x, y: max(y, 40))
+        }
+      }
+    }
+  }
+
+  /// Puts one system's top under the viewport's top, in the native scroll.
+  private func scrollToSystem(_ system: String, drawnWidth: CGFloat) {
+    #if canImport(UIKit)
+    guard let pageIndex = pageIndex(containingSystem: system),
+      controller.pages.indices.contains(pageIndex),
+      let row = rowFrames.value[pageIndex]
+    else { return }
+    let page = controller.pages[pageIndex]
+    guard let frame = page.systems.first(where: { $0.id == system })?.frame else { return }
+
+    // The row holds the score view between its vertical paddings; inside
+    // it, the system sits at its page-unit y times the view scale.
+    let scale = drawnWidth / max(page.size.width, 1)
+    let y = row.minY + 18 + frame.minY * scale - 12
+    zoomHandle.scroll(to: CGRect(x: 0, y: max(y, 0), width: 1, height: 1), animated: true)
+    #endif
   }
 
   /// An invisible marker at the top of each system, to scroll to.
@@ -548,41 +541,6 @@ struct EngravedPieceView: View {
   private func pageIndex(containingSystem id: String) -> Int? {
     controller.pages.firstIndex { page in page.systems.contains { $0.id == id } }
   }
-
-  /// The lens under real fingers (rule 115).
-  ///
-  /// While the pinch lasts everything is visual — scale about where it
-  /// began, pan with the fingers, at gesture speed. On release the layout is
-  /// redone at the new width and the scroll is placed so the point between
-  /// the fingers stays where they left it.
-  private func livePinch(
-    scale: CGFloat, start: CGPoint, centre: CGPoint, ended: Bool, viewport: CGSize
-  ) {
-    guard viewport.width > 0, viewport.height > 0 else { return }
-
-    if !ended {
-      liveZoom = scale
-      liveAnchor = UnitPoint(x: start.x / viewport.width, y: start.y / viewport.height)
-      livePan = CGSize(width: centre.x - start.x, height: centre.y - start.y)
-      return
-    }
-
-    let before = pinch
-    pinch = min(max(pinch * scale, 1.0), 3.0)
-    let ratio = pinch / before
-    liveZoom = 1
-    liveAnchor = .center
-    livePan = .zero
-
-    guard ratio != 1 || centre != start else { return }
-    let offset = scrollOffset.value
-    let target = CGPoint(
-      x: max((offset.x + start.x) * ratio - start.x - (centre.x - start.x), 0),
-      y: max((offset.y + start.y) * ratio - start.y - (centre.y - start.y), 0))
-    DispatchQueue.main.async {
-      scrollPosition.scrollTo(point: target)
-    }
-  }
 }
 
 /// Where the selection sits on screen, published by whichever page holds it.
@@ -591,5 +549,14 @@ private struct SelectionRectKey: PreferenceKey {
 
   static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
     value = nextValue() ?? value
+  }
+}
+
+/// Where each page row sits in the pages column.
+private struct PageFrameKey: PreferenceKey {
+  static let defaultValue: [Int: CGRect] = [:]
+
+  static func reduce(value: inout [Int: CGRect], nextValue: () -> [Int: CGRect]) {
+    value.merge(nextValue()) { _, new in new }
   }
 }
