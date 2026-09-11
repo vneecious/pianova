@@ -88,11 +88,6 @@ struct EngravedPieceView: View {
     }
     .onChange(of: judgesPedal) { _, value in controller.judgesPedal = value }
     .onChange(of: scoreUnits) { _, _ in reload() }
-    .safeAreaInset(edge: .bottom, spacing: 0) {
-      if !hub.isConnected {
-        PianoKeyboardView { controller.play($0) }
-      }
-    }
     .onAppear {
       controller.onFinished = onFinished
       controller.loops = session.loopsNow
