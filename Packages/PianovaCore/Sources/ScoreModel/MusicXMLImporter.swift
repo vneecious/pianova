@@ -256,6 +256,7 @@ public enum MusicXMLImporter {
           slurStop: marked.contains { $0.slurStop },
           tupletStart: marked.contains { $0.tupletStart },
           tupletStop: marked.contains { $0.tupletStop },
+          beam: struck.compactMap(\.beam).first,
           dynamic: marked.compactMap(\.dynamic).first,
           words: marked.compactMap(\.words).first,
           articulations: marked.reduce(into: Set<Articulation>()) {

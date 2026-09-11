@@ -84,6 +84,19 @@ public enum OttavaMark: String, Equatable, Sendable {
   case stop
 }
 
+/// Where one note stands in its written beam group (rule 135).
+///
+/// The edition's grouping is a reading decision: six quavers beamed as one
+/// are a phrase, and regrouping them by beat changes how they read.
+public enum BeamMark: String, Equatable, Sendable {
+  /// The group opens here.
+  case begin
+  /// The group runs through here.
+  case middle
+  /// The group closes here.
+  case end
+}
+
 /// A written mark on one note: an articulation, or the trill.
 public enum Articulation: String, Equatable, Sendable, CaseIterable {
   /// Shortened, detached.
@@ -141,6 +154,9 @@ public struct ScoreNote: Equatable, Sendable {
   /// Whether a tuplet bracket closes on this note.
   public let tupletStop: Bool
 
+  /// Where this note stands in its written beam group, if the edition says.
+  public let beam: BeamMark?
+
   /// A dynamic written at this note — "p", "mf", "ff" — if any.
   public let dynamic: String?
 
@@ -166,6 +182,7 @@ public struct ScoreNote: Equatable, Sendable {
   ///   - slurStop: Whether a phrase slur ends here.
   ///   - tupletStart: Whether a tuplet bracket opens here.
   ///   - tupletStop: Whether a tuplet bracket closes here.
+  ///   - beam: Where this note stands in its written beam group, if said.
   ///   - dynamic: A dynamic written here, if any.
   ///   - words: A written word here, if any.
   ///   - articulations: The articulations written on this note.
@@ -175,6 +192,7 @@ public struct ScoreNote: Equatable, Sendable {
     pedal: PedalMark? = nil, pedalLine: Bool = false, ottava: OttavaMark? = nil,
     slurStart: Bool = false, slurStop: Bool = false,
     tupletStart: Bool = false, tupletStop: Bool = false,
+    beam: BeamMark? = nil,
     dynamic: String? = nil, words: String? = nil,
     articulations: Set<Articulation> = [],
     graces: [GraceNote] = []
@@ -190,6 +208,7 @@ public struct ScoreNote: Equatable, Sendable {
     self.slurStop = slurStop
     self.tupletStart = tupletStart
     self.tupletStop = tupletStop
+    self.beam = beam
     self.dynamic = dynamic
     self.words = words
     self.articulations = articulations

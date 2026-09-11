@@ -493,6 +493,36 @@ private let twoVoices = """
   #expect(score.isWellFormed, "três terços e uma mínima fecham o 3/4")
 }
 
+/// Rule 135 — o agrupamento de barras escrito no arquivo sobrevive.
+@Test func beamGroupingSurvivesImport() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>2</divisions>
+      <time><beats>3</beats><beat-type>4</beat-type></time></attributes>
+      <note><pitch><step>B</step><octave>4</octave></pitch><duration>1</duration>
+        <type>eighth</type><beam number="1">begin</beam></note>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration>
+        <type>eighth</type><beam number="1">continue</beam></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>1</duration>
+        <type>eighth</type><beam number="1">continue</beam></note>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>1</duration>
+        <type>eighth</type><beam number="1">end</beam></note>
+      <note><pitch><step>F</step><octave>5</octave></pitch><duration>2</duration>
+        <type>quarter</type></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  let notes = try #require(score.rightHand.measures.first?.notes)
+
+  #expect(notes[0].beam == .begin)
+  #expect(notes[1].beam == .middle)
+  #expect(notes[2].beam == .middle)
+  #expect(notes[3].beam == .end)
+  #expect(notes[4].beam == nil)
+}
+
 /// Rule 132 — o trilo escrito na nota sobrevive à importação.
 @Test func aTrillSurvivesImport() throws {
   let xml = """

@@ -45,6 +45,39 @@ import Testing
   #expect(wide, "entre as formas do pedal tem que existir a barra horizontal")
 }
 
+// MARK: - Rule 135: barras como escritas chegam à página
+
+/// Rule 135 — seis colcheias barradas juntas desenham UMA barra, não três.
+@Test func aWrittenBeamGroupIsDrawnAsOne() throws {
+  func run(withMarks: Bool) throws -> Int {
+    let marks: [BeamMark?] =
+      withMarks
+      ? [.begin, .middle, .middle, .middle, .middle, .end] : Array(repeating: nil, count: 6)
+    let score = Score(
+      title: "Corrida", composer: "—",
+      timeSignature: .threeFour,
+      rightHand: Part(
+        clef: .treble,
+        measures: [
+          Measure(
+            [71, 72, 74, 81, 79, 77].enumerated()
+              .map { index, key in
+                ScoreNote(
+                  pitches: [Pitch(UInt8(key))], duration: Duration(.eighth), beam: marks[index])
+              })
+        ]))
+
+    let engraver = Engraver()
+    #expect(engraver.load(musicXML: MusicXMLExporter.musicXML(for: score)))
+    let page = try #require(engraver.page(1))
+    return Set(page.shapes.compactMap { $0.kind?.contains("beam") == true ? $0.elementID : nil })
+      .count
+  }
+
+  #expect(try run(withMarks: true) == 1, "barrada junta é uma barra só")
+  #expect(try run(withMarks: false) == 3, "sem marca escrita, agrupa por tempo: três pares")
+}
+
 // MARK: - Rule 133: acidentes chegam à página
 
 /// Rule 133 — um sol sustenido fora da armadura imprime o sustenido.

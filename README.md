@@ -588,6 +588,14 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      (3 no tempo de 2, 5 no tempo de 4) e o colchete com o número atravessam
      o cano, e a duração real entra no modelo — um terço do tempo é um terço
      do tempo, não a figura inteira mais próxima.
+135. As **barras de colcheia seguem a edição**: o agrupamento escrito no
+     arquivo atravessa o cano — uma corrida de seis colcheias barrada junta
+     é uma frase, e reagrupá-la em pares por tempo muda a leitura. Sem
+     agrupamento escrito, o exportador **agrupa por tempo**, como um
+     tipógrafo faria — o gravador sozinho não agrupa nada, e colcheia de
+     bandeirola em bandeirola não é partitura impressa.
+136. As **palavras de andamento e expressão** ("Allegretto", "dolce") são
+     escritas **acima da pauta**, como toda edição impressa as põe.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

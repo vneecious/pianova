@@ -340,6 +340,28 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
             systemID: systemStack.last ?? nil))
       }
 
+    case "polygon":
+      // Beams are polygons — the one drawn element neither a path nor a
+      // glyph, and a parser without this case drops every beam in silence.
+      guard let points = attributes["points"] else { break }
+      let vertices = points.split(whereSeparator: { $0 == " " || $0 == "\n" })
+        .compactMap { pair -> CGPoint? in
+          let numbers = pair.split(separator: ",").compactMap { Double($0) }
+          return numbers.count == 2 ? CGPoint(x: numbers[0], y: numbers[1]) : nil
+        }
+      guard vertices.count >= 3 else { break }
+
+      let polygon = CGMutablePath()
+      polygon.addLines(between: vertices)
+      polygon.closeSubpath()
+      let placedPolygon = polygon.copy(using: [transform]) ?? polygon
+      shapes.append(
+        EngravedShape(
+          path: placedPolygon, isFilled: true, strokeWidth: 0,
+          elementID: ids.last ?? nil, kind: kinds.last ?? nil,
+          noteID: notes.last ?? nil, measureID: measures.last ?? nil,
+          staffNumber: staves.last ?? nil, systemID: systemStack.last ?? nil))
+
     case "rect":
       // The pedal line and its corner hooks are rectangles, not paths — a
       // parser that reads only paths drops the whole pedal lane in silence.

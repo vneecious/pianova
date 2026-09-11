@@ -307,6 +307,98 @@ private let simple = Score(
   #expect(xml.contains("<slur type=\"stop\""))
 }
 
+// MARK: - Rule 135: barras como escritas
+
+/// Rule 135 — o agrupamento escrito sai como <beam>; figura sem barra, não.
+@Test func beamGroupingExportsAsWritten() {
+  let score = Score(
+    title: "Barradas", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(71)], duration: Duration(.eighth), beam: .begin),
+          ScoreNote(pitches: [Pitch(72)], duration: Duration(.eighth), beam: .middle),
+          ScoreNote(pitches: [Pitch(74)], duration: Duration(.eighth), beam: .middle),
+          ScoreNote(pitches: [Pitch(76)], duration: Duration(.eighth), beam: .end),
+          ScoreNote(Pitch(77), .quarter),
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.components(separatedBy: "<beam number=\"1\">begin</beam>").count - 1 == 1)
+  #expect(xml.components(separatedBy: "<beam number=\"1\">continue</beam>").count - 1 == 2)
+  #expect(xml.components(separatedBy: "<beam number=\"1\">end</beam>").count - 1 == 1)
+}
+
+/// Rule 135 — sem agrupamento escrito, o exportador agrupa por tempo: em
+/// 3/4, seis colcheias saem como três pares, e a pausa quebra o grupo.
+@Test func unmarkedEighthsAreBeamedByBeat() {
+  let score = Score(
+    title: "Por tempo", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure(
+          [71, 72, 74, 76, 77, 79]
+            .map {
+              ScoreNote(pitches: [Pitch(UInt8($0))], duration: Duration(.eighth))
+            }),
+        Measure([
+          ScoreNote(pitches: [Pitch(71)], duration: Duration(.eighth)),
+          .rest(.eighth),
+          ScoreNote(Pitch(72), .quarter),
+          ScoreNote(Pitch(74), .quarter),
+        ]),
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.components(separatedBy: "<beam number=\"1\">begin</beam>").count - 1 == 3)
+  #expect(xml.components(separatedBy: "<beam number=\"1\">end</beam>").count - 1 == 3)
+  #expect(!xml.contains("<beam number=\"1\">continue</beam>"))
+}
+
+/// Rule 135 — uma figura longa demais para barra não escreve barra, mesmo
+/// que a fusão de vozes lhe tenha pendurado a marca.
+@Test func aQuarterNeverWritesABeam() {
+  let score = Score(
+    title: "Sem barra", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(60)], duration: Duration(.quarter), beam: .begin),
+          ScoreNote(pitches: [Pitch(62)], duration: Duration(.half, dotted: true)),
+        ])
+      ]))
+
+  #expect(!MusicXMLExporter.musicXML(for: score).contains("<beam"))
+}
+
+// MARK: - Rule 136: palavras acima da pauta
+
+/// Rule 136 — "Allegretto" sai com placement acima, como impresso.
+@Test func wordsExportAboveTheStaff() {
+  let score = Score(
+    title: "Andamento", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(
+            pitches: [Pitch(60)], duration: Duration(.whole), words: "Allegretto")
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.contains("<direction placement=\"above\"><direction-type><words>Allegretto"))
+}
+
 // MARK: - Rule 133: acidentes impressos
 
 /// Rule 133 — fora da armadura o sustenido é impresso; repetido no mesmo

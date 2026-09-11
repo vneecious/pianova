@@ -33,6 +33,8 @@ extension MusicXMLImporter {
     var tupletStart = false
     /// Whether a tuplet bracket closes here.
     var tupletStop = false
+    /// Where this note stands in its written beam group, if the file says.
+    var beam: BeamMark?
     /// A dynamic written at this note.
     var dynamic: String?
     /// A word written at this note.
@@ -133,6 +135,9 @@ extension MusicXMLImporter {
     private var shiftDivisions = 0
     private var inShift = false
 
+    /// The `number` of the `<beam>` being read, since it arrives before the text.
+    private var beamNumber = "1"
+
     // The pitch being assembled, since step, alter and octave arrive apart.
     private var step = ""
     private var alter = 0
@@ -190,6 +195,10 @@ extension MusicXMLImporter {
       case "tuplet":
         if attributes["type"] == "start" { event.tupletStart = true }
         if attributes["type"] == "stop" { event.tupletStop = true }
+      case "beam":
+        // Only the primary beam says how the group runs; the inner levels
+        // follow from the figures themselves.
+        beamNumber = attributes["number"] ?? "1"
       case "staccato":
         event.articulations.insert(.staccato)
       case "accent":
@@ -301,6 +310,15 @@ extension MusicXMLImporter {
         if inNote { event.timeModActual = Int(value) }
       case "normal-notes":
         if inNote { event.timeModNormal = Int(value) }
+      case "beam":
+        if inNote && beamNumber == "1" {
+          switch value {
+          case "begin": event.beam = .begin
+          case "continue": event.beam = .middle
+          case "end": event.beam = .end
+          default: break
+          }
+        }
       case "note":
         inNote = false
         event.part = max(partIndex, 0)

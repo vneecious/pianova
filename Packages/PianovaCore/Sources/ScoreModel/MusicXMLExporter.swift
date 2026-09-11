@@ -97,8 +97,13 @@ public enum MusicXMLExporter {
 
     // Each staff reads its own accidentals, and each bar starts clean.
     var upperState = AccidentalState(key: score.key)
-    body += bar.notes
-      .map { note($0, staff: lower == nil ? nil : 1, voice: 1, accidentals: &upperState) }
+    let upperBeams = beamMarks(for: bar, beat: score.timeSignature.beatValue.beats)
+    body += bar.notes.enumerated()
+      .map { index, event in
+        note(
+          event, staff: lower == nil ? nil : 1, voice: 1, beam: upperBeams[index],
+          accidentals: &upperState)
+      }
       .joined()
 
     if let lower {
@@ -107,7 +112,12 @@ public enum MusicXMLExporter {
       let barLength = Int((bar.beats * Double(divisions)).rounded())
       body += "<backup><duration>\(barLength)</duration></backup>"
       var lowerState = AccidentalState(key: score.key)
-      body += lower.notes.map { note($0, staff: 2, voice: 2, accidentals: &lowerState) }.joined()
+      let lowerBeams = beamMarks(for: lower, beat: score.timeSignature.beatValue.beats)
+      body += lower.notes.enumerated()
+        .map { index, event in
+          note(event, staff: 2, voice: 2, beam: lowerBeams[index], accidentals: &lowerState)
+        }
+        .joined()
     }
 
     if bar.repeatEnd {
@@ -125,8 +135,46 @@ public enum MusicXMLExporter {
     return "<clef\(attribute)>\(sign)</clef>"
   }
 
+  /// The beam grouping a bar goes out with (rule 135).
+  ///
+  /// The edition's own marks win when the bar carries any; a bar without them
+  /// gets what a typesetter would do — beamable figures grouped by beat, a
+  /// rest or a longer figure breaking the group, a group of one left alone.
+  private static func beamMarks(for bar: Measure, beat: Double) -> [BeamMark?] {
+    if bar.notes.contains(where: { $0.beam != nil }) { return bar.notes.map(\.beam) }
+
+    var marks = [BeamMark?](repeating: nil, count: bar.notes.count)
+    var group: [Int] = []
+
+    func close() {
+      if group.count >= 2, let first = group.first, let last = group.last {
+        marks[first] = .begin
+        marks[last] = .end
+        for index in group.dropFirst().dropLast() { marks[index] = .middle }
+      }
+      group = []
+    }
+
+    var time = 0.0
+    for (index, event) in bar.notes.enumerated() {
+      let intoBeat = time.truncatingRemainder(dividingBy: beat)
+      if intoBeat < 0.001 || beat - intoBeat < 0.001 { close() }
+
+      if !event.isRest && event.duration.value.beats <= 0.5 {
+        group.append(index)
+      } else {
+        close()
+      }
+      time += event.duration.beats
+    }
+    close()
+
+    return marks
+  }
+
   private static func note(
-    _ event: ScoreNote, staff: Int?, voice: Int, accidentals: inout AccidentalState
+    _ event: ScoreNote, staff: Int?, voice: Int, beam: BeamMark?,
+    accidentals: inout AccidentalState
   ) -> String {
     let length = Int((event.duration.beats * Double(divisions)).rounded())
     let type = typeName(event.duration.value)
@@ -147,6 +195,22 @@ public enum MusicXMLExporter {
         + "<type>\(type)</type>\(dot)\(timeModTag)\(staffTag)</note>"
     }
 
+    // The beam mark rides the note (rule 135) — but only on a figure short
+    // enough to carry a beam: merging voices into columns can hang the mark
+    // on a longer figure, and writing it would be nonsense.
+    let beamTag: String
+    if let beam, event.duration.value.beats <= 0.5 {
+      let word: String
+      switch beam {
+      case .begin: word = "begin"
+      case .middle: word = "continue"
+      case .end: word = "end"
+      }
+      beamTag = "<beam number=\"1\">\(word)</beam>"
+    } else {
+      beamTag = ""
+    }
+
     // A chord is written as one note followed by others marked `<chord/>`,
     // which is how MusicXML says "these share a moment".
     let graces = graceNotes(of: event, staff: staff, voice: voice, accidentals: &accidentals)
@@ -164,6 +228,7 @@ public enum MusicXMLExporter {
       body +=
         "<note>\(chord)\(pitchXML(spelled))<duration>\(length)</duration>\(voiceTag)"
         + "<type>\(type)</type>\(dot)\(accidental)\(timeModTag)\(staffTag)"
+        + "\(index == 0 ? beamTag : "")"
         + "\(notations(of: event, pitchIndex: index))</note>"
     }
 
@@ -176,8 +241,10 @@ public enum MusicXMLExporter {
     let staffTag = staff.map { "<staff>\($0)</staff>" } ?? ""
 
     if let words = event.words {
+      // Tempo and expression words sit above the staff, as printed (rule 136).
       parts.append(
-        "<direction><direction-type><words>\(words)</words></direction-type></direction>")
+        "<direction placement=\"above\"><direction-type><words>\(words)</words>"
+          + "</direction-type></direction>")
     }
     if let dynamic = event.dynamic {
       parts.append(
