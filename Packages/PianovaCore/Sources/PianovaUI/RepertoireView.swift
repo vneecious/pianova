@@ -161,7 +161,11 @@ struct RepertoireView: View {
     defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
     do {
-      imported.insert(try library.add(url), at: 0)
+      // The library is the source of truth and it deduplicates by title;
+      // inserting into the list by hand showed two rows of the same piece
+      // whenever the title already lived there.
+      _ = try library.add(url)
+      imported = library.scores().reversed()
     } catch let error as MusicXMLError {
       importError = error.message
     } catch {
@@ -189,7 +193,7 @@ struct RepertoireView: View {
         if imported.contains(where: { $0.title == score.title }) {
           Button {
             library.remove(titled: score.title)
-            imported.removeAll { $0.title == score.title }
+            imported = library.scores().reversed()
           } label: {
             Image(systemName: "trash")
               .font(.system(size: 12))
