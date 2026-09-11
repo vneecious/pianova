@@ -311,9 +311,13 @@ struct EngravedPieceView: View {
       GeometryReader { proxy in
         let scale = proxy.size.width / max(page.size.width, 1)
 
+        // Placed with position, not offset: an offset moves a view when it is
+        // drawn and not when it is laid out, and an anchor is layout — with
+        // offset the pill's anchor sat at the top of the page, wherever the
+        // selection actually was.
         Color.clear
           .frame(width: union.width * scale, height: union.height * scale)
-          .offset(x: union.minX * scale, y: union.minY * scale)
+          .position(x: union.midX * scale, y: union.midY * scale)
           .anchorPreference(key: SelectionRectKey.self, value: .bounds) { $0 }
       }
       .allowsHitTesting(false)
