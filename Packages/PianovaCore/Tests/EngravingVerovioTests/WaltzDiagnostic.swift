@@ -6,9 +6,9 @@ import Testing
 
 /// Diagnóstico temporário com o arquivo real da valsa: o que sobrevive?
 @Test func waltzRoundTripInventory() throws {
-  let path =
-    "/private/tmp/claude-501/-Users-I550329-Projects-piano/"
-    + "dae134ef-c880-4f80-bd16-7bf97ae56143/scratchpad/waltz/score.xml"
+  // Fora do repositório de propósito (arquivo do usuário); fora do rascunho
+  // de sessão também, porque rascunho morre com a sessão e a régua não pode.
+  let path = NSString(string: "~/Downloads/pianova-backups/waltz-score.xml").expandingTildeInPath
   guard FileManager.default.fileExists(atPath: path) else { return }
 
   let score = try MusicXMLImporter.score(at: URL(fileURLWithPath: path))
