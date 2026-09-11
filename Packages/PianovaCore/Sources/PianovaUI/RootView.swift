@@ -34,7 +34,6 @@ public struct RootView: View {
   @EnvironmentObject private var tones: TonePlayer
   @EnvironmentObject private var profile: ProfileController
   @State private var lessonController: LessonController?
-  @State private var isInstallingBank = false
   @StateObject private var drill = DrillController()
   @EnvironmentObject private var metronome: Metronome
 
@@ -61,17 +60,6 @@ public struct RootView: View {
       hub.onInstrumentChanged = { tones.connectInstrument() }
       hub.start()
       tones.connectInstrument()
-    }
-    .fileImporter(
-      isPresented: $isInstallingBank,
-      allowedContentTypes: [UTType(filenameExtension: "sf2"), UTType(filenameExtension: "dls")]
-        .compactMap { $0 },
-      allowsMultipleSelection: false
-    ) { result in
-      guard let url = try? result.get().first else { return }
-      let scoped = url.startAccessingSecurityScopedResource()
-      defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-      try? tones.installBank(from: url)
     }
   }
 
@@ -153,12 +141,13 @@ public struct RootView: View {
       metronomeControl
 
       Button {
-        if FileChooser.opensDirectly {
-          let types = [UTType(filenameExtension: "sf2"), UTType(filenameExtension: "dls")]
-            .compactMap { $0 }
-          if let url = FileChooser.choose(types: types) { try? tones.installBank(from: url) }
-        } else {
-          isInstallingBank = true
+        let types = [UTType(filenameExtension: "sf2"), UTType(filenameExtension: "dls"), .data]
+          .compactMap { $0 }
+        FileChooser.pick(types: types) { url in
+          guard let url else { return }
+          let scoped = url.startAccessingSecurityScopedResource()
+          defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+          try? tones.installBank(from: url)
         }
       } label: {
         Image(systemName: "waveform")

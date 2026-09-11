@@ -26,9 +26,6 @@ struct RepertoireView: View {
   /// Pieces the player imported, read from the library.
   @State private var imported: [Score] = []
 
-  /// Whether the file importer is on screen.
-  @State private var isImporting = false
-
   /// Why the last import was refused, if it was.
   @State private var importError: String?
 
@@ -84,10 +81,9 @@ struct RepertoireView: View {
           .frame(width: 190)
 
           Button {
-            if FileChooser.opensDirectly {
-              if let url = FileChooser.choose(types: Self.musicXMLTypes) { open(url) }
-            } else {
-              isImporting = true
+            FileChooser.pick(types: Self.musicXMLTypes) { url in
+              guard let url else { return }
+              open(url)
             }
           } label: {
             Label("Importar MusicXML", systemImage: "square.and.arrow.down")
@@ -126,13 +122,6 @@ struct RepertoireView: View {
       .padding(32)
     }
     .onAppear { imported = library.scores().reversed() }
-    .fileImporter(
-      isPresented: $isImporting,
-      allowedContentTypes: Self.musicXMLTypes,
-      allowsMultipleSelection: false
-    ) { result in
-      load(result)
-    }
   }
 
   private func sectionTitle(_ text: String) -> some View {
@@ -156,15 +145,6 @@ struct RepertoireView: View {
     // wrong file with a reason is better than not being able to pick it.
     [UTType(filenameExtension: "musicxml"), .xml, .init(filenameExtension: "mxl"), .data]
       .compactMap { $0 }
-  }
-
-  /// Reads a picked file, or says why it could not.
-  private func load(_ result: Result<[URL], Error>) {
-    guard let url = try? result.get().first else {
-      importError = "Não consegui abrir o arquivo."
-      return
-    }
-    open(url)
   }
 
   /// Imports one file, reporting the reason when it will not open.

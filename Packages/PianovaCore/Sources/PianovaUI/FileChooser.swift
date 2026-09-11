@@ -3,32 +3,25 @@ import UniformTypeIdentifiers
 
 #if os(macOS)
 import AppKit
+#else
+import UIKit
 #endif
 
 /// Asks the player for a file.
 ///
-/// SwiftUI's `.fileImporter` is the obvious answer and it is the one used on
-/// iPad, where it opens the Files browser. On macOS it does nothing at all in
-/// this app: the Mac build is a bundle assembled by a script with only an
-/// ad-hoc signature, and the panel never appears — no error, no log, no window.
-/// So the Mac asks `NSOpenPanel` directly, which works regardless.
+/// SwiftUI's `.fileImporter` is the obvious answer, and it failed silently on
+/// both platforms: on macOS the panel never appeared at all, and on iPad
+/// pressing the button did nothing. Twice was enough. Each platform now opens
+/// its own picker directly — `NSOpenPanel` and `UIDocumentPickerViewController`
+/// — which is what the modifier wraps anyway, minus whatever it was doing in
+/// between.
 enum FileChooser {
-  /// Whether this platform can open a panel on the spot.
-  ///
-  /// When it cannot, the caller falls back to `.fileImporter`.
-  static var opensDirectly: Bool {
-    #if os(macOS)
-    return true
-    #else
-    return false
-    #endif
-  }
-
-  /// Opens a picker and waits for an answer.
-  /// - Parameter types: What the player is allowed to pick.
-  /// - Returns: The chosen file, or `nil` if the picker was dismissed.
+  /// Asks for a file, whichever way this platform does it.
+  /// - Parameters:
+  ///   - types: What the player is allowed to pick.
+  ///   - completion: Called with the chosen file, or `nil` if dismissed.
   @MainActor
-  static func choose(types: [UTType]) -> URL? {
+  static func pick(types: [UTType], completion: @escaping (URL?) -> Void) {
     #if os(macOS)
     let panel = NSOpenPanel()
     panel.allowedContentTypes = types
@@ -36,9 +29,66 @@ enum FileChooser {
     panel.canChooseDirectories = false
     panel.canChooseFiles = true
 
-    return panel.runModal() == .OK ? panel.url : nil
+    completion(panel.runModal() == .OK ? panel.url : nil)
     #else
-    return nil
+    present(types: types, completion: completion)
     #endif
   }
+
+  #if !os(macOS)
+  /// Opens the Files browser from the window's own root controller.
+  ///
+  /// Presented directly rather than through a SwiftUI modifier, because the
+  /// modifier is the part that was not working.
+  @MainActor
+  private static func present(types: [UTType], completion: @escaping (URL?) -> Void) {
+    let scene = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .first { $0.activationState == .foregroundActive }
+
+    guard let root = scene?.keyWindow?.rootViewController else {
+      completion(nil)
+      return
+    }
+
+    let picker = UIDocumentPickerViewController(forOpeningContentTypes: types)
+    picker.allowsMultipleSelection = false
+
+    let delegate = PickerDelegate(completion: completion)
+    picker.delegate = delegate
+    PickerDelegate.alive = delegate
+
+    // Present from whatever is already on screen, or the sheet is asked to
+    // appear over a controller that is itself covered and never shows.
+    var top = root
+    while let presented = top.presentedViewController { top = presented }
+    top.present(picker, animated: true)
+  }
+
+  /// Holds the picker's answer until it arrives.
+  ///
+  /// A picker does not retain its delegate, so without keeping it here the
+  /// callback never fires.
+  private final class PickerDelegate: NSObject, UIDocumentPickerDelegate {
+    static var alive: PickerDelegate?
+
+    private let completion: (URL?) -> Void
+
+    init(completion: @escaping (URL?) -> Void) {
+      self.completion = completion
+    }
+
+    func documentPicker(
+      _ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]
+    ) {
+      completion(urls.first)
+      PickerDelegate.alive = nil
+    }
+
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+      completion(nil)
+      PickerDelegate.alive = nil
+    }
+  }
+  #endif
 }
