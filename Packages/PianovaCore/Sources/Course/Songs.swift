@@ -28,6 +28,18 @@ public enum Songs {
     ScoreNote(pitches: ps.map { Pitch(UInt8($0)) }, duration: Duration(v))
   }
 
+  /// A note with its finger written, the way a study edition marks decisions.
+  private static func f(_ p: Int, _ finger: Int, _ v: NoteValue = .quarter) -> ScoreNote {
+    ScoreNote(pitches: [Pitch(UInt8(p))], duration: Duration(v), fingers: [finger])
+  }
+
+  /// A chord with a finger on every note.
+  private static func fchord(_ ps: [(Int, Int)], _ v: NoteValue = .quarter) -> ScoreNote {
+    ScoreNote(
+      pitches: ps.map { Pitch(UInt8($0.0)) }, duration: Duration(v),
+      fingers: ps.map(\.1))
+  }
+
   /// A left hand of one held note per bar.
   private static func drone(_ roots: [Int], _ v: NoteValue, _ dot: Bool = false) -> Part {
     Part(clef: .bass, measures: roots.map { Measure([n($0, v, dot)]) })
@@ -202,14 +214,14 @@ public enum Songs {
     rightHand: Part(
       clef: .treble,
       measures: [
-        m(n(60), n(62), n(64), n(65)),
-        m(n(67), n(69), n(71), n(72)),
-        m(n(72, .half), n(71), n(69)),
-        m(n(67, .half), n(65, .half)),
-        m(n(64), n(65), n(67), n(69)),
-        m(n(67), n(65), n(64), n(62)),
-        m(n(60), n(64), n(67), n(64)),
-        m(n(60, .whole)),
+        m(f(60, 1), f(62, 2), f(64, 3), f(65, 1)),
+        m(f(67, 2), f(69, 3), f(71, 4), f(72, 5)),
+        m(f(72, 5, .half), f(71, 4), f(69, 3)),
+        m(f(67, 2, .half), f(65, 1, .half)),
+        m(f(64, 3), n(65), n(67), n(69)),
+        m(n(67), n(65), f(64, 3), f(62, 2)),
+        m(f(60, 1), f(64, 3), f(67, 5), n(64)),
+        m(f(60, 1, .whole)),
       ]))
 
   /// The galop from Offenbach's Orphée aux enfers, arranged for the course.
@@ -266,22 +278,22 @@ public enum Songs {
     rightHand: Part(
       clef: .treble,
       measures: [
-        m(n(60), n(64), n(67, .half)),
-        m(n(60), n(65), n(69, .half)),
-        m(n(59), n(65), n(67, .half)),
-        m(n(60, .whole)),
-        m(n(67), n(64), n(60, .half)),
-        m(n(69), n(65), n(60, .half)),
-        m(n(67), n(65), n(59, .half)),
-        m(n(60, .whole)),
+        m(f(60, 1), f(64, 3), f(67, 5, .half)),
+        m(f(60, 1), f(65, 4), f(69, 5, .half)),
+        m(f(59, 1), f(65, 4), f(67, 5, .half)),
+        m(f(60, 1, .whole)),
+        m(f(67, 5), f(64, 3), f(60, 1, .half)),
+        m(f(69, 5), f(65, 4), f(60, 1, .half)),
+        m(f(67, 5), f(65, 4), f(59, 1, .half)),
+        m(f(60, 1, .whole)),
       ]),
     leftHand: Part(
       clef: .bass,
       measures: [
-        m(chord([48, 52, 55], .whole)),
-        m(chord([48, 53, 57], .whole)),
-        m(chord([47, 53, 55], .whole)),
-        m(chord([48, 52, 55], .whole)),
+        m(fchord([(48, 5), (52, 3), (55, 1)], .whole)),
+        m(fchord([(48, 5), (53, 2), (57, 1)], .whole)),
+        m(fchord([(47, 5), (53, 2), (55, 1)], .whole)),
+        m(fchord([(48, 5), (52, 3), (55, 1)], .whole)),
         m(chord([48, 52, 55], .whole)),
         m(chord([48, 53, 57], .whole)),
         m(chord([47, 53, 55], .whole)),

@@ -192,13 +192,29 @@ public enum MusicXMLImporter {
     for (index, moment) in ordered.enumerated() {
       let next = index + 1 < ordered.count ? ordered[index + 1] : barLength
       let span = max(next - moment, 1)
-      let pitches = sounding.filter { $0.start == moment }.flatMap(\.pitches)
+      let struck = sounding.filter { $0.start == moment }
+      let pitches = struck.flatMap(\.pitches)
+
+      // Fingering rides its pitch through the merge and the sort. Zero means
+      // "none written on this one", which keeps a partially fingered chord
+      // aligned.
+      var fingerOfPitch: [Pitch: Int] = [:]
+      for raw in struck {
+        for (index, pitch) in raw.pitches.enumerated()
+        where raw.fingers.indices.contains(index) {
+          fingerOfPitch[pitch] = raw.fingers[index]
+        }
+      }
+
+      let orderedPitches = Array(Set(pitches)).sorted { $0.midiNoteNumber < $1.midiNoteNumber }
+      let fingers = orderedPitches.map { fingerOfPitch[$0] ?? 0 }
 
       notes.append(
         ScoreNote(
-          pitches: Array(Set(pitches)).sorted { $0.midiNoteNumber < $1.midiNoteNumber },
+          pitches: orderedPitches,
           duration: duration(divisions: span, perQuarter: parser.divisions),
-          isTiedToNext: sounding.first { $0.start == moment }?.isTiedToNext ?? false))
+          isTiedToNext: struck.first?.isTiedToNext ?? false,
+          fingers: fingers.allSatisfy { $0 == 0 } ? [] : fingers))
     }
 
     return Measure(notes)

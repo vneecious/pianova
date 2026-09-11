@@ -86,8 +86,13 @@ public enum MusicXMLExporter {
     return event.pitches.enumerated()
       .map { index, pitch in
         let chord = index == 0 ? "" : "<chord/>"
+        let finger =
+          event.fingers.indices.contains(index) && event.fingers[index] > 0
+          ? "<notations><technical><fingering>\(event.fingers[index])</fingering>"
+            + "</technical></notations>"
+          : ""
         return "<note>\(chord)\(self.pitch(pitch))<duration>\(length)</duration>"
-          + "<type>\(type)</type>\(dot)</note>"
+          + "<type>\(type)</type>\(dot)\(finger)</note>"
       }
       .joined()
   }

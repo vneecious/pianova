@@ -56,15 +56,26 @@ public struct ScoreNote: Equatable, Sendable {
   /// Whether it is tied into the next event.
   public let isTiedToNext: Bool
 
+  /// Written fingering, aligned with ``pitches`` — empty means none written.
+  ///
+  /// Pedagogical editions finger the decisions: the first note of a position,
+  /// the thumb-under, the crossing. The model carries the numbers; whether a
+  /// piece has any is the edition's choice, never invented downstream.
+  public let fingers: [Int]
+
   /// Creates a written event.
   /// - Parameters:
   ///   - pitches: The pitches sounding together, or empty for a rest.
   ///   - duration: How long it lasts.
   ///   - isTiedToNext: Whether it is tied into the next event.
-  public init(pitches: [Pitch], duration: Duration, isTiedToNext: Bool = false) {
+  ///   - fingers: Written fingering aligned with the pitches, if any.
+  public init(
+    pitches: [Pitch], duration: Duration, isTiedToNext: Bool = false, fingers: [Int] = []
+  ) {
     self.pitches = pitches
     self.duration = duration
     self.isTiedToNext = isTiedToNext
+    self.fingers = fingers
   }
 
   /// A single note.

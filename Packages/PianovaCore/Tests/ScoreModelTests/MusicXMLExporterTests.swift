@@ -120,3 +120,55 @@ private let simple = Score(
   #expect(xml.contains("&amp;"))
   #expect(try MusicXMLImporter.score(from: Data(xml.utf8)).title == "Bach & <Filhos>")
 }
+
+// MARK: - Rule 122: digitação escrita
+
+/// Rule 122 — uma nota com dedo declarado sai com <fingering> no MusicXML.
+@Test func aFingeredNoteExportsItsFingering() {
+  let score = Score(
+    title: "Dedos", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(60)], duration: Duration(.quarter), fingers: [1]),
+          ScoreNote(pitches: [Pitch(62)], duration: Duration(.quarter), fingers: [2]),
+          ScoreNote(Pitch(64), .half),
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  #expect(xml.contains("<fingering>1</fingering>"))
+  #expect(xml.contains("<fingering>2</fingering>"))
+}
+
+/// Rule 122 — num acorde, cada nota leva o seu próprio dedo.
+@Test func aChordExportsOneFingerPerNote() {
+  let score = Score(
+    title: "Acorde", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(
+            pitches: [Pitch(60), Pitch(64), Pitch(67)], duration: Duration(.whole),
+            fingers: [1, 3, 5])
+        ])
+      ]))
+
+  let xml = MusicXMLExporter.musicXML(for: score)
+
+  for finger in ["1", "3", "5"] {
+    #expect(xml.contains("<fingering>\(finger)</fingering>"), "faltou o dedo \(finger)")
+  }
+}
+
+/// Rule 122 — sem dedo declarado, nenhum <fingering> é inventado.
+@Test func anUnfingeredNoteExportsNoFingering() {
+  let score = Score(
+    title: "Sem dedos", composer: "—",
+    rightHand: Part(clef: .treble, measures: [Measure([ScoreNote(Pitch(60), .whole)])]))
+
+  #expect(!MusicXMLExporter.musicXML(for: score).contains("fingering"))
+}

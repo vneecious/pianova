@@ -535,6 +535,10 @@ servir ao segundo e permitir o primeiro, e não o contrário.
 121. Com o app aberto, **a tela não dorme**. O sistema só conta toques no
      vidro como atividade, e quem pratica toca no piano — o iPad apagava no
      meio do exercício. Em segundo plano, o descanso volta ao normal.
+122. Partitura carrega **digitação escrita**: cada nota pode declarar seu
+     dedo (1 a 5), o exportador a escreve no MusicXML e a gravura a mostra
+     como uma edição pedagógica mostra — número junto à nota. O importador
+     **preserva** a digitação que vier no arquivo; nada a inventa.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

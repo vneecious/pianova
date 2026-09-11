@@ -265,3 +265,42 @@ private let twoVoices = """
 @Test func theRefusalCountsTheInstruments() {
   #expect(MusicXMLError.notForPiano(instruments: 22).message.contains("22"))
 }
+
+// MARK: - Rule 122: o importador preserva a digitação
+
+/// Rule 122 — a digitação que vem no arquivo sobrevive à importação.
+@Test func importedFingeringSurvives() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration>
+        <type>half</type>
+        <notations><technical><fingering>1</fingering></technical></notations></note>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>2</duration>
+        <type>half</type>
+        <notations><technical><fingering>3</fingering></technical></notations></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+
+  #expect(score.rightHand.measures.first?.notes.first?.fingers == [1])
+  #expect(score.rightHand.measures.first?.notes.last?.fingers == [3])
+}
+
+/// Rule 122 — nota sem digitação importa sem dedo nenhum.
+@Test func importWithoutFingeringStaysBare() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>
+        <type>whole</type></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+
+  #expect(score.rightHand.measures.first?.notes.first?.fingers.isEmpty == true)
+}

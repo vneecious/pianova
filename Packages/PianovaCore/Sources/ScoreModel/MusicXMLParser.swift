@@ -13,6 +13,8 @@ extension MusicXMLImporter {
     var isChord = false
     /// Whether it is tied into what follows.
     var isTiedToNext = false
+    /// Written fingering, one number per pitch of this raw note.
+    var fingers: [Int] = []
     /// When it begins, in divisions from the start of its bar.
     ///
     /// Real files do not write a bar in playing order. A piano part writes the
@@ -186,6 +188,10 @@ extension MusicXMLImporter {
       case "pitch":
         if let pitch = Self.pitch(step: step, alter: alter, octave: octave) {
           event.pitches = [pitch]
+        }
+      case "fingering":
+        if let finger = Int(text.trimmingCharacters(in: .whitespacesAndNewlines)) {
+          event.fingers.append(finger)
         }
       case "note":
         inNote = false
