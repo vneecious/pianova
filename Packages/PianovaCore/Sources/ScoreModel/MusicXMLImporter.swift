@@ -132,7 +132,10 @@ public enum MusicXMLImporter {
       let staffTwo = lower.isEmpty ? raw.events.filter { $0.staff == 2 } : lower[index].events
       let staffOne = lower.isEmpty ? raw.events.filter { $0.staff != 2 } : raw.events
 
-      right.append(try measure(from: staffOne, parser: parser, number: index + 1))
+      right.append(
+        try measure(
+          from: staffOne, parser: parser, number: index + 1,
+          repeatStart: raw.repeatStart, repeatEnd: raw.repeatEnd))
       if !staffTwo.isEmpty {
         left.append(try measure(from: staffTwo, parser: parser, number: index + 1))
       }
@@ -164,7 +167,9 @@ public enum MusicXMLImporter {
   private static func measure(
     from events: [RawEvent],
     parser: Parser,
-    number: Int
+    number: Int,
+    repeatStart: Bool = false,
+    repeatEnd: Bool = false
   ) throws -> Measure {
     let sounding = events.filter { !$0.pitches.isEmpty }
 
@@ -193,6 +198,10 @@ public enum MusicXMLImporter {
       let next = index + 1 < ordered.count ? ordered[index + 1] : barLength
       let span = max(next - moment, 1)
       let struck = sounding.filter { $0.start == moment }
+      // Marks come from every event at the moment, rests included: a dynamic
+      // or a pedal written over a rest rides that rest, and gathering marks
+      // only from sounding events silently dropped them.
+      let marked = events.filter { $0.start == moment && !$0.isChord } + struck
       let pitches = struck.flatMap(\.pitches)
 
       // Fingering rides its pitch through the merge and the sort. Zero means
@@ -215,18 +224,19 @@ public enum MusicXMLImporter {
           duration: duration(divisions: span, perQuarter: parser.divisions),
           isTiedToNext: struck.first?.isTiedToNext ?? false,
           fingers: fingers.allSatisfy { $0 == 0 } ? [] : fingers,
-          pedal: struck.compactMap(\.pedal).first,
-          ottava: struck.compactMap(\.ottava).first,
-          slurStart: struck.contains { $0.slurStart },
-          slurStop: struck.contains { $0.slurStop },
-          dynamic: struck.compactMap(\.dynamic).first,
-          words: struck.compactMap(\.words).first,
-          articulations: struck.reduce(into: Set<Articulation>()) {
+          pedal: marked.compactMap(\.pedal).first,
+          pedalLine: marked.contains { $0.pedalLine },
+          ottava: marked.compactMap(\.ottava).first,
+          slurStart: marked.contains { $0.slurStart },
+          slurStop: marked.contains { $0.slurStop },
+          dynamic: marked.compactMap(\.dynamic).first,
+          words: marked.compactMap(\.words).first,
+          articulations: marked.reduce(into: Set<Articulation>()) {
             $0.formUnion($1.articulations)
           }))
     }
 
-    return Measure(notes)
+    return Measure(notes, repeatStart: repeatStart, repeatEnd: repeatEnd)
   }
 
   /// Whether the opening bar is short, which is what an upbeat is.

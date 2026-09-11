@@ -17,6 +17,8 @@ extension MusicXMLImporter {
     var isGrace = false
     /// A pedal instruction written just before this note.
     var pedal: PedalMark?
+    /// Whether that pedal is the line style rather than the sign style.
+    var pedalLine = false
     /// An octave line starting or stopping at this note.
     var ottava: OttavaMark?
     /// Whether a phrase slur begins here.
@@ -45,6 +47,10 @@ extension MusicXMLImporter {
   /// One bar as the file states it.
   struct RawMeasure {
     var events: [RawEvent] = []
+    /// Whether a repeat begins at this bar's opening barline.
+    var repeatStart = false
+    /// Whether a repeat closes at this bar's final barline.
+    var repeatEnd = false
   }
 
   /// Pulls the handful of MusicXML elements the course needs out of the file.
@@ -71,10 +77,26 @@ extension MusicXMLImporter {
     private var event = RawEvent()
     private var inNote = false
 
-    /// Directions read but not yet attached: they belong to the next note.
-    private var pendingPedal: PedalMark?
-    private var pendingOttava: OttavaMark?
-    private var pendingDynamic: String?
+    /// One `<direction>` being read: its marks and, at the end, its staff.
+    ///
+    /// A buffer per direction, folded into the pendings only when it closes —
+    /// sharing one target staff let a later direction's staff overwrite an
+    /// earlier one's, and the dynamic sailed into the wrong hand.
+    private struct OpenDirection {
+      var pedal: PedalMark?
+      var pedalLine = false
+      var ottava: OttavaMark?
+      var dynamic: String?
+      var words: String?
+      var staff: Int?
+    }
+
+    private var direction: OpenDirection?
+
+    /// Directions read but not yet attached, each with its own target staff.
+    private var pendingPedal: (mark: PedalMark, line: Bool, staff: Int?)?
+    private var pendingOttava: (mark: OttavaMark, staff: Int?)?
+    private var pendingDynamic: (mark: String, staff: Int?)?
     private var pendingWords: String?
     private var inWords = false
     private var inDynamics = false
@@ -149,6 +171,9 @@ extension MusicXMLImporter {
         octave = 4
       case "chord":
         event.isChord = true
+      case "repeat":
+        if attributes["direction"] == "forward" { measure.repeatStart = true }
+        if attributes["direction"] == "backward" { measure.repeatEnd = true }
       case "grace":
         event.isGrace = true
       case "slur":
@@ -160,18 +185,21 @@ extension MusicXMLImporter {
         event.articulations.insert(.accent)
       case "tenuto":
         event.articulations.insert(.tenuto)
+      case "direction":
+        direction = OpenDirection()
       case "pedal":
+        direction?.pedalLine = attributes["line"] == "yes"
         switch attributes["type"] {
-        case "start", "resume": pendingPedal = .down
-        case "stop": pendingPedal = .up
-        case "change": pendingPedal = .change
+        case "start", "resume": direction?.pedal = .down
+        case "stop": direction?.pedal = .up
+        case "change": direction?.pedal = .change
         default: break
         }
       case "octave-shift":
         switch attributes["type"] {
-        case "down": pendingOttava = .startAbove
-        case "up": pendingOttava = .startBelow
-        case "stop": pendingOttava = .stop
+        case "down": direction?.ottava = .startAbove
+        case "up": direction?.ottava = .startBelow
+        case "stop": direction?.ottava = .stop
         default: break
         }
       case "dynamics":
@@ -180,7 +208,7 @@ extension MusicXMLImporter {
         inWords = true
         text = ""
       case "p", "pp", "ppp", "f", "ff", "fff", "mp", "mf", "sf", "fp", "sfz":
-        if inDynamics { pendingDynamic = name }
+        if inDynamics { direction?.dynamic = name }
       case "rest":
         event.pitches = []
       case "tie":
@@ -228,7 +256,14 @@ extension MusicXMLImporter {
       case "octave":
         octave = Int(value) ?? 4
       case "staff":
-        event.staff = Int(value) ?? 1
+        // Inside a note it names the note's staff; inside a direction it
+        // names the staff the direction is FOR — the pedal written under the
+        // bass must not ride a treble note into the wrong hand.
+        if inNote {
+          event.staff = Int(value) ?? 1
+        } else if direction != nil {
+          direction?.staff = Int(value)
+        }
       case "duration":
         if inNote {
           event.divisions = Int(value) ?? 0
@@ -253,20 +288,34 @@ extension MusicXMLImporter {
         inNote = false
         event.part = max(partIndex, 0)
 
-        // Whatever direction was read since the last note belongs to this one.
-        event.pedal = pendingPedal
-        event.ottava = pendingOttava
-        event.dynamic = pendingDynamic
-        event.words = pendingWords
-        pendingPedal = nil
-        pendingOttava = nil
-        pendingDynamic = nil
-        pendingWords = nil
-
         // An ornament has no time of its own and is not judged: kept, it
         // would be demanded together with the chord it decorates; refused, it
-        // took the whole piece down with it. Skipped, the music reads on.
+        // took the whole piece down with it. Skipped, the music reads on —
+        // and skipped BEFORE the pending directions attach, or the ornament
+        // swallows the dynamic, the pedal and the octave line meant for the
+        // real note after it.
         if event.isGrace { break }
+
+        // Whatever direction was read since the last note belongs to the next
+        // note on the direction's own staff — a pedal written under the bass
+        // must not ride a treble note into the wrong hand.
+        if let pending = pendingPedal, pending.staff == nil || pending.staff == event.staff {
+          event.pedal = pending.mark
+          event.pedalLine = pending.line
+          pendingPedal = nil
+        }
+        if let pending = pendingOttava, pending.staff == nil || pending.staff == event.staff {
+          event.ottava = pending.mark
+          pendingOttava = nil
+        }
+        if let pending = pendingDynamic, pending.staff == nil || pending.staff == event.staff {
+          event.dynamic = pending.mark
+          pendingDynamic = nil
+        }
+        if pendingWords != nil {
+          event.words = pendingWords
+          pendingWords = nil
+        }
 
         // A chord shares the moment of the note it hangs off, and does not move
         // the cursor; anything else starts where the cursor is and advances it.
@@ -284,10 +333,25 @@ extension MusicXMLImporter {
         measuresByPart[max(partIndex, 0), default: []].append(measure)
       case "dynamics":
         inDynamics = false
+      case "direction":
+        // The direction folds into the pendings only now, staff and all.
+        if let closed = direction {
+          if let pedal = closed.pedal {
+            // A release still waiting when the next press arrives is one
+            // motion: up-and-down again, the pedal change.
+            let merged: PedalMark =
+              (pendingPedal?.mark == .up && pedal == .down) ? .change : pedal
+            pendingPedal = (merged, closed.pedalLine, closed.staff)
+          }
+          if let ottava = closed.ottava { pendingOttava = (ottava, closed.staff) }
+          if let dynamic = closed.dynamic { pendingDynamic = (dynamic, closed.staff) }
+          if let words = closed.words { pendingWords = words }
+        }
+        direction = nil
       case "words":
         inWords = false
         let words = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !words.isEmpty { pendingWords = words }
+        if !words.isEmpty { direction?.words = words }
       default:
         break
       }

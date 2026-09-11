@@ -400,3 +400,31 @@ private let twoVoices = """
   #expect(notes[1].slurStop)
   #expect(!notes[0].isTiedToNext, "ligadura de expressão não é ligadura de valor")
 }
+
+/// Sonda — direção com `<staff>` num arquivo de pauta dupla chega à mão certa.
+@Test func aDirectionWithStaffReachesItsHand() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions><staves>2</staves></attributes>
+      <direction placement="above">
+        <direction-type><dynamics><mp/></dynamics></direction-type>
+        <staff>2</staff>
+      </direction>
+      <direction>
+        <direction-type><octave-shift type="stop" size="8"/></direction-type>
+        <staff>1</staff>
+      </direction>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>4</duration>
+        <type>whole</type><voice>1</voice><staff>1</staff></note>
+      <backup><duration>4</duration></backup>
+      <note><pitch><step>C</step><octave>3</octave></pitch><duration>4</duration>
+        <type>whole</type><voice>2</voice><staff>2</staff></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+
+  #expect(score.rightHand.measures.first?.notes.first?.ottava == .stop, "oitava na pauta 1")
+  #expect(score.leftHand?.measures.first?.notes.first?.dynamic == "mp", "mp na pauta 2")
+}

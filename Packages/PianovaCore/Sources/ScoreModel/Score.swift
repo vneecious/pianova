@@ -100,6 +100,9 @@ public struct ScoreNote: Equatable, Sendable {
   /// A pedal instruction written just before this note, if any.
   public let pedal: PedalMark?
 
+  /// Whether that pedal is written as a line rather than as signs.
+  public let pedalLine: Bool
+
   /// An octave line starting or stopping at this note, if any.
   public let ottava: OttavaMark?
 
@@ -125,6 +128,7 @@ public struct ScoreNote: Equatable, Sendable {
   ///   - isTiedToNext: Whether it is tied into the next event.
   ///   - fingers: Written fingering aligned with the pitches, if any.
   ///   - pedal: A pedal instruction just before this note, if any.
+  ///   - pedalLine: Whether the pedal is written as a line rather than signs.
   ///   - ottava: An octave line starting or stopping here, if any.
   ///   - slurStart: Whether a phrase slur begins here.
   ///   - slurStop: Whether a phrase slur ends here.
@@ -133,7 +137,7 @@ public struct ScoreNote: Equatable, Sendable {
   ///   - articulations: The articulations written on this note.
   public init(
     pitches: [Pitch], duration: Duration, isTiedToNext: Bool = false, fingers: [Int] = [],
-    pedal: PedalMark? = nil, ottava: OttavaMark? = nil,
+    pedal: PedalMark? = nil, pedalLine: Bool = false, ottava: OttavaMark? = nil,
     slurStart: Bool = false, slurStop: Bool = false,
     dynamic: String? = nil, words: String? = nil,
     articulations: Set<Articulation> = []
@@ -143,6 +147,7 @@ public struct ScoreNote: Equatable, Sendable {
     self.isTiedToNext = isTiedToNext
     self.fingers = fingers
     self.pedal = pedal
+    self.pedalLine = pedalLine
     self.ottava = ottava
     self.slurStart = slurStart
     self.slurStop = slurStop
@@ -181,10 +186,24 @@ public struct Measure: Equatable, Sendable {
   /// The events in the bar, in order.
   public let notes: [ScoreNote]
 
+  /// Whether a repeat begins at this bar's opening barline.
+  public let repeatStart: Bool
+
+  /// Whether a repeat closes at this bar's final barline.
+  ///
+  /// Notation only for now: the page draws the dotted barlines, and playing
+  /// through remains linear. Expanding repeats in judging is its own subject.
+  public let repeatEnd: Bool
+
   /// Creates a bar.
-  /// - Parameter notes: The events, in order.
-  public init(_ notes: [ScoreNote]) {
+  /// - Parameters:
+  ///   - notes: The events, in order.
+  ///   - repeatStart: Whether a repeat begins at the opening barline.
+  ///   - repeatEnd: Whether a repeat closes at the final barline.
+  public init(_ notes: [ScoreNote], repeatStart: Bool = false, repeatEnd: Bool = false) {
     self.notes = notes
+    self.repeatStart = repeatStart
+    self.repeatEnd = repeatEnd
   }
 
   /// How many beats the bar actually holds.
