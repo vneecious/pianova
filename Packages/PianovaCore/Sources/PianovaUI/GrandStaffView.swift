@@ -13,9 +13,21 @@ public struct GrandStaffView: View, @MainActor Animatable {
 
   /// Groups of pitches, one column each, left to right.
   ///
-  /// Each pitch is routed to the staff it belongs on by
-  /// ``Pitch/grandStaffClef``.
-  public let noteGroups: [[Pitch]]
+  /// Everything both staves carry, used for counting columns.
+  public var noteGroups: [[Pitch]] {
+    zip(upperGroups, lowerGroups).map(+)
+  }
+
+  /// What the upper staff carries, one column each.
+  public let upperGroups: [[Pitch]]
+
+  /// What the lower staff carries, one column each.
+  ///
+  /// Given rather than worked out from pitch: which staff a note was written on
+  /// is not something its pitch can answer. Routing by pitch sent the left hand
+  /// of BWV 846 — middle C and the E above — to the treble staff and left the
+  /// bass staff empty.
+  public let lowerGroups: [[Pitch]]
 
   /// Visual state for each group, parallel to `noteGroups`.
   public let states: [ItemState]
@@ -68,7 +80,8 @@ public struct GrandStaffView: View, @MainActor Animatable {
 
   /// Creates a grand staff.
   /// - Parameters:
-  ///   - noteGroups: Groups of pitches, one column each, left to right.
+  ///   - upperGroups: What the upper staff carries, one column each.
+  ///   - lowerGroups: What the lower staff carries, one column each.
   ///   - states: Visual state for each group, parallel to `noteGroups`.
   ///   - staffSpace: Distance between two staff lines, in points.
   ///   - durations: Written duration per group, or empty for plain heads.
@@ -83,7 +96,8 @@ public struct GrandStaffView: View, @MainActor Animatable {
   ///   - scrolls: Whether the music keeps a fixed spacing and scrolls.
   ///   - focusColumn: The column to hold at the cursor anchor.
   public init(
-    noteGroups: [[Pitch]],
+    upperGroups: [[Pitch]],
+    lowerGroups: [[Pitch]],
     states: [ItemState],
     staffSpace: CGFloat = 16,
     durations: [Duration] = [],
@@ -98,7 +112,8 @@ public struct GrandStaffView: View, @MainActor Animatable {
     scrolls: Bool = false,
     focusColumn: Double = 0
   ) {
-    self.noteGroups = noteGroups
+    self.upperGroups = upperGroups
+    self.lowerGroups = lowerGroups
     self.states = states
     self.staffSpace = staffSpace
     self.durations = durations
@@ -356,12 +371,15 @@ public struct GrandStaffView: View, @MainActor Animatable {
 
         let isBeamed = beamGroups.contains { $0.contains(index) }
 
-        for pitch in group.sorted(by: { $0.midiNoteNumber < $1.midiNoteNumber }) {
-          drawNote(
-            pitch, state: state,
-            duration: isBeamed
-              ? nil : (durations.indices.contains(index) ? durations[index] : nil),
-            at: noteX, font: font, in: cgContext, canvasHeight: size.height)
+        let written = durations.indices.contains(index) ? durations[index] : nil
+
+        for (pitches, clef) in [(upperGroups[index], Clef.treble), (lowerGroups[index], .bass)] {
+          for pitch in pitches.sorted(by: { $0.midiNoteNumber < $1.midiNoteNumber }) {
+            drawNote(
+              pitch, on: clef, state: state,
+              duration: isBeamed ? nil : written,
+              at: noteX, font: font, in: cgContext, canvasHeight: size.height)
+          }
         }
       }
 
@@ -385,9 +403,10 @@ public struct GrandStaffView: View, @MainActor Animatable {
     shift: CGFloat
   ) {
     for clef in [Clef.treble, Clef.bass] {
+      let side = clef == .treble ? upperGroups : lowerGroups
+
       let points = group.compactMap { index -> (x: CGFloat, step: Int, state: ItemState)? in
-        guard let pitch = noteGroups[index].first(where: { $0.grandStaffClef == clef })
-        else { return nil }
+        guard side.indices.contains(index), let pitch = side[index].first else { return nil }
         return (
           layout.x(ofColumn: index) - shift,
           pitch.staffStep(in: clef),
@@ -453,6 +472,7 @@ public struct GrandStaffView: View, @MainActor Animatable {
 
   private func drawNote(
     _ pitch: Pitch,
+    on clef: Clef,
     state: ItemState,
     duration: Duration?,
     at noteX: CGFloat,
@@ -460,7 +480,6 @@ public struct GrandStaffView: View, @MainActor Animatable {
     in cgContext: CGContext,
     canvasHeight: CGFloat
   ) {
-    let clef = pitch.grandStaffClef
     let staff = geometry(for: clef)
     let step = pitch.staffStep(in: clef)
     let baseline = staff.y(for: step)

@@ -425,6 +425,16 @@ bandeirolas soltas se leem como duas notas sem relação, e obrigam a contar.
     leitura que ainda vamos corrigir.
 92. Uma partitura importada pode ser **removida** da lista.
 
+### A nota pertence à pauta em que foi escrita
+
+93. Numa pauta dupla, cada nota é desenhada **na pauta em que foi escrita**,
+    não na que sua altura sugere. Um Dó central escrito na clave de fá é
+    desenhado lá, com linha suplementar.
+
+Decidir pela altura parece razoável e é errado: no prelúdio BWV 846 a mão
+esquerda toca Dó4 e Mi4, e roteá-los pela altura mandou a mão esquerda inteira
+para a clave de sol, deixando a de fá vazia.
+
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o
 > OpenSheetMusicDisplay (TypeScript num `WKWebView`). Ambas entregam o layout

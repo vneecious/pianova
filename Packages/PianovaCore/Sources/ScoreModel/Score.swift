@@ -220,13 +220,22 @@ public struct Score: Equatable, Sendable {
     /// When it begins, in crotchets from the start.
     public let beats: Double
 
-    /// What sounds.
+    /// What the upper staff carries here.
+    public let upper: [Pitch]
+
+    /// What the lower staff carries here, empty for a one-handed piece.
     ///
-    /// Empty means a rest.
-    public let pitches: [Pitch]
+    /// Kept apart from ``upper`` rather than merged, because which staff a note
+    /// was written on is not something its pitch can answer: the left hand of
+    /// BWV 846 plays middle C and E above it, and routing by pitch sent the
+    /// whole left hand to the treble staff and left the bass one empty.
+    public let lower: [Pitch]
 
     /// How long it lasts, as written.
     public let duration: Duration
+
+    /// Everything that sounds here, both staves.
+    public var pitches: [Pitch] { upper + lower }
 
     /// Whether nothing sounds here.
     public var isRest: Bool { pitches.isEmpty }
@@ -238,13 +247,26 @@ public struct Score: Equatable, Sendable {
   /// becomes one column, and a moment where neither hand begins a note is a
   /// rest.
   public var columns: [Column] {
-    var starting: [Double: [Pitch]] = [:]
+    var upper: [Double: [Pitch]] = [:]
+    var lower: [Double: [Pitch]] = [:]
     var lengths: [Double: Duration] = [:]
+    var moments: Set<Double> = []
 
-    for part in [rightHand, leftHand].compactMap({ $0 }) {
+    for (part, isUpper) in [(rightHand, true), (leftHand, false)]
+      .compactMap({ part, flag in
+        part.map { ($0, flag) }
+      })
+    {
       var time = 0.0
       for note in part.notes {
-        starting[time, default: []].append(contentsOf: note.pitches)
+        moments.insert(time)
+        if !note.pitches.isEmpty {
+          if isUpper {
+            upper[time, default: []].append(contentsOf: note.pitches)
+          } else {
+            lower[time, default: []].append(contentsOf: note.pitches)
+          }
+        }
 
         // The shortest figure starting here decides the width: it is the one
         // that has to stay legible.
@@ -257,11 +279,12 @@ public struct Score: Equatable, Sendable {
       }
     }
 
-    return starting.keys.sorted()
+    return moments.sorted()
       .map { time in
         Column(
           beats: time,
-          pitches: starting[time] ?? [],
+          upper: upper[time] ?? [],
+          lower: lower[time] ?? [],
           duration: lengths[time] ?? Duration(.quarter))
       }
   }

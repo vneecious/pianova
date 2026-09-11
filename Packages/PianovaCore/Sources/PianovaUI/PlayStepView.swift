@@ -90,8 +90,11 @@ struct PlayStepView: View {
         .frame(minHeight: 300)
         .padding(.horizontal, 8)
       } else if isGrandStaff {
+        // A generated two-handed drill has no written staves, so pitch is all
+        // there is to go on — which is right here and wrong for real music.
         GrandStaffView(
-          noteGroups: noteGroups,
+          upperGroups: noteGroups.map { $0.filter { $0.grandStaffClef == .treble } },
+          lowerGroups: noteGroups.map { $0.filter { $0.grandStaffClef == .bass } },
           states: columnStates,
           staffSpace: 16
         )

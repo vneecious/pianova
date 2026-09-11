@@ -93,7 +93,8 @@ struct ScoreSheetView: View {
 
     if score.isTwoHanded {
       GrandStaffView(
-        noteGroups: groups, states: slice, staffSpace: staffSpace,
+        upperGroups: columns.map(\.upper), lowerGroups: columns.map(\.lower),
+        states: slice, staffSpace: staffSpace,
         durations: durations,
         timeSignature: range.lowerBound == 0 ? score.timeSignature : nil,
         key: score.key, barlinesAfter: bars, beamGroups: beams,
