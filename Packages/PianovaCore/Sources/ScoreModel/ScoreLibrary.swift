@@ -72,12 +72,17 @@ public struct ScoreLibrary {
       .sorted { $0.lastPathComponent < $1.lastPathComponent }
   }
 
-  /// Everything in the library, read fresh.
+  /// Everything in the library, read fresh — one entry per title.
   ///
   /// A file that no longer parses is skipped rather than fatal: one bad import
-  /// should not stop the others from opening.
+  /// should not stop the others from opening. And a stray duplicate file of
+  /// the same piece lists once, not twice: two identical rows are a state the
+  /// shelf should never show, and deleting "one" of them took both.
   public func scores() -> [Score] {
-    files().compactMap { try? MusicXMLImporter.score(at: $0) }
+    var seen = Set<String>()
+
+    return files().compactMap { try? MusicXMLImporter.score(at: $0) }
+      .filter { seen.insert($0.title).inserted }
   }
 
   /// Copies a file in and returns what it holds.

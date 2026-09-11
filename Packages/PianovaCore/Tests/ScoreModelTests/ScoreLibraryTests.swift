@@ -157,3 +157,32 @@ private func write(_ text: String, named name: String) -> URL {
   #expect(FileManager.default.fileExists(atPath: file.path), "o arquivo sumiu")
   #expect(library.files().count == 1)
 }
+
+/// Dois arquivos com a mesma peça são uma peça na estante, não duas.
+///
+/// Uma cópia extra do mesmo título — sobra de uma importação repetida —
+/// virava duas entradas idênticas no repertório, e excluir "uma" levava as
+/// duas: surpresa dupla de um estado que nem deveria aparecer.
+@Test func duplicateFilesListAsOnePiece() throws {
+  let folder = FileManager.default.temporaryDirectory
+    .appendingPathComponent("library-dupe-\(UUID().uuidString)", isDirectory: true)
+  try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+
+  // O título embutido é o mesmo nos dois arquivos — é assim que uma cópia
+  // "nome 2.xml" de verdade se apresenta.
+  let xml = """
+    <score-partwise><work><work-title>Mesma Peça</work-title></work>
+    <part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>
+        <type>whole</type></note>
+    </measure></part></score-partwise>
+    """
+  try Data(xml.utf8).write(to: folder.appendingPathComponent("peca.musicxml"))
+  try Data(xml.utf8).write(to: folder.appendingPathComponent("peca 2.musicxml"))
+
+  let library = ScoreLibrary(folder: folder, legacy: folder)
+
+  #expect(library.scores().count == 1, "o mesmo título não deveria listar duas vezes")
+}
