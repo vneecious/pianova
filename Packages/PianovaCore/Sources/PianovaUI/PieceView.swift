@@ -10,7 +10,17 @@ import SwiftUI
 /// they are aiming for.
 struct PieceView: View {
   @EnvironmentObject private var tones: TonePlayer
-  @StateObject private var preview: PreviewBox = PreviewBox()
+
+  /// The shared preview player.
+  ///
+  /// Observed directly, not through a box that holds it: SwiftUI only watches
+  /// the object it is given, so a nested `ObservableObject` publishes when the
+  /// *box* changes and stays silent while the player inside it advances. That
+  /// is why the page did not follow the sound.
+  @EnvironmentObject private var preview: ScorePlayer
+
+  /// Where the preview begins, chosen by tapping a system.
+  @State private var startFrom = 0
 
   let score: Score
   let mode: PlayMode
@@ -23,13 +33,28 @@ struct PieceView: View {
 
       switch mode {
       case .free:
-        PlayStepView(
-          exercise: Self.exercise(for: score),
-          clef: score.clef,
-          title: "\(score.title) — \(score.composer)",
-          hub: hub,
-          score: score,
-          onFinished: onFinished)
+        if preview.isPlaying {
+          // While the preview runs, the page follows what is sounding rather
+          // than the cursor: you are listening, not playing.
+          ScoreSheetView(
+            score: score,
+            states: score.columns.indices.map { $0 == preview.column ? .current : .pending },
+            focusColumn: preview.column,
+            staffSpace: 16,
+            playhead: PlayheadPosition(column: preview.column, progress: 0),
+            onPickStart: { startFrom = $0 }
+          )
+          .frame(minHeight: 300)
+          .padding(.horizontal, 8)
+        } else {
+          PlayStepView(
+            exercise: Self.exercise(for: score),
+            clef: score.clef,
+            title: "\(score.title) — \(score.composer)",
+            hub: hub,
+            score: score,
+            onFinished: onFinished)
+        }
 
       case .inTime:
         RhythmStepView(
@@ -43,24 +68,37 @@ struct PieceView: View {
           onFinished: onFinished)
       }
     }
-    .onAppear { preview.attach(tones) }
-    .onDisappear { preview.player?.stop() }
+    .onDisappear { preview.stop() }
+  }
+
+  /// What the listen button says, naming the bar when it will not start at the
+  /// beginning.
+  private var listenTitle: String {
+    startFrom > 0
+      ? "Ouvir do compasso \(score.measureNumber(atColumn: startFrom))"
+      : "Ouvir a peça"
   }
 
   private var transport: some View {
     HStack(spacing: 14) {
       Button {
-        guard let player = preview.player else { return }
-        player.isPlaying ? player.stop() : player.play(score, tempo: Self.tempo(for: score))
+        preview.isPlaying
+          ? preview.stop()
+          : preview.play(score, tempo: Self.tempo(for: score), from: startFrom)
       } label: {
         Label(
-          preview.player?.isPlaying == true ? "Parar" : "Ouvir a peça",
-          systemImage: preview.player?.isPlaying == true ? "stop.fill" : "play.fill"
+          preview.isPlaying ? "Parar" : listenTitle,
+          systemImage: preview.isPlaying ? "stop.fill" : "play.fill"
         )
         .font(.system(size: 13, weight: .medium))
       }
 
-      Text(mode.detail)
+      if startFrom > 0 {
+        Button("Do começo") { startFrom = 0 }
+          .font(.system(size: 11))
+      }
+
+      Text(preview.isPlaying ? "Toque num sistema para ouvir dali." : mode.detail)
         .font(.system(size: 11))
         .foregroundStyle(.secondary)
 
@@ -88,16 +126,5 @@ struct PieceView: View {
   /// performance speed, and reading speed is not performance speed.
   private static func tempo(for score: Score) -> Double {
     score.timeSignature.beatValue == .eighth ? 108 : 72
-  }
-}
-
-/// Holds the preview player, which needs the environment to exist first.
-@MainActor
-private final class PreviewBox: ObservableObject {
-  @Published var player: ScorePlayer?
-
-  func attach(_ tones: TonePlayer) {
-    guard player == nil else { return }
-    player = ScorePlayer(tones: tones)
   }
 }

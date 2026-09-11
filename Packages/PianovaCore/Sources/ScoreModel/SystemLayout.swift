@@ -44,9 +44,13 @@ public enum SystemLayout {
         if barlinesAfter.contains(end - 1) { lastBreak = end }
       }
 
-      // Prefer the last bar line that fits; fall back to filling the line when
-      // no bar ends inside it, which happens with very long bars.
-      let cut = (lastBreak ?? end) > start ? (lastBreak ?? end) : start + 1
+      // Only back up to a bar line when the line actually overflowed. Doing it
+      // unconditionally cut at the last bar even when everything already fitted
+      // — and since no bar line follows the final column, the closing note was
+      // left alone on a system of its own.
+      let overflowed = end < widths.count
+      let preferred = overflowed ? (lastBreak ?? end) : end
+      let cut = preferred > start ? preferred : start + 1
       systems.append(start..<min(cut, widths.count))
       start = cut
     }

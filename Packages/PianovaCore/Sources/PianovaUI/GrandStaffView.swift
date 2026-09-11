@@ -32,6 +32,9 @@ public struct GrandStaffView: View, @MainActor Animatable {
   /// The key signature to write after the clefs.
   public let key: KeySignature
 
+  /// Runs of columns joined by a beam, in this staff's own indices.
+  public let beamGroups: [Range<Int>]
+
   /// Column indices after which a bar line falls.
   public let barlinesAfter: Set<Int>
 
@@ -72,6 +75,7 @@ public struct GrandStaffView: View, @MainActor Animatable {
   ///   - timeSignature: The time signature to write, or `nil` for none.
   ///   - key: The key signature to write.
   ///   - barlinesAfter: Column indices after which a bar line falls.
+  ///   - beamGroups: Runs of columns joined by a beam.
   ///   - showsFinalBarline: Whether to close with a double bar line.
   ///   - measureNumber: Number to write above the left end, or `nil`.
   ///   - playhead: Where the guide line is, or `nil` when nothing plays.
@@ -86,6 +90,7 @@ public struct GrandStaffView: View, @MainActor Animatable {
     timeSignature: TimeSignature? = nil,
     key: KeySignature = .c,
     barlinesAfter: Set<Int> = [],
+    beamGroups: [Range<Int>] = [],
     showsFinalBarline: Bool = false,
     measureNumber: Int? = nil,
     playhead: PlayheadPosition? = nil,
@@ -100,6 +105,7 @@ public struct GrandStaffView: View, @MainActor Animatable {
     self.timeSignature = timeSignature
     self.key = key
     self.barlinesAfter = barlinesAfter
+    self.beamGroups = beamGroups
     self.showsFinalBarline = showsFinalBarline
     self.measureNumber = measureNumber
     self.playhead = playhead
@@ -177,7 +183,8 @@ public struct GrandStaffView: View, @MainActor Animatable {
     }
   }
 
-  private func drawStaffLines(in context: GraphicsContext, width: CGFloat) {
+  private func drawStaffLines(in context: GraphicsContext, width fullWidth: CGFloat) {
+    let width = layout(width: fullWidth).staffLineEnd
     for clef in [Clef.treble, .bass] {
       let staff = geometry(for: clef)
       for line in 0...4 {

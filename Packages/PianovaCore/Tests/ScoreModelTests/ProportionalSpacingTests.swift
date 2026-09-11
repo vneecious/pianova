@@ -178,3 +178,47 @@ private func mixed(width: CGFloat = 900) -> StaffLayout {
 
   #expect(layout.contentWidth > layout.noteAreaWidth, "justificar nunca comprime")
 }
+
+// MARK: - O último sistema
+
+/// Rule 80 — num último sistema curto, as linhas param onde a música acaba.
+///
+/// Pauta vazia depois da barra final não existe em partitura impressa, e era
+/// isso que fazia o último compasso parecer ocupar a página inteira.
+@Test func staffLinesStopWhereTheMusicDoes() {
+  let layout = StaffLayout(
+    staffSpace: 18, width: 900, columnCount: 4,
+    durations: Array(repeating: Duration(.quarter), count: 4), justifies: false)
+
+  #expect(layout.staffLineEnd < 900, "as linhas não deveriam chegar à margem")
+  #expect(layout.staffLineEnd > layout.noteAreaStart + layout.contentWidth - 1)
+}
+
+/// Num sistema justificado as linhas vão até a margem, como sempre.
+@Test func aJustifiedLineDrawsItsFullWidth() {
+  let layout = StaffLayout(
+    staffSpace: 18, width: 900, columnCount: 4,
+    durations: Array(repeating: Duration(.quarter), count: 4), justifies: true)
+
+  #expect(layout.staffLineEnd == 900)
+}
+
+/// Rule 81 — um último sistema quase cheio é justificado assim mesmo.
+///
+/// Um vão pequeno no fim fica pior que a linha cheia, e é o mesmo critério que
+/// os editores aplicam.
+@Test func aNearlyFullLastLineIsStretched() {
+  #expect(StaffLayout.justifiesLastSystem(naturalWidth: 950, available: 1000))
+  #expect(StaffLayout.justifiesLastSystem(naturalWidth: 300, available: 1000) == false)
+}
+
+/// O limiar fica onde um vão deixa de incomodar.
+@Test func theFillThresholdIsSensible() {
+  #expect(StaffLayout.lastSystemFillThreshold > 0.5)
+  #expect(StaffLayout.lastSystemFillThreshold < 1)
+}
+
+/// Largura zero não justifica nada, em vez de dividir por zero.
+@Test func aZeroWidthLineIsNotStretched() {
+  #expect(StaffLayout.justifiesLastSystem(naturalWidth: 100, available: 0) == false)
+}

@@ -37,6 +37,13 @@ public struct StaffLayout: Equatable, Sendable {
   /// Whether the columns keep a fixed width and the music scrolls.
   public let scrolls: Bool
 
+  /// How full a last system must be before it is justified anyway.
+  ///
+  /// A last line that is nearly full looks worse with a small gap than filled,
+  /// so editors stretch it; a short one is left short. The same judgement every
+  /// engraving program makes.
+  public static let lastSystemFillThreshold: CGFloat = 0.7
+
   /// Whether the line is stretched to fill the width.
   ///
   /// Printed music justifies every system except the last, which keeps its
@@ -156,6 +163,29 @@ public struct StaffLayout: Equatable, Sendable {
     guard columnCount > 0 else { return 0 }
     guard scrolls else { return noteAreaWidth / CGFloat(columnCount) }
     return max(Self.minimumSpacing * staffSpace, noteAreaWidth / CGFloat(columnCount))
+  }
+
+  /// Where the staff lines should stop.
+  ///
+  /// On a justified system, the margin. On a short last system, the end of the
+  /// music: staff lines running past the final bar line into empty space are
+  /// not something printed music does.
+  public var staffLineEnd: CGFloat {
+    guard !justifies, !durations.isEmpty else { return width }
+    return min(noteAreaStart + contentWidth + staffSpace, width)
+  }
+
+  /// Whether a last system this full should be justified regardless.
+  /// - Parameters:
+  ///   - naturalWidth: How wide the music on that line wants to be.
+  ///   - available: The width of a line.
+  /// - Returns: Whether to stretch it.
+  public static func justifiesLastSystem(
+    naturalWidth: CGFloat,
+    available: CGFloat
+  ) -> Bool {
+    guard available > 0 else { return false }
+    return naturalWidth / available > lastSystemFillThreshold
   }
 
   /// How wide the music is, which may be far wider than the view.

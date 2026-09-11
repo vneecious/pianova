@@ -91,6 +91,9 @@ public struct StaffView: View, @MainActor Animatable {
   /// The key signature to write after the clef.
   public let key: KeySignature
 
+  /// Runs of columns joined by a beam, in this staff's own indices.
+  public let beamGroups: [Range<Int>]
+
   /// Column indices after which a bar line falls.
   ///
   /// Given as indices rather than derived here, because where a bar ends is a
@@ -146,6 +149,7 @@ public struct StaffView: View, @MainActor Animatable {
   ///   - timeSignature: The time signature to write, or `nil` for none.
   ///   - key: The key signature to write.
   ///   - barlinesAfter: Column indices after which a bar line falls.
+  ///   - beamGroups: Runs of columns joined by a beam.
   ///   - showsFinalBarline: Whether to close with a double bar line.
   ///   - measureNumber: Number to write above the left end, or `nil`.
   ///   - playhead: Where the guide line is, or `nil` when nothing plays.
@@ -165,6 +169,7 @@ public struct StaffView: View, @MainActor Animatable {
     timeSignature: TimeSignature? = nil,
     key: KeySignature = .c,
     barlinesAfter: Set<Int> = [],
+    beamGroups: [Range<Int>] = [],
     showsFinalBarline: Bool = false,
     measureNumber: Int? = nil,
     playhead: PlayheadPosition? = nil,
@@ -184,6 +189,7 @@ public struct StaffView: View, @MainActor Animatable {
     self.timeSignature = timeSignature
     self.key = key
     self.barlinesAfter = barlinesAfter
+    self.beamGroups = beamGroups
     self.showsFinalBarline = showsFinalBarline
     self.measureNumber = measureNumber
     self.playhead = playhead
@@ -305,7 +311,12 @@ public struct StaffView: View, @MainActor Animatable {
     bottomLineY - CGFloat(step) * staffSpace / 2
   }
 
-  private func drawStaffLines(in context: GraphicsContext, width: CGFloat, bottomLineY: CGFloat) {
+  private func drawStaffLines(
+    in context: GraphicsContext, width fullWidth: CGFloat, bottomLineY: CGFloat
+  ) {
+    // Staff lines stop where the music does on a short last system: paper after
+    // the final bar line is not something printed music has.
+    let width = layout(width: fullWidth).staffLineEnd
     for line in 0...4 {
       var path = Path()
       let lineY = y(step: line * 2, bottomLineY: bottomLineY)
@@ -382,13 +393,24 @@ public struct StaffView: View, @MainActor Animatable {
           continue
         }
 
+        let isBeamed = beamGroups.contains { $0.contains(index) }
+
         for pitch in group.sorted(by: { $0.midiNoteNumber < $1.midiNoteNumber }) {
           drawNote(
             pitch, state: state,
-            duration: durations.indices.contains(index) ? durations[index] : nil,
+            // A beamed note is drawn as a bare head: its stem and flag would
+            // fight the beam that is about to be drawn over it.
+            duration: isBeamed
+              ? nil : (durations.indices.contains(index) ? durations[index] : nil),
             at: noteX, bottomLineY: bottomLineY,
             font: font, in: cgContext, canvasHeight: size.height)
         }
+      }
+
+      for group in beamGroups {
+        drawBeamGroup(
+          group, in: context, cgContext: cgContext, layout: layout, shift: shift,
+          bottomLineY: bottomLineY, font: font, canvasHeight: size.height)
       }
 
       cgContext.restoreGState()
@@ -574,6 +596,84 @@ public struct StaffView: View, @MainActor Animatable {
         Bravura.Glyph.noteheadBlack,
         at: CGPoint(x: markX, y: baseline),
         color: color, font: font, in: cgContext, canvasHeight: canvasHeight, centered: true)
+    }
+  }
+
+  /// Draws one beamed run: bare note heads, their own stems, and the beam.
+  ///
+  /// The composite glyphs carry a flag, which is exactly what a beamed note
+  /// must not have, so a beamed note is drawn from a plain note head upwards.
+  private func drawBeamGroup(
+    _ group: Range<Int>,
+    in context: GraphicsContext,
+    cgContext: CGContext,
+    layout: StaffLayout,
+    shift: CGFloat,
+    bottomLineY: CGFloat,
+    font: CTFont,
+    canvasHeight: CGFloat
+  ) {
+    let steps = group.compactMap { index -> (x: CGFloat, step: Int, state: ItemState)? in
+      guard let pitch = noteGroups[index].first else { return nil }
+      return (
+        layout.x(ofColumn: index) - shift,
+        pitch.staffStep(in: clef),
+        index < states.count ? states[index] : .pending
+      )
+    }
+    guard steps.count >= 2 else { return }
+
+    // One direction for the whole group, decided by where its notes sit: the
+    // stems of a beamed run never point different ways.
+    let average = Double(steps.map(\.step).reduce(0, +)) / Double(steps.count)
+    let stemUp = average < 4
+
+    let reach = staffSpace * 3.5
+    let ends = steps.map { point -> CGFloat in
+      let baseline = y(step: point.step, bottomLineY: bottomLineY)
+      return stemUp ? baseline - reach : baseline + reach
+    }
+
+    // A gentle slant towards where the run is going, capped so the beam never
+    // looks like it is falling over.
+    guard let first = ends.first, let last = ends.last else { return }
+    let cap = staffSpace * 1.2
+    let slant = min(max(last - first, -cap), cap)
+    let beamStart = stemUp ? min(ends.min() ?? first, first) : max(ends.max() ?? first, first)
+    let beamEnd = beamStart + slant
+
+    let ink = PlatformColor.ink(for: steps.first?.state ?? .pending, in: colorScheme)
+    let thickness = staffSpace * Bravura.Glyph.beamThickness
+
+    // The beam itself, plus a second one for a run of semiquavers.
+    let count =
+      group.compactMap { durations.indices.contains($0) ? durations[$0].value : nil }
+      .map(BeamGrouping.beams(for:)).min() ?? 1
+
+    for level in 0..<max(count, 1) {
+      let drop = CGFloat(level) * thickness * 1.8 * (stemUp ? 1 : -1)
+      var path = Path()
+      path.move(to: CGPoint(x: steps[0].x, y: beamStart + drop))
+      path.addLine(to: CGPoint(x: steps[steps.count - 1].x, y: beamEnd + drop))
+      path.addLine(
+        to: CGPoint(x: steps[steps.count - 1].x, y: beamEnd + drop + thickness))
+      path.addLine(to: CGPoint(x: steps[0].x, y: beamStart + drop + thickness))
+      path.closeSubpath()
+      context.fill(path, with: .color(Color(ink)))
+    }
+
+    for (index, point) in steps.enumerated() {
+      let baseline = y(step: point.step, bottomLineY: bottomLineY)
+      let fraction =
+        steps.count > 1 ? CGFloat(index) / CGFloat(steps.count - 1) : 0
+      let top = beamStart + slant * fraction
+
+      var stem = Path()
+      stem.move(to: CGPoint(x: point.x, y: baseline))
+      stem.addLine(to: CGPoint(x: point.x, y: top + thickness / 2))
+      context.stroke(
+        stem, with: .color(Color(PlatformColor.ink(for: point.state, in: colorScheme))),
+        lineWidth: staffSpace * Bravura.Glyph.stemThickness * 2)
     }
   }
 

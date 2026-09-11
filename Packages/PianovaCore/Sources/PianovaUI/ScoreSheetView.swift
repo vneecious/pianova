@@ -16,6 +16,12 @@ struct ScoreSheetView: View {
   /// Where the moving guide line is, or `nil` when nothing is playing.
   var playhead: PlayheadPosition? = nil
 
+  /// Called with the first column of a system the player tapped.
+  ///
+  /// Studying is repeating a passage. Being able to say "from here" is what
+  /// turns a preview into something usable more than once.
+  var onPickStart: ((Int) -> Void)? = nil
+
   /// Vertical room between systems.
   private let systemGap: CGFloat = 18
 
@@ -27,8 +33,13 @@ struct ScoreSheetView: View {
         ScrollView(.vertical) {
           LazyVStack(alignment: .leading, spacing: systemGap) {
             ForEach(Array(systems.enumerated()), id: \.offset) { index, range in
-              system(range, isLast: index == systems.count - 1)
-                .id(index)
+              system(
+                range, isLast: index == systems.count - 1,
+                lineWidth: proxy.size.width
+              )
+              .id(index)
+              .contentShape(Rectangle())
+              .onTapGesture { onPickStart?(range.lowerBound) }
             }
           }
           .padding(.vertical, 4)
@@ -50,7 +61,7 @@ struct ScoreSheetView: View {
   /// Clef and key are repeated on every system, as printed music does; the time
   /// signature appears only on the first.
   @ViewBuilder
-  private func system(_ range: Range<Int>, isLast: Bool) -> some View {
+  private func system(_ range: Range<Int>, isLast: Bool, lineWidth: CGFloat) -> some View {
     let columns = Array(score.columns[range])
     let groups = columns.map(\.pitches)
     let durations = columns.map(\.duration)
@@ -62,22 +73,42 @@ struct ScoreSheetView: View {
 
     let number = score.measureNumber(atColumn: range.lowerBound)
 
+    // Beams are given in this system's own columns, like the guide line: a
+    // system draws itself and knows nothing about its neighbours.
+    let beams = score.beamGroups.compactMap { group -> Range<Int>? in
+      guard group.lowerBound >= range.lowerBound, group.upperBound <= range.upperBound
+      else { return nil }
+      return (group.lowerBound - range.lowerBound)..<(group.upperBound - range.lowerBound)
+    }
+
+    // The last line is left short — unless it is nearly full, when a small gap
+    // reads worse than a filled line. Same judgement editors make.
+    let natural = StaffLayout(
+      staffSpace: staffSpace, width: 10_000, columnCount: columns.count,
+      durations: durations)
+    let stretches =
+      !isLast
+      || StaffLayout.justifiesLastSystem(
+        naturalWidth: natural.contentWidth, available: lineWidth)
+
     if score.isTwoHanded {
       GrandStaffView(
         noteGroups: groups, states: slice, staffSpace: staffSpace,
         durations: durations,
         timeSignature: range.lowerBound == 0 ? score.timeSignature : nil,
-        key: score.key, barlinesAfter: bars, showsFinalBarline: isLast,
+        key: score.key, barlinesAfter: bars, beamGroups: beams,
+        showsFinalBarline: isLast,
         measureNumber: number, playhead: playhead?.within(range),
-        justifies: !isLast)
+        justifies: stretches)
     } else {
       StaffView(
         clef: score.clef, noteGroups: groups, states: slice, durations: durations,
         staffSpace: staffSpace,
         timeSignature: range.lowerBound == 0 ? score.timeSignature : nil,
-        key: score.key, barlinesAfter: bars, showsFinalBarline: isLast,
+        key: score.key, barlinesAfter: bars, beamGroups: beams,
+        showsFinalBarline: isLast,
         measureNumber: number, playhead: playhead?.within(range),
-        justifies: !isLast)
+        justifies: stretches)
     }
   }
 

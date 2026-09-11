@@ -25,6 +25,15 @@ public enum Bravura {
     /// Filled note head, used when no stem is wanted.
     public static let noteheadBlack = "\u{E0A4}"
 
+    /// Stem thickness, in staff spaces.
+    ///
+    /// From the SMuFL engraving defaults, so a stem drawn by hand matches the
+    /// weight the font was designed around instead of a number picked by eye.
+    public static let stemThickness: CGFloat = 0.12
+
+    /// Beam thickness, in staff spaces, from the same defaults.
+    public static let beamThickness: CGFloat = 0.5
+
     /// Semibreve: a hollow head with no stem.
     public static let noteWhole = "\u{E1D2}"
 

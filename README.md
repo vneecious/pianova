@@ -379,6 +379,39 @@ esquerda para direita, depois desce.
 78. Um exercício que traz o próprio pulso **silencia o metrônomo global**
     enquanto roda, e o devolve ao terminar. Dois pulsos ao mesmo tempo é ruído.
 
+### O último sistema
+
+79. Todo sistema é esticado para preencher a linha, **menos o último**.
+80. No último sistema, **as linhas da pauta terminam na barra final** — não
+    seguem até a margem. Pauta vazia depois do fim da música não existe em
+    partitura impressa.
+81. A exceção: um último sistema que já ocupa **mais de 70% da linha** é
+    justificado assim mesmo, porque um vão pequeno no fim fica pior que a
+    linha cheia. É o mesmo critério que os editores usam.
+
+### Ouvir a peça
+
+82. Durante o preview, a partitura **acompanha o que está soando**: a nota atual
+    é marcada e a página rola sozinha.
+83. Dá para **ouvir a partir de um trecho**, escolhendo onde começar em vez de
+    sempre voltar ao início. Estudar é repetir um pedaço, não a peça inteira.
+
+### Barras de ligação
+
+Colcheia solta usa bandeirola; colcheias seguidas se unem por uma barra
+horizontal. E isso não é vaidade tipográfica: **a barra agrupa o que pertence a
+um mesmo tempo**. Duas colcheias ligadas se leem como "um tempo"; duas
+bandeirolas soltas se leem como duas notas sem relação, e obrigam a contar.
+
+84. Figuras menores que a semínima que caem **no mesmo tempo** são unidas por
+    barra de ligação.
+85. Uma nota **sozinha** no seu tempo mantém a bandeirola. Barra de uma nota só
+    não existe.
+86. Uma **pausa interrompe** a ligação: o grupo não atravessa o silêncio.
+87. Em compasso composto (6/8, 9/8, 12/8) o agrupamento é **de três em três**,
+    porque ali o tempo é a semínima pontuada.
+88. O grupo **nunca atravessa a barra de compasso**.
+
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o
 > OpenSheetMusicDisplay (TypeScript num `WKWebView`). Ambas entregam o layout

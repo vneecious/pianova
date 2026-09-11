@@ -139,3 +139,28 @@ private let everyFourBars: Set<Int> = [3, 7, 11, 15]
 @Test func theFirstColumnStaysWhereItIs() {
   #expect(PlayheadPosition(column: 0, progress: 0).within(0..<8)?.column == 0)
 }
+
+/// Quando tudo cabe, cabe — mesmo sem barra de compasso no fim.
+///
+/// Voltar para a última barra ainda que a linha inteira coubesse deixava a nota
+/// final sozinha num sistema só dela, que foi o que apareceu na tela.
+@Test func everythingThatFitsStaysOnOneLine() {
+  let widths = Array(repeating: CGFloat(25), count: 11)
+
+  // Barras depois de 3, 5 e 9: nenhuma depois da última coluna, como numa peça
+  // de verdade, onde a última barra é a barra final e não uma quebra.
+  let systems = SystemLayout.systems(
+    widths: widths, barlinesAfter: [3, 5, 9], available: 5_000)
+
+  #expect(systems == [0..<11], "não deveria sobrar uma coluna sozinha")
+}
+
+/// E a preferência pela barra continua valendo quando de fato transborda.
+@Test func theBarPreferenceStillAppliesWhenItOverflows() {
+  let widths = Array(repeating: CGFloat(25), count: 11)
+
+  let systems = SystemLayout.systems(
+    widths: widths, barlinesAfter: [3, 5, 9], available: 8 * 25)
+
+  #expect(systems.first == 0..<6, "deveria recuar até a barra depois da coluna 5")
+}

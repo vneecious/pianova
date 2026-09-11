@@ -15,11 +15,13 @@ struct PianovaApp: App {
   @StateObject private var tones: TonePlayer
   @StateObject private var profile = ProfileController()
   @StateObject private var metronome: Metronome
+  @StateObject private var preview: ScorePlayer
 
   init() {
     let tones = TonePlayer()
     _tones = StateObject(wrappedValue: tones)
     _metronome = StateObject(wrappedValue: Metronome(tones: tones))
+    _preview = StateObject(wrappedValue: ScorePlayer(tones: tones))
   }
 
   var body: some Scene {
@@ -28,6 +30,7 @@ struct PianovaApp: App {
         .environmentObject(tones)
         .environmentObject(profile)
         .environmentObject(metronome)
+        .environmentObject(preview)
     }
   }
 }

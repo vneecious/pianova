@@ -33,21 +33,25 @@ public final class ScorePlayer: ObservableObject {
     return beats * (60 / max(tempo, 1))
   }
 
-  /// Plays the piece from the beginning.
+  /// Plays the piece, optionally from partway in.
   /// - Parameters:
   ///   - score: The piece to play.
   ///   - tempo: Beats per minute.
-  public func play(_ score: Score, tempo: Double = 72) {
+  ///   - start: The column to begin at. Studying is repeating a passage, not
+  ///     the whole piece, so going back to the top every time is the wrong
+  ///     default.
+  public func play(_ score: Score, tempo: Double = 72, from start: Int = 0) {
     stop()
 
     let beat = 60 / max(tempo, 1)
+    let first = min(max(start, 0), max(score.columns.count - 1, 0))
     isPlaying = true
-    column = 0
+    column = first
 
     task = Task { [weak self] in
       guard let self else { return }
 
-      for (index, event) in score.columns.enumerated() {
+      for (index, event) in score.columns.enumerated().dropFirst(first) {
         if Task.isCancelled { break }
         column = index
 
@@ -73,7 +77,6 @@ public final class ScorePlayer: ObservableObject {
   private func finish() {
     task = nil
     isPlaying = false
-    column = 0
   }
 }
 
