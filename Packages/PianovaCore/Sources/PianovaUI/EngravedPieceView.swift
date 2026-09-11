@@ -28,6 +28,9 @@ struct EngravedPieceView: View {
   /// Called when a note is tapped while browsing, with the column it sits on.
   var onPickStart: ((Int) -> Void)?
 
+  /// Bumped by the owner when annotations are cleared, rebirthing canvases.
+  var annotationsEpoch = 0
+
   var body: some View {
     Group {
       if let failure = controller.failure {

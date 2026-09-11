@@ -28,6 +28,10 @@ struct PieceView: View {
   /// Where the preview begins, chosen by tapping a bar.
   @State private var startFrom = 0
 
+  /// Bumped when the piece's annotations are cleared, so the canvases are
+  /// reborn empty instead of keeping their ink.
+  @State private var annotationsEpoch = 0
+
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       titleBar
@@ -43,7 +47,8 @@ struct PieceView: View {
 
       EngravedPieceView(
         hub: hub, score: score, session: session, onFinished: onFinished,
-        onPickStart: { startFrom = $0 })
+        onPickStart: { startFrom = $0 },
+        annotationsEpoch: annotationsEpoch)
     }
     .onDisappear { preview.stop() }
     // What is being studied changed, so whatever is sounding is no longer it.
@@ -248,8 +253,12 @@ struct PieceView: View {
 
       Button(role: .destructive) {
         AnnotationStore().clear(title: score.title)
+        // The live canvases keep their ink unless they are reborn — clearing
+        // only the disk left the drawing on screen, and the next stroke
+        // saved it all right back.
+        annotationsEpoch += 1
       } label: {
-        Label("Apagar anotações da peça", systemImage: "trash")
+        Label("Limpar anotações da peça", systemImage: "trash")
       }
     } label: {
       Image(systemName: "pencil.tip.crop.circle")
