@@ -79,7 +79,7 @@ let package = Package(
     .testTarget(name: "PianovaUITests", dependencies: ["PianovaUI", "ScoreModel"]),
     .testTarget(
       name: "EngravingVerovioTests",
-      dependencies: ["EngravingVerovio", "Engraving", "ScoreModel"],
+      dependencies: ["EngravingVerovio", "Engraving", "PianovaUI", "ScoreModel"],
       swiftSettings: [.interoperabilityMode(.Cxx)]),
     .testTarget(name: "SoundTests", dependencies: ["Sound", "ScoreModel"]),
     .testTarget(name: "ProgressTests", dependencies: ["Progress", "ScoreModel"]),

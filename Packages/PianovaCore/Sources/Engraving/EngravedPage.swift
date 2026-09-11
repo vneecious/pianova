@@ -161,7 +161,13 @@ public struct EngravedPage: Equatable, @unchecked Sendable {
       if let element = shape.elementID, element != shape.noteID {
         owners[element, default: []].append(index)
       }
-      if let measure = shape.measureID {
+      // A measure's box is its own content, not what merely departs from it:
+      // slurs, ties, pedal marks and octave lines live in the measure they
+      // START in and stretch past the barline — union them and the box
+      // swallows the neighbour, and a tap selects the bar next door.
+      let spanners = ["slur", "tie", "pedal", "octave"]
+      let isSpanner = shape.kind.map { kind in spanners.contains { kind.contains($0) } } ?? false
+      if let measure = shape.measureID, !isSpanner {
         measures[measure] = measures[measure].map { $0.union(box) } ?? box
       }
       if let system = shape.systemID {
