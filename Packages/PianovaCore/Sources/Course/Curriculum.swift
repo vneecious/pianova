@@ -173,6 +173,17 @@ public enum Course {
         .theory(count: 4),
         .cards(clef: .treble, range: 60...65, count: 8),
         .play(clef: .bass, range: 55...60, length: 6),
+        .song(Songs.auClairDeLaLune),
+      ]),
+    Lesson(
+      id: "u2-seconds", unit: 2,
+      title: "Segundas na pauta",
+      subtitle: "Linha para espaço, espaço para linha",
+      steps: [
+        .cards(clef: .treble, range: 60...65, count: 6),
+        .song(Songs.maryHadALittleLamb),
+        .theory(count: 3),
+        .song(Songs.eveningBell),
       ]),
     Lesson(
       id: "u2-close", unit: 2,

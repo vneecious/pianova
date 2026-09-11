@@ -69,6 +69,26 @@ public enum Songs {
     rightHand: auClairDeLaLune.rightHand,
     leftHand: drone([48, 43, 43, 48], .whole))
 
+  /// A quiet study in ties, written for the course.
+  ///
+  /// Own composition at the unit's exact level: middle-C position, seconds
+  /// only, and every phrase ending held across the bar line — the tie is the
+  /// lesson, so the tune leans on it.
+  public static let eveningBell = Score(
+    title: "Sino da Tarde", composer: "Pianova",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        m(n(64, .half), n(65, .half)),
+        m(n(64, .half), n(62, .half)),
+        m(ScoreNote(pitches: [Pitch(60)], duration: .init(.whole), isTiedToNext: true)),
+        m(n(60, .whole)),
+        m(n(62, .half), n(64, .half)),
+        m(n(65, .half), n(62, .half)),
+        m(ScoreNote(pitches: [Pitch(60)], duration: .init(.whole), isTiedToNext: true)),
+        m(n(60, .whole)),
+      ]))
+
   /// *Mary Had a Little Lamb*, a traditional melody.
   ///
   /// Sits entirely in a five-finger position from middle C, which is why nearly
@@ -577,6 +597,7 @@ public enum Songs {
   /// bar fills — which is the check that a hand-written score most needs.
   public static let all: [Score] = [
     auClairDeLaLune, auClairDeLaLuneBass, auClairDeLaLuneTwoHands, maryHadALittleLamb,
+    eveningBell,
     twinkle, frereJacques, jingleBells, lightlyRow, odeToJoy, rowYourBoat,
     newWorldTheme, londonBridge, happyBirthday, taps, reveille, auraLee,
     whenTheSaints, michaelRow, twinkleInG, odeToJoyInG, greensleeves, nobodyKnows,
