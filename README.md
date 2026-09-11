@@ -435,6 +435,27 @@ Decidir pela altura parece razoável e é errado: no prelúdio BWV 846 a mão
 esquerda toca Dó4 e Mi4, e roteá-los pela altura mandou a mão esquerda inteira
 para a clave de sol, deixando a de fá vazia.
 
+## Gravação de partitura
+
+Notação de verdade é polifônica: cada pauta tem vozes independentes, cada voz
+com ritmo, pausas e hastes próprias. O modelo deste app é o de quem **toca** —
+uma coluna é um instante e o conjunto de teclas a apertar — e ele não
+representa isso. Competir com um gravador de verdade não é trabalho de semanas.
+
+94. Partitura é desenhada pelo **Verovio**, a mesma tradição de gravação que o
+    MuseScore e o Finale seguem.
+95. O julgamento continua **nativo**: qual tecla, quando, acerto e erro. O
+    Verovio desenha; ele não decide nada.
+96. A ligação entre os dois é o **timemap**, que dá instante → identificadores
+    de elemento, e `getMIDIValuesForElement`, que dá identificador → altura
+    MIDI. É por aí que o cursor sabe o que destacar.
+97. O SVG que o Verovio devolve é **interpretado e desenhado nativamente**, sem
+    `WKWebView`. Nada de JavaScript no caminho do desenho.
+
+> **Medido, não suposto.** Um exercício gerado de oito notas leva **9,7 ms** do
+> MusicXML ao SVG; o Bach inteiro carrega em 64 ms e desenha uma página em 36.
+> A objeção de latência que sustentava a pauta própria não sobreviveu à medição.
+
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o
 > OpenSheetMusicDisplay (TypeScript num `WKWebView`). Ambas entregam o layout

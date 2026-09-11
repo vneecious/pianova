@@ -7,6 +7,7 @@ let package = Package(
   products: [
     .library(name: "ScoreModel", targets: ["ScoreModel"]),
     .library(name: "ExerciseEngine", targets: ["ExerciseEngine"]),
+    .library(name: "Engraving", targets: ["Engraving"]),
     .library(name: "MIDIInput", targets: ["MIDIInput"]),
     .library(name: "NoteQuiz", targets: ["NoteQuiz"]),
     .library(name: "Course", targets: ["Course"]),
@@ -19,6 +20,7 @@ let package = Package(
     .target(name: "ExerciseEngine", dependencies: ["ScoreModel"]),
     .target(name: "MIDIInput", dependencies: ["ScoreModel"]),
     .target(name: "NoteQuiz", dependencies: ["ScoreModel"]),
+    .target(name: "Engraving", dependencies: ["ScoreModel"]),
     .target(name: "Course", dependencies: ["ScoreModel"]),
     .target(
       name: "Sound",
@@ -45,6 +47,7 @@ let package = Package(
     .executableTarget(
       name: "PianovaCLI",
       dependencies: ["ExerciseEngine", "MIDIInput", "ScoreModel"]),
+    .testTarget(name: "EngravingTests", dependencies: ["Engraving", "ScoreModel"]),
     .testTarget(name: "ScoreModelTests", dependencies: ["ScoreModel"]),
     .testTarget(name: "ExerciseEngineTests", dependencies: ["ExerciseEngine", "ScoreModel"]),
     .testTarget(name: "MIDIInputTests", dependencies: ["MIDIInput", "ScoreModel"]),
