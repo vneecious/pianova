@@ -136,7 +136,9 @@ struct PieceView: View {
 
   /// The same piece, drawn by a real engraver — and playable.
   private var engravedScore: some View {
-    EngravedPieceView(hub: hub, score: score, onFinished: onFinished)
+    EngravedPieceView(
+      hub: hub, score: score, onFinished: onFinished,
+      onPickStart: { startFrom = $0 })
   }
 
   /// A piece becomes one item per onset, silences excluded.

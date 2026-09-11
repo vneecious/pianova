@@ -1,5 +1,6 @@
 import Engraving
 import ScoreModel
+import Sound
 import SwiftUI
 
 /// A piece drawn by a real engraver and played on the instrument.
@@ -8,11 +9,15 @@ import SwiftUI
 /// advances, wrong steps back. What changed is only who drew the page.
 struct EngravedPieceView: View {
   @Environment(\.scoreEngraver) private var engraver
+  @EnvironmentObject private var preview: ScorePlayer
   @StateObject private var controller = EngravedPlayController()
   @ObservedObject var hub: MIDIHub
 
   let score: Score
   let onFinished: () -> Void
+
+  /// Called when a note is tapped, with the column it sits on.
+  var onPickStart: ((Int) -> Void)?
 
   var body: some View {
     Group {
@@ -43,6 +48,15 @@ struct EngravedPieceView: View {
       }
     }
     .onDisappear { hub.clearListener(owner: controller) }
+    // While the piece plays itself the page follows the sound, not the cursor:
+    // nobody is being judged, so there is nothing to point at.
+    .onChange(of: preview.column) { _, column in
+      guard preview.isPlaying else { return }
+      controller.follow(column: column)
+    }
+    .onChange(of: preview.isPlaying) { _, isPlaying in
+      if !isPlaying { controller.restoreCursor() }
+    }
   }
 
   /// How tall one scroll anchor band is, in page units.
@@ -58,9 +72,15 @@ struct EngravedPieceView: View {
       ScrollView(.vertical) {
         LazyVStack(spacing: 20) {
           ForEach(Array(controller.pages.enumerated()), id: \.offset) { index, page in
-            EngravedScoreView(page: page, highlights: controller.highlights)
-              .overlay(alignment: .top) { anchors(for: page, page: index) }
-              .id(index)
+            EngravedScoreView(
+              page: page,
+              highlights: controller.highlights,
+              onTap: { id in
+                if let column = controller.column(of: id) { onPickStart?(column) }
+              }
+            )
+            .overlay(alignment: .top) { anchors(for: page, page: index) }
+            .id(index)
           }
         }
         .padding(.horizontal, 8)

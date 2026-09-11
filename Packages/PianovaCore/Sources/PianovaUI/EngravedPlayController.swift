@@ -26,6 +26,13 @@ public final class EngravedPlayController: ObservableObject {
   private var events: [EngravedEvent] = []
   private var session: ExerciseSession?
 
+  /// Which sounding moment each event is, so the preview can be followed.
+  ///
+  /// The engraver lists only what sounds; the score counts silences too. The
+  /// two have to be lined up or the preview would highlight the wrong note
+  /// every time a piece has a rest.
+  private var columnOfEvent: [Int] = []
+
   /// Called once the whole piece has been played.
   public var onFinished: () -> Void = {}
 
@@ -48,8 +55,46 @@ public final class EngravedPlayController: ObservableObject {
     events = engraver.events()
     failure = pages.isEmpty ? "A gravação não produziu página nenhuma." : nil
 
+    columnOfEvent = score.soundingColumns
+
     session = ExerciseSession(
       exercise: Exercise(items: events.map { ExerciseItem(pitches: Set($0.pitches)) }))
+    refresh()
+  }
+
+  /// Lights up whatever sounds at one column of the score.
+  ///
+  /// Used while the piece plays itself: there is no cursor then, because
+  /// nobody is being judged — the page simply follows the sound.
+  /// - Parameter column: Index into the score's own columns.
+  public func follow(column: Int) {
+    guard let event = columnOfEvent.firstIndex(of: column),
+      events.indices.contains(event)
+    else {
+      return
+    }
+
+    highlights = Dictionary(
+      uniqueKeysWithValues: events[event].elementIDs.map { ($0, ItemState.current) })
+    focus = events[event].elementIDs.first
+  }
+
+  /// Which column of the score a drawn note belongs to.
+  ///
+  /// The other direction, for tapping a note to say "play from here".
+  /// - Parameter id: The element identifier that was tapped.
+  /// - Returns: The column, or `nil` if that element is not a sounding note.
+  public func column(of id: String) -> Int? {
+    guard let event = events.firstIndex(where: { $0.elementIDs.contains(id) }),
+      columnOfEvent.indices.contains(event)
+    else {
+      return nil
+    }
+    return columnOfEvent[event]
+  }
+
+  /// Puts the cursor back in charge after the preview stops.
+  public func restoreCursor() {
     refresh()
   }
 
