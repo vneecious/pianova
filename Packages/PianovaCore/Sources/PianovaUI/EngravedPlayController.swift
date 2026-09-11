@@ -56,8 +56,21 @@ public final class EngravedPlayController: ObservableObject {
   /// to be chosen.
   private var judged: [Int] = []
 
-  /// The piece as a whole, to measure a passage against.
-  private var whole: Score?
+  /// Which bar each column of the score sits in.
+  ///
+  /// Asked for on every tap and on every event of `restrict`, and the score
+  /// recounts its bar lines each time it is asked — linear work that, done per
+  /// event and per frame, is what made choosing a bar take seconds.
+  private var barOfColumn: [Int] = []
+
+  /// Which event sounds at each column, for the preview to follow.
+  private var eventOfColumn: [Int: Int] = [:]
+
+  /// Which column each drawn element belongs to, for taps.
+  private var columnOfElement: [String: Int] = [:]
+
+  /// The measures drawn in each bar, for marking a selection.
+  private var measureIDsOfBar: [Int: Set<String>] = [:]
 
   /// Creates an empty controller, ready to be handed a piece.
   public init() {}
@@ -78,7 +91,6 @@ public final class EngravedPlayController: ObservableObject {
     events = engraver.events()
     failure = pages.isEmpty ? "A gravação não produziu página nenhuma." : nil
 
-    whole = score
     columnOfEvent = score.soundingColumns
 
     // Which hand an event belongs to comes from the score, not the drawing: the
@@ -89,7 +101,39 @@ public final class EngravedPlayController: ObservableObject {
       return columns[column].upper.isEmpty ? 2 : 1
     }
 
+    barOfColumn = columns.indices.map { score.measureNumber(atColumn: $0) }
+
+    eventOfColumn = Dictionary(
+      columnOfEvent.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+
+    columnOfElement = [:]
+    for (event, column) in columnOfEvent.enumerated() {
+      guard events.indices.contains(event) else { continue }
+      for id in events[event].elementIDs { columnOfElement[id] = column }
+    }
+
+    measureIDsOfBar = [:]
+    for page in pages {
+      for shape in page.shapes {
+        guard let measure = shape.measureID, let note = shape.noteID,
+          let column = columnOfElement[note], barOfColumn.indices.contains(column)
+        else { continue }
+        measureIDsOfBar[barOfColumn[column], default: []].insert(measure)
+      }
+    }
+
     restrict(to: nil, hands: .both)
+  }
+
+  /// The measures a passage covers on the page, for drawing it as selected.
+  /// - Parameter range: The bars.
+  /// - Returns: The identifiers of their drawn measures.
+  public func measureIDs(in range: PracticeRange?) -> Set<String> {
+    guard let range else { return [] }
+    return (range.first...range.last)
+      .reduce(into: Set()) { set, bar in
+        set.formUnion(measureIDsOfBar[bar] ?? [])
+      }
   }
 
   /// Narrows what is judged to a passage and a hand.
@@ -97,15 +141,14 @@ public final class EngravedPlayController: ObservableObject {
   ///   - range: The bars to work at, or `nil` for all of them.
   ///   - hands: Which hand is being practised.
   public func restrict(to range: PracticeRange?, hands: PracticeHands) {
-    guard let whole else { return }
-
     judged = events.indices.filter { index in
       guard staffOfEvent.indices.contains(index) else { return true }
       guard hands.judges(staff: staffOfEvent[index]) else { return false }
 
-      guard let range, columnOfEvent.indices.contains(index) else { return true }
-      let bar = whole.measureNumber(atColumn: columnOfEvent[index])
-      return range.judges(bar: bar)
+      guard let range, columnOfEvent.indices.contains(index),
+        barOfColumn.indices.contains(columnOfEvent[index])
+      else { return true }
+      return range.judges(bar: barOfColumn[columnOfEvent[index]])
     }
 
     quietStaff = hands.quietStaff
@@ -139,7 +182,7 @@ public final class EngravedPlayController: ObservableObject {
   /// is being judged — the page simply follows the sound.
   /// - Parameter column: Index into the score's own columns.
   public func follow(column: Int) {
-    guard let event = columnOfEvent.firstIndex(of: column), events.indices.contains(event)
+    guard let event = eventOfColumn[column], events.indices.contains(event)
     else {
       return
     }
@@ -153,12 +196,17 @@ public final class EngravedPlayController: ObservableObject {
   /// - Parameter id: The element identifier that was tapped.
   /// - Returns: The column, or `nil` if that element is not a sounding note.
   public func column(of id: String) -> Int? {
-    guard let event = events.firstIndex(where: { $0.elementIDs.contains(id) }),
-      columnOfEvent.indices.contains(event)
-    else {
+    columnOfElement[id]
+  }
+
+  /// Which bar a drawn note belongs to.
+  /// - Parameter id: The element identifier that was tapped.
+  /// - Returns: The bar number, or `nil` for ink that is not a note.
+  public func bar(of id: String) -> Int? {
+    guard let column = columnOfElement[id], barOfColumn.indices.contains(column) else {
       return nil
     }
-    return columnOfEvent[event]
+    return barOfColumn[column]
   }
 
   /// Puts the cursor back in charge after the preview stops.

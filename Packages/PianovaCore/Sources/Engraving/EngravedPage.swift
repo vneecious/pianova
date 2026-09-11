@@ -132,6 +132,9 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
   private var measures: [String?] = [nil]
   private var staves: [Int?] = [nil]
 
+  /// How many staves each measure has opened, keyed by the measure's id.
+  private var stavesSeen: [String: Int] = [:]
+
   private var definingSymbol: String?
   private var symbolPath = CGMutablePath()
 
@@ -186,8 +189,18 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
     measures.append(
       isMeasure ? (attributes["id"] ?? measures.last ?? nil) : (measures.last ?? nil))
 
+    // Staves are numbered by the order they open inside their measure, first
+    // and second. Verovio writes no staff number into the SVG — no `n`
+    // anywhere — and guessing one with a fallback marked the whole page as
+    // staff 1, which is what made "left hand" fade the entire piece.
     let isStaff = classes.contains("staff")
-    staves.append(isStaff ? (attributes["n"].flatMap(Int.init) ?? 1) : (staves.last ?? nil))
+    if isStaff {
+      let measure = (measures.last ?? nil) ?? ""
+      stavesSeen[measure, default: 0] += 1
+      staves.append(stavesSeen[measure])
+    } else {
+      staves.append(staves.last ?? nil)
+    }
 
     switch name {
     case "g":

@@ -268,3 +268,49 @@ private let twoMeasures = """
   let page = try #require(parsedPage())
   #expect(page.systemHeight == page.size.height)
 }
+
+// MARK: - Rule 109: qual pauta é qual
+
+/// As pautas de um compasso são contadas na ordem, primeira e segunda.
+///
+/// O Verovio não escreve o número da pauta no SVG — nenhum atributo `n` — e
+/// adivinhar com um padrão marcava a página inteira como pauta 1. Foi isso que
+/// fez "mão esquerda" esmaecer a peça toda, a própria mão esquerda incluída.
+@Test func stavesAreCountedInOrderWithinTheMeasure() {
+  let grand = """
+    <svg><svg class="definition-scale" viewBox="0 0 1000 400">
+      <g id="m-1" class="measure">
+        <g id="s-1" class="staff">
+          <g id="n-1" class="note"><path d="M50 100 L60 100"/></g>
+        </g>
+        <g id="s-2" class="staff">
+          <g id="n-2" class="note"><path d="M50 300 L60 300"/></g>
+        </g>
+      </g>
+      <g id="m-2" class="measure">
+        <g id="s-3" class="staff">
+          <g id="n-3" class="note"><path d="M300 100 L310 100"/></g>
+        </g>
+        <g id="s-4" class="staff">
+          <g id="n-4" class="note"><path d="M300 300 L310 300"/></g>
+        </g>
+      </g>
+    </svg></svg>
+    """
+  let page = EngravedPageParser.page(from: grand)
+  func staff(of note: String) -> Int? {
+    page?.shapes.first { $0.noteID == note }?.staffNumber
+  }
+
+  #expect(staff(of: "n-1") == 1)
+  #expect(staff(of: "n-2") == 2)
+  #expect(staff(of: "n-3") == 1, "o compasso seguinte recomeça a contagem")
+  #expect(staff(of: "n-4") == 2)
+}
+
+/// O que não está em pauta nenhuma não pertence a mão nenhuma.
+@Test func inkOutsideAnyStaffHasNoStaffNumber() {
+  let page = EngravedPageParser.page(from: twoMeasures)
+
+  #expect(page?.shapes.allSatisfy { $0.staffNumber == nil } == true)
+}

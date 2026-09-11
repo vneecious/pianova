@@ -32,7 +32,7 @@ struct PieceView: View {
     VStack(alignment: .leading, spacing: 0) {
       titleBar
 
-      if session.isSelecting {
+      if session.phase == .studying {
         PracticeBar(
           session: session, hasBothHands: score.isTwoHanded,
           isPlaying: preview.isPlaying, onListen: listen
@@ -50,15 +50,16 @@ struct PieceView: View {
     .onChange(of: session.study) { _, _ in preview.stop() }
   }
 
-  /// The bar at the top, which selection takes over the way Photos does.
+  /// The bar at the top, which selection and study take over in turn.
   ///
-  /// While a passage is selected there is no way back to the list: leaving the
-  /// piece and leaving the selection are different things, and a back button
-  /// sitting there invites the wrong one.
+  /// While either is on there is no way back to the list: leaving the passage
+  /// and leaving the piece are different gestures, and only one of them is
+  /// shown at a time — a back button sitting there was being pressed all day
+  /// in the hope of getting the score back.
   private var titleBar: some View {
     ZStack {
       VStack(spacing: 1) {
-        Text(session.range?.label ?? score.title)
+        Text(title)
           .font(.system(size: 15, weight: .semibold))
         Text(subtitle)
           .font(.system(size: 11))
@@ -66,7 +67,7 @@ struct PieceView: View {
       }
 
       HStack(spacing: 12) {
-        if !session.isSelecting {
+        if session.phase == .browsing {
           Button(action: onBack) {
             Label("Repertório", systemImage: "chevron.left")
               .font(.system(size: 13, weight: .medium))
@@ -81,19 +82,12 @@ struct PieceView: View {
       }
     }
     .padding(.bottom, 12)
-    .animation(.easeInOut(duration: 0.2), value: session.isSelecting)
+    .animation(.easeInOut(duration: 0.2), value: session.phase)
   }
 
   @ViewBuilder private var trailing: some View {
-    if session.isSelecting {
-      Button {
-        withAnimation(.easeOut(duration: 0.22)) { session.finish() }
-      } label: {
-        Text("Concluir").font(.system(size: 13, weight: .semibold))
-      }
-      .buttonStyle(.plain)
-      .foregroundStyle(Theme.accent)
-    } else {
+    switch session.phase {
+    case .browsing:
       HStack(spacing: 12) {
         if startFrom > 0 {
           Button("Do começo") { startFrom = 0 }
@@ -112,16 +106,45 @@ struct PieceView: View {
         .buttonStyle(.plain)
         .foregroundStyle(Theme.accent)
       }
+
+    case .selecting:
+      Button {
+        withAnimation(.easeOut(duration: 0.22)) { session.finish() }
+      } label: {
+        Text("Cancelar").font(.system(size: 13, weight: .medium))
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(.secondary)
+
+    case .studying:
+      Button {
+        withAnimation(.easeOut(duration: 0.22)) { session.finish() }
+      } label: {
+        Text("Concluir").font(.system(size: 13, weight: .semibold))
+      }
+      .buttonStyle(.plain)
+      .foregroundStyle(Theme.accent)
     }
   }
 
-  /// The line under the title: what selection is for, or what it is doing.
-  private var subtitle: String {
-    guard let range = session.range else {
-      return "Segure num compasso para estudar um trecho."
+  private var title: String {
+    switch session.phase {
+    case .browsing: return score.title
+    case .selecting: return "Escolhendo trecho"
+    case .studying: return session.range?.label ?? score.title
     }
+  }
 
-    return range.count == 1 ? "Em estudo" : "\(range.count) compassos em estudo"
+  /// One line saying what the current gesture does, per phase.
+  private var subtitle: String {
+    switch session.phase {
+    case .browsing:
+      return "Segure num compasso para estudar um trecho."
+    case .selecting:
+      return "Toque no último compasso do trecho — ou no mesmo, para estudar só ele."
+    case .studying:
+      return "Só o trecho está na tela. Conclua para voltar à peça."
+    }
   }
 
   /// What the listen button says, naming the bar when it will not start at the
@@ -136,12 +159,15 @@ struct PieceView: View {
   private func listen() {
     guard !preview.isPlaying else { return preview.stop() }
 
-    let study = session.study
-    let bounds = score.columns(in: study.range)
-    preview.play(
-      score, tempo: Self.tempo(for: score),
-      from: study.range == nil ? startFrom : bounds.lowerBound,
-      through: bounds.upperBound, hands: study.hands)
+    if session.phase == .studying {
+      // The passage is what the page is showing, so its columns are the
+      // engraved ones and the highlight lands where the sound is.
+      preview.play(
+        score.extracting(session.range), tempo: Self.tempo(for: score),
+        hands: session.hands)
+    } else {
+      preview.play(score, tempo: Self.tempo(for: score), from: startFrom)
+    }
   }
 
   /// A tempo gentle enough to read at.

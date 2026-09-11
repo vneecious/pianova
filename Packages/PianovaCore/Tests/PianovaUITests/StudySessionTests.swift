@@ -5,11 +5,11 @@ import Testing
 
 // MARK: - Rule 105: segurar entra em modo de seleção
 
-/// Rule 105 — antes de segurar num compasso, não há nada em estudo.
+/// Rule 105 — antes de segurar num compasso, navega-se a peça inteira.
 @MainActor @Test func nothingIsSelectedUntilSomethingIsHeld() {
   let session = StudySession()
 
-  #expect(session.isSelecting == false)
+  #expect(session.phase == .browsing)
   #expect(session.study.isWholePiece)
 }
 
@@ -18,70 +18,106 @@ import Testing
   let session = StudySession()
   session.begin(at: 4)
 
-  #expect(session.isSelecting)
+  #expect(session.phase == .selecting)
   #expect(session.range == PracticeRange(first: 4, last: 4))
 }
 
-// MARK: - Rule 106: o trecho é contíguo
+// MARK: - Rule 106 e 108: o último toque fecha o trecho e entra no estudo
 
-/// Rule 106 — marcado o 1 e tocado o 7, estudam-se os sete compassos.
-@MainActor @Test func extendingReachesEveryBarInBetween() {
+/// Rule 108 — tocar no último compasso do trecho entra direto no estudo.
+///
+/// É o gesto que o usuário descreveu: seguro no primeiro, toco no último, e a
+/// tela fica só com o que eu escolhi. Sem botão de confirmar no meio.
+@MainActor @Test func choosingTheLastBarEntersStudy() {
   let session = StudySession()
   session.begin(at: 1)
-  session.extend(to: 7)
+  session.choose(7)
 
+  #expect(session.phase == .studying)
   #expect(session.range == PracticeRange(first: 1, last: 7))
 }
 
-/// Rule 106 — estender de novo move a outra ponta, sem largar a âncora.
-///
-/// Sem isso, cada toque viraria o começo de um trecho novo e não haveria como
-/// ajustar o fim de um trecho já escolhido.
-@MainActor @Test func extendingAgainKeepsTheAnchor() {
+/// Rule 106 — o trecho é contíguo: do 1 ao 7 vai tudo que há entre eles.
+@MainActor @Test func theSelectionIsContiguous() {
   let session = StudySession()
-  session.begin(at: 3)
-  session.extend(to: 9)
-  session.extend(to: 5)
+  session.begin(at: 1)
+  session.choose(7)
 
-  #expect(session.range == PracticeRange(first: 3, last: 5))
+  let range = try! #require(session.range)
+  #expect((1...7).allSatisfy(range.judges(bar:)))
 }
 
-/// Rule 106 — estender para trás da âncora é igualmente um trecho.
+/// Rule 106 — escolher para trás dá o mesmo trecho.
 @MainActor @Test func aSelectionCanGrowBackwards() {
   let session = StudySession()
   session.begin(at: 8)
-  session.extend(to: 2)
+  session.choose(2)
 
   #expect(session.range == PracticeRange(first: 2, last: 8))
+}
+
+/// Tocar no próprio compasso segurado estuda só ele.
+@MainActor @Test func choosingTheSameBarStudiesJustIt() {
+  let session = StudySession()
+  session.begin(at: 3)
+  session.choose(3)
+
+  #expect(session.phase == .studying)
+  #expect(session.range == PracticeRange(first: 3, last: 3))
 }
 
 /// Rule 107 — sem ter segurado antes, tocar não seleciona nada.
 @MainActor @Test func tappingOutsideSelectionSelectsNothing() {
   let session = StudySession()
-  session.extend(to: 5)
+  session.choose(5)
 
-  #expect(session.isSelecting == false)
+  #expect(session.phase == .browsing)
+  #expect(session.range == nil)
 }
 
-// MARK: - Rule 112: há sempre a volta para a peça inteira
+// MARK: - Rule 112: há sempre a volta
 
-/// Rule 112 — concluir devolve a peça inteira, com as duas mãos.
+/// Rule 112 — cancelar a seleção volta a navegar, sem trecho nenhum.
+@MainActor @Test func cancellingLeavesTheSelection() {
+  let session = StudySession()
+  session.begin(at: 2)
+  session.finish()
+
+  #expect(session.phase == .browsing)
+  #expect(session.range == nil)
+}
+
+/// Rule 112 — concluir o estudo devolve a peça inteira, com as duas mãos.
 @MainActor @Test func finishingGivesTheWholePieceBack() {
   let session = StudySession()
   session.begin(at: 2)
+  session.choose(4)
   session.hands = .left
   session.finish()
 
-  #expect(session.isSelecting == false)
+  #expect(session.phase == .browsing)
   #expect(session.study.isWholePiece, "concluir volta também as duas mãos")
 }
 
-/// Rule 112 — concluído, segurar noutro compasso recomeça do zero.
+/// Depois de concluir, segurar noutro compasso recomeça do zero.
 @MainActor @Test func aNewHoldStartsAFreshSelection() {
   let session = StudySession()
   session.begin(at: 2)
-  session.extend(to: 6)
+  session.choose(6)
+  session.finish()
   session.begin(at: 9)
 
+  #expect(session.phase == .selecting)
   #expect(session.range == PracticeRange(first: 9, last: 9))
+}
+
+/// Segurar de novo no meio de um estudo também recomeça a escolha.
+@MainActor @Test func holdingDuringStudyRestartsTheChoice() {
+  let session = StudySession()
+  session.begin(at: 1)
+  session.choose(3)
+  session.begin(at: 5)
+
+  #expect(session.phase == .selecting)
+  #expect(session.range == PracticeRange(first: 5, last: 5))
 }

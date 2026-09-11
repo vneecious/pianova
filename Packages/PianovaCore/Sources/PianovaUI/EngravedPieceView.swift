@@ -16,12 +16,12 @@ struct EngravedPieceView: View {
 
   let score: Score
 
-  /// What is being worked at, shared with the bar that changes it.
+  /// What is being worked at, shared with the bars that show and change it.
   @ObservedObject var session: StudySession
 
   let onFinished: () -> Void
 
-  /// Called when a note is tapped, with the column it sits on.
+  /// Called when a note is tapped while browsing, with the column it sits on.
   var onPickStart: ((Int) -> Void)?
 
   var body: some View {
@@ -40,10 +40,14 @@ struct EngravedPieceView: View {
         pages
           .frame(maxHeight: .infinity, alignment: .top)
       }
-
     }
-    .onChange(of: session.study) { _, study in
-      controller.restrict(to: study.range, hands: study.hands)
+    .onChange(of: session.phase) { was, now in
+      // Entering or leaving study is the one thing that changes the page:
+      // study engraves the passage alone, everything else engraves the piece.
+      if was == .studying || now == .studying { reload() }
+    }
+    .onChange(of: session.hands) { _, hands in
+      controller.restrict(to: nil, hands: hands)
     }
     .onChange(of: session.loops) { _, value in controller.loops = value }
     .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -54,12 +58,7 @@ struct EngravedPieceView: View {
     .onAppear {
       controller.onFinished = onFinished
       controller.loops = session.loops
-      if let engraver {
-        controller.load(score, using: engraver)
-        // Engraving resets what is judged, so a selection made before the page
-        // was ready — coming back to a piece, say — has to be applied again.
-        controller.restrict(to: session.range, hands: session.hands)
-      }
+      reload()
       hub.setListener(owner: controller) { [controller] event in
         guard case .pressed(let pitch, _) = event else { return }
         controller.play(pitch)
@@ -88,6 +87,32 @@ struct EngravedPieceView: View {
   /// Two is the floor: with one, reading ahead is impossible — the line is
   /// turned and only then discovered.
   private static let systemsInView: CGFloat = 2.2
+
+  /// The bars marked on the page while a passage is being chosen.
+  ///
+  /// Held rather than computed per frame: it changes on taps, and recomputing
+  /// it on every layout pass was a good part of what made the page slow.
+  @State private var selectedMeasures: Set<String> = []
+
+  /// What the engraver should be drawing right now.
+  private var shown: Score {
+    session.phase == .studying ? score.extracting(session.range) : score
+  }
+
+  /// Engraves what the phase asks for and re-applies the study to it.
+  private func reload() {
+    guard let engraver else { return }
+    controller.load(shown, using: engraver)
+    controller.restrict(to: nil, hands: session.phase == .studying ? session.hands : .both)
+    refreshSelection()
+    shownSystem = nil
+  }
+
+  /// Marks the anchor bar while choosing, and nothing otherwise.
+  private func refreshSelection() {
+    selectedMeasures =
+      session.phase == .selecting ? controller.measureIDs(in: session.range) : []
+  }
 
   /// Every page, stacked, with the cursor kept in view.
   private var pages: some View {
@@ -129,7 +154,7 @@ struct EngravedPieceView: View {
               highlights: controller.highlights,
               onTap: { id in tapped(id) },
               onLongPress: { id in hold(id) },
-              selectedMeasures: selectedMeasures(on: page),
+              selectedMeasures: selectedMeasures,
               quietStaff: controller.quietStaff,
               width: drawnWidth
             )
@@ -181,48 +206,42 @@ struct EngravedPieceView: View {
     .allowsHitTesting(false)
   }
 
-  /// Which bars are drawn as selected: the whole passage, not just the last tap.
-  private func selectedMeasures(on page: EngravedPage) -> Set<String> {
-    guard let range = session.range else { return [] }
-
-    return Set(
-      page.shapes.compactMap { shape -> String? in
-        guard let measure = shape.measureID, let note = shape.noteID,
-          let column = controller.column(of: note)
-        else { return nil }
-
-        let bar = score.measureNumber(atColumn: column)
-        return range.judges(bar: bar) ? measure : nil
-      })
-  }
-
-  /// A short tap: choose where to listen from, or extend a selection already
-  /// under way.
+  /// A short tap: pick where to listen from, or close the passage being chosen.
   ///
-  /// The same division Photos makes. Outside selection a tap means "here";
-  /// inside it, it means "as far as here" — never "this one as well", because a
-  /// passage is the stretch between two bars and not a set of them.
+  /// The same division Photos makes. Browsing, a tap means "here"; selecting,
+  /// it means "as far as here" — and that tap is the one that enters study.
   private func tapped(_ id: String) {
-    guard let column = controller.column(of: id) else { return }
+    switch session.phase {
+    case .browsing:
+      if let column = controller.column(of: id) { onPickStart?(column) }
 
-    guard session.isSelecting else {
-      onPickStart?(column)
-      return
-    }
+    case .selecting:
+      guard let bar = controller.bar(of: id) else { return }
+      Haptics.selected()
+      withAnimation(.easeOut(duration: 0.22)) { session.choose(bar) }
 
-    withAnimation(.easeOut(duration: 0.22)) {
-      session.extend(to: score.measureNumber(atColumn: column))
+    case .studying:
+      break
     }
   }
 
-  /// A long press: enter selection at this bar, as holding a photo does.
+  /// A long press: begin choosing a passage at this bar.
+  ///
+  /// The gesture holding a photo makes. Mid-study it starts the choice over,
+  /// back on the whole piece.
   private func hold(_ id: String) {
-    guard let column = controller.column(of: id) else { return }
+    guard let bar = controller.bar(of: id) else { return }
+
+    // The page in study is the passage alone, so its bars count from one and
+    // have to be put back into the piece's own numbering.
+    let start = session.phase == .studying ? (session.range?.first ?? 1) : 1
+    let held = session.phase == .studying ? bar + start - 1 : bar
 
     Haptics.selected()
-    withAnimation(.easeOut(duration: 0.22)) {
-      session.begin(at: score.measureNumber(atColumn: column))
-    }
+    withAnimation(.easeOut(duration: 0.22)) { session.begin(at: held) }
+    // Leaving study re-engraves and marks the anchor itself; a hold while
+    // browsing changes no page, so the mark is made here.
+    if session.phase == .selecting { refreshSelection() }
   }
 
   /// Which system a note was drawn in, across every page.

@@ -166,7 +166,7 @@ public struct LessonView: View {
     case .song(let song):
       // A written piece goes to the engraver, wherever it appears.
       VStack(spacing: 12) {
-        if songStudy.isSelecting {
+        if songStudy.phase == .studying {
           PracticeBar(
             session: songStudy, hasBothHands: song.isTwoHanded,
             onFinish: { songStudy.finish() })

@@ -479,20 +479,25 @@ servir ao segundo e permitir o primeiro, e não o contrário.
 
 105. Um **trecho** é escolhido como se escolhem fotos: **segurar** num compasso
      entra em modo de seleção e marca aquele compasso; daí em diante, tocar
-     noutro estende a seleção.
+     noutro estende a seleção. A peça inteira continua na tela enquanto se
+     escolhe.
 106. Um trecho é sempre **contíguo**. Marcado o 1 e tocado o 7, ficam
      selecionados os compassos de 1 a 7 — não se estuda o 1 e o 7 soltos, porque
      o que se está treinando é a passagem de um ao outro.
 107. Fora do modo de seleção, tocar num compasso apenas escolhe **de onde
      ouvir** — o gesto curto não muda o que está sendo estudado.
-108. Um trecho isolado pode ser estudado com **uma mão só**.
-109. Um trecho em estudo **repete sozinho** ao terminar, para que a repetição
+108. Confirmada a seleção, entra-se no **modo estudo, sem distração**: só os
+     compassos escolhidos ficam na tela, regravados. Estudo é trabalho de
+     lupa, e o resto da peça na tela é o que a lupa existe para tirar.
+109. No modo estudo, pode-se trabalhar **uma mão só**. A mão em descanso fica
+     **esmaecida na pauta**, não removida — ela é a referência do que a outra
+     tem de encaixar. O esmaecido é sinal exclusivo de mão em descanso: nada
+     mais na página fica cinza.
+110. Um trecho em estudo **repete sozinho** ao terminar, para que a repetição
      não custe um gesto a cada volta.
-110. Estudar **restringe o que é avaliado, não o que é mostrado**. A peça
-     continua inteira na tela: some o contexto, some a possibilidade de
-     escolher o compasso seguinte, e perde-se de vista onde o trecho fica.
-111. A mão que não está em estudo é **esmaecida**, não removida. Ela é a
-     referência do que a outra tem de encaixar.
+111. Enquanto há seleção ou estudo, o botão de sair da peça **some**: sair do
+     trecho e sair da peça são gestos diferentes, e só um deles fica visível
+     de cada vez.
 112. Sempre há um caminho de volta para a **peça inteira**, num gesto.
 113. O preview toca **o que está em estudo** — aqueles compassos, aquela mão.
 
