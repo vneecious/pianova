@@ -5,20 +5,56 @@ import Foundation
 /// What is stored is the **original file**, re-read on each launch. The file is
 /// the source of truth: storing our reading of it instead would freeze today's
 /// import bugs into the library, and those are still being fixed.
+///
+/// The files live in the app's `Documents` — the folder the Files app shows
+/// as "Pianova". A library its owner cannot see is not a library: whatever is
+/// dropped there appears in the repertoire, and whatever is imported through
+/// the app appears there.
 public struct ScoreLibrary {
   /// Where the files live.
   public let folder: URL
 
-  /// Creates a library.
-  /// - Parameter folder: Where to keep the files. Defaults to Application
-  ///   Support, which is where a user's own documents belong.
-  public init(folder: URL? = nil) {
+  /// Creates a library, carrying over anything left in the old hidden home.
+  /// - Parameters:
+  ///   - folder: Where to keep the files. Defaults to `Documents`, which the
+  ///     Files app shows.
+  ///   - legacy: The old Application Support folder, migrated on sight and
+  ///     never overwriting what the visible folder already has.
+  public init(folder: URL? = nil, legacy: URL? = nil) {
     self.folder =
       folder
-      ?? (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-      ?? URL(fileURLWithPath: NSTemporaryDirectory()))
-      .appendingPathComponent("Pianova", isDirectory: true)
-      .appendingPathComponent("Scores", isDirectory: true)
+      ?? (FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        ?? URL(fileURLWithPath: NSTemporaryDirectory()))
+
+    // Migration reaches the real Application Support only from the real
+    // default library. A custom folder with no explicit legacy — a test's
+    // scratch, say — must never siphon the actual library into itself,
+    // which is exactly what happened on the first try.
+    let hidden =
+      legacy
+      ?? (folder == nil
+        ? (FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+          ?? URL(fileURLWithPath: NSTemporaryDirectory()))
+          .appendingPathComponent("Pianova", isDirectory: true)
+          .appendingPathComponent("Scores", isDirectory: true)
+        : nil)
+
+    if let hidden { migrate(from: hidden) }
+  }
+
+  /// Moves the old folder's scores into the visible one, once and gently.
+  private func migrate(from hidden: URL) {
+    let left =
+      (try? FileManager.default.contentsOfDirectory(at: hidden, includingPropertiesForKeys: nil))
+      ?? []
+
+    for file in left where Self.extensions.contains(file.pathExtension.lowercased()) {
+      let target = folder.appendingPathComponent(file.lastPathComponent)
+      guard !FileManager.default.fileExists(atPath: target.path) else { continue }
+
+      try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+      try? FileManager.default.moveItem(at: file, to: target)
+    }
   }
 
   /// Extensions the library will keep.

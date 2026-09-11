@@ -91,3 +91,41 @@ private func write(_ text: String, named name: String) -> URL {
 @Test func anEmptyLibraryReadsAsEmpty() {
   #expect(scratchLibrary("empty").scores().isEmpty)
 }
+
+// MARK: - Rule 125: a biblioteca mora onde o dono a vê
+
+/// Rule 125 — arquivos do lugar antigo migram para a pasta visível.
+@Test func legacyFilesMigrateToTheVisibleFolder() throws {
+  let base = FileManager.default.temporaryDirectory
+    .appendingPathComponent("library-\(UUID().uuidString)", isDirectory: true)
+  let legacy = base.appendingPathComponent("legacy", isDirectory: true)
+  let visible = base.appendingPathComponent("visible", isDirectory: true)
+
+  try FileManager.default.createDirectory(at: legacy, withIntermediateDirectories: true)
+  try Data("<x/>".utf8).write(to: legacy.appendingPathComponent("peca.musicxml"))
+
+  let library = ScoreLibrary(folder: visible, legacy: legacy)
+
+  #expect(library.files().map(\.lastPathComponent) == ["peca.musicxml"])
+  #expect(
+    !FileManager.default.fileExists(atPath: legacy.appendingPathComponent("peca.musicxml").path),
+    "o original não deveria ficar para trás")
+}
+
+/// A migração não atropela um arquivo que já exista no destino.
+@Test func migrationNeverOverwrites() throws {
+  let base = FileManager.default.temporaryDirectory
+    .appendingPathComponent("library-\(UUID().uuidString)", isDirectory: true)
+  let legacy = base.appendingPathComponent("legacy", isDirectory: true)
+  let visible = base.appendingPathComponent("visible", isDirectory: true)
+
+  try FileManager.default.createDirectory(at: legacy, withIntermediateDirectories: true)
+  try FileManager.default.createDirectory(at: visible, withIntermediateDirectories: true)
+  try Data("velho".utf8).write(to: legacy.appendingPathComponent("peca.xml"))
+  try Data("novo".utf8).write(to: visible.appendingPathComponent("peca.xml"))
+
+  let library = ScoreLibrary(folder: visible, legacy: legacy)
+
+  let kept = try Data(contentsOf: library.files()[0])
+  #expect(String(data: kept, encoding: .utf8) == "novo")
+}
