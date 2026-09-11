@@ -22,64 +22,60 @@ struct EngravedScoreView: View {
   /// A bar to pick out, as an editor marks the one you clicked.
   var selectedMeasure: String?
 
-  /// How much to shrink the page below full width.
+  /// How wide to draw the page, in points.
   ///
-  /// One means fill the width. Less than one is how more of the piece is made
-  /// to fit, which is what reading ahead needs.
-  var zoom: CGFloat = 1
+  /// Given rather than measured, because the height has to be known by whatever
+  /// lays this out. Deriving it from a fixed reference width instead — which is
+  /// what happened before — makes the frame too short for the drawing, and the
+  /// music is simply clipped away at the bottom.
+  var width: CGFloat
 
-  var body: some View {
-    GeometryReader { proxy in
-      let scale = proxy.size.width / max(page.size.width, 1) * zoom
-
-      Canvas { context, _ in
-        context.scaleBy(x: scale, y: scale)
-
-        // The selection sits under the music, the way an editor shades the bar
-        // you clicked rather than covering it.
-        if let selected = selectedMeasure, let box = page.measureFrame(selected) {
-          let inset = box.insetBy(dx: -8, dy: -8)
-          let shape = Path(roundedRect: inset, cornerRadius: 12)
-
-          // Stronger on a dark page: the same wash that reads clearly on white
-          // all but disappears on black, which is where it was being looked at.
-          context.fill(
-            shape,
-            with: .color(ItemState.current.color.opacity(colorScheme == .dark ? 0.28 : 0.15)))
-          context.stroke(
-            shape,
-            with: .color(ItemState.current.color.opacity(0.7)),
-            lineWidth: 3)
-        }
-
-        for shape in page.shapes {
-          let path = Path(shape.path)
-          let colour = colour(for: shape)
-
-          if shape.isFilled {
-            context.fill(path, with: .color(colour))
-          } else {
-            context.stroke(path, with: .color(colour), lineWidth: shape.strokeWidth)
-          }
-        }
-      }
-      .frame(height: page.size.height * scale)
-      .contentShape(Rectangle())
-      .onTapGesture { location in
-        guard let onTap else { return }
-        let point = CGPoint(x: location.x / scale, y: location.y / scale)
-        if let id = nearest(to: point) { onTap(id) }
-      }
-    }
-    .frame(height: pageHeight)
+  /// How tall the page is at the width it was given.
+  private var height: CGFloat {
+    width * page.size.height / max(page.size.width, 1)
   }
 
-  /// How tall the page is once fitted to the width.
-  ///
-  /// Read from the page rather than guessed, so the container reserves exactly
-  /// the room the music needs.
-  private var pageHeight: CGFloat {
-    page.size.height / max(page.size.width, 1) * 1_000 * zoom
+  var body: some View {
+    let scale = width / max(page.size.width, 1)
+
+    return Canvas { context, _ in
+      context.scaleBy(x: scale, y: scale)
+
+      // The selection sits under the music, the way an editor shades the bar
+      // you clicked rather than covering it.
+      if let selected = selectedMeasure, let box = page.measureFrame(selected) {
+        let inset = box.insetBy(dx: -8, dy: -8)
+        let shape = Path(roundedRect: inset, cornerRadius: 12)
+
+        // Stronger on a dark page: the same wash that reads clearly on white
+        // all but disappears on black, which is where it was being looked at.
+        context.fill(
+          shape,
+          with: .color(ItemState.current.color.opacity(colorScheme == .dark ? 0.28 : 0.15)))
+        context.stroke(
+          shape,
+          with: .color(ItemState.current.color.opacity(0.7)),
+          lineWidth: 3)
+      }
+
+      for shape in page.shapes {
+        let path = Path(shape.path)
+        let colour = colour(for: shape)
+
+        if shape.isFilled {
+          context.fill(path, with: .color(colour))
+        } else {
+          context.stroke(path, with: .color(colour), lineWidth: shape.strokeWidth)
+        }
+      }
+    }
+    .frame(width: width, height: height)
+    .contentShape(Rectangle())
+    .onTapGesture { location in
+      guard let onTap else { return }
+      let point = CGPoint(x: location.x / scale, y: location.y / scale)
+      if let id = nearest(to: point) { onTap(id) }
+    }
   }
 
   /// The ink for one shape: its highlight if it has one, otherwise the page's.

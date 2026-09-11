@@ -34,6 +34,7 @@ struct EngravedPieceView: View {
           .frame(maxWidth: .infinity, minHeight: 200)
       } else {
         pages
+          .frame(maxHeight: .infinity, alignment: .top)
       }
 
     }
@@ -84,27 +85,32 @@ struct EngravedPieceView: View {
   private var pages: some View {
     GeometryReader { outer in
       ScrollViewReader { scroller in
-        scrollingPages(scroller, viewportHeight: outer.size.height)
+        scrollingPages(scroller, viewport: outer.size)
       }
     }
   }
 
-  /// How much the page is shrunk so enough of it fits.
-  private func zoom(viewportHeight: CGFloat) -> CGFloat {
-    guard let first = controller.pages.first, first.systemHeight > 0 else { return 1 }
+  /// How wide to draw the page so enough of it fits on screen.
+  ///
+  /// Full width unless a system would then be taller than its share of the
+  /// screen; beyond that the page is narrowed until two systems fit, because
+  /// with one there is nothing to read ahead into.
+  private func pageWidth(viewport: CGSize) -> CGFloat {
+    guard let first = controller.pages.first, first.systemHeight > 0 else {
+      return viewport.width
+    }
 
-    // The page is drawn at the view's width; at that scale, how tall is a
-    // system? If more than a share of the screen, shrink until it is not.
-    let atFullWidth = first.systemHeight / max(first.size.width, 1) * 1_000
-    let allowed = viewportHeight / Self.systemsInView
+    let atFullWidth = first.systemHeight / max(first.size.width, 1) * viewport.width
+    let allowed = viewport.height / Self.systemsInView
+    let shrink = min(1, allowed / max(atFullWidth, 1))
 
-    return min(1, allowed / max(atFullWidth, 1))
+    return viewport.width * shrink
   }
 
   private func scrollingPages(
-    _ scroller: ScrollViewProxy, viewportHeight: CGFloat
+    _ scroller: ScrollViewProxy, viewport: CGSize
   ) -> some View {
-    let shrink = zoom(viewportHeight: viewportHeight)
+    let drawnWidth = pageWidth(viewport: viewport)
 
     return Group {
       ScrollView(.vertical) {
@@ -118,7 +124,7 @@ struct EngravedPieceView: View {
                 if let column = controller.column(of: id) { onPickStart?(column) }
               },
               selectedMeasure: selectedMeasure,
-              zoom: shrink
+              width: drawnWidth
             )
             .overlay(alignment: .top) { systemAnchors(for: page) }
             .padding(.vertical, 18)
@@ -126,6 +132,7 @@ struct EngravedPieceView: View {
             .id(index)
           }
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 8)
       }
       .onChange(of: controller.focus) { _, id in
