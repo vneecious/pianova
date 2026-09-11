@@ -239,6 +239,21 @@ public struct Score: Equatable, Sendable {
 
     /// Whether nothing sounds here.
     public var isRest: Bool { pitches.isEmpty }
+
+    /// What sounds here when only one hand is being worked at.
+    ///
+    /// The other hand goes quiet but its time still passes: a bar where the
+    /// right hand rests is a bar where the right hand rests, and shortening it
+    /// would teach the wrong rhythm.
+    /// - Parameter hands: Which hands are in study.
+    /// - Returns: The pitches that should sound.
+    public func pitches(for hands: PracticeHands) -> [Pitch] {
+      switch hands {
+      case .both: return pitches
+      case .right: return upper
+      case .left: return lower
+      }
+    }
   }
 
   /// Everything written, in time order, silences included.

@@ -33,29 +33,40 @@ public final class ScorePlayer: ObservableObject {
     return beats * (60 / max(tempo, 1))
   }
 
-  /// Plays the piece, optionally from partway in.
+  /// Plays the piece, or a stretch of it, on one hand or both.
+  ///
+  /// A passage is played as part of the piece rather than as a piece of its
+  /// own, so the column reported here is the column the page has engraved and
+  /// the highlight lands where the sound is.
   /// - Parameters:
   ///   - score: The piece to play.
   ///   - tempo: Beats per minute.
   ///   - start: The column to begin at. Studying is repeating a passage, not
   ///     the whole piece, so going back to the top every time is the wrong
   ///     default.
-  public func play(_ score: Score, tempo: Double = 72, from start: Int = 0) {
+  ///   - end: One past the last column, or `nil` to play to the end.
+  ///   - hands: Which hands should sound.
+  public func play(
+    _ score: Score, tempo: Double = 72, from start: Int = 0, through end: Int? = nil,
+    hands: PracticeHands = .both
+  ) {
     stop()
 
     let beat = 60 / max(tempo, 1)
-    let first = min(max(start, 0), max(score.columns.count - 1, 0))
+    let last = min(end ?? score.columns.count, score.columns.count)
+    let first = min(max(start, 0), max(last - 1, 0))
     isPlaying = true
     column = first
 
     task = Task { [weak self] in
       guard let self else { return }
 
-      for (index, event) in score.columns.enumerated().dropFirst(first) {
+      for index in first..<max(last, first) {
         if Task.isCancelled { break }
+        let event = score.columns[index]
         column = index
 
-        for pitch in event.pitches {
+        for pitch in event.pitches(for: hands) {
           tones.play(pitch, velocity: 74)
         }
 

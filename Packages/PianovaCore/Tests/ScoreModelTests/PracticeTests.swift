@@ -18,96 +18,122 @@ private func fourBars(pickup: Bool = false) -> Score {
     hasPickup: pickup)
 }
 
-// MARK: - Rule 105: isolar um trecho
+// MARK: - Rule 110: estudar restringe o que é avaliado
 
-/// Um trecho vira uma peça com só aqueles compassos.
-@Test func aRangeBecomesItsOwnPiece() {
-  let passage = fourBars().extracting(PracticeRange(first: 2, last: 3))
+/// Rule 110 — um trecho diz quais compassos contam, e o resto da peça segue lá.
+@Test func aPassageSaysWhichBarsAreJudged() {
+  let passage = PracticeRange(first: 3, last: 5)
 
-  #expect(passage.rightHand.measures.count == 2)
-  #expect(passage.rightHand.measures.first?.notes.first?.pitches.first?.midiNoteNumber == 61)
+  #expect(passage.judges(bar: 3))
+  #expect(passage.judges(bar: 4))
+  #expect(passage.judges(bar: 5))
+  #expect(passage.judges(bar: 2) == false)
+  #expect(passage.judges(bar: 6) == false)
 }
 
-/// A ordem em que os compassos são tocados não importa.
-@Test func theRangeSortsItself() {
-  let backwards = PracticeRange(first: 4, last: 2)
-
-  #expect(backwards.first == 2)
-  #expect(backwards.last == 4)
-  #expect(backwards.count == 3)
+/// Rule 111 — a mão em estudo é avaliada, a outra não.
+@Test func onlyTheHandInStudyIsJudged() {
+  #expect(PracticeHands.right.judges(staff: 1))
+  #expect(PracticeHands.right.judges(staff: 2) == false)
+  #expect(PracticeHands.left.judges(staff: 2))
+  #expect(PracticeHands.left.judges(staff: 1) == false)
 }
 
-/// Sem trecho, é a peça inteira.
-@Test func noRangeMeansTheWholePiece() {
-  #expect(fourBars().extracting(nil).rightHand.measures.count == 4)
+/// Rule 111 — com as duas mãos, tudo conta.
+@Test func bothHandsJudgeEverything() {
+  #expect(PracticeHands.both.judges(staff: 1))
+  #expect(PracticeHands.both.judges(staff: 2))
 }
 
-/// Um trecho que passa do fim para no fim, em vez de estourar.
-@Test func aRangeIsClampedToThePiece() {
-  let passage = fourBars().extracting(PracticeRange(first: 3, last: 99))
-
-  #expect(passage.rightHand.measures.count == 2)
-}
-
-// MARK: - Rule 106: uma mão de cada vez
-
-/// A mão direita sozinha é uma peça de uma pauta.
-@Test func therightHandAloneIsOneStaff() {
-  let passage = fourBars().extracting(nil, hands: .right)
-
-  #expect(passage.isTwoHanded == false)
-  #expect(passage.rightHand.clef == .treble)
-}
-
-/// A esquerda sozinha também — e continua sendo lida em clave de fá.
+/// Rule 111 — a mão fora de estudo é esmaecida, e é a outra.
 ///
-/// Sem isso, estudar a mão esquerda mostraria uma pauta vazia: ela é a segunda
-/// pauta, e uma peça precisa de uma primeira.
-@Test func theLeftHandAloneIsAlsoAPiece() {
-  let passage = fourBars().extracting(nil, hands: .left)
-
-  #expect(passage.isTwoHanded == false)
-  #expect(passage.rightHand.clef == .bass, "a mão que sobra é a que se lê")
-  #expect(passage.rightHand.measures.first?.notes.first?.pitches.first?.midiNoteNumber == 48)
+/// Esmaecida e não removida: ela é a referência do que esta mão tem que
+/// encaixar, e tirá-la tira o motivo do trecho.
+@Test func theHandOutOfStudyIsTheOneFaded() {
+  #expect(PracticeHands.right.quietStaff == 2)
+  #expect(PracticeHands.left.quietStaff == 1)
+  #expect(PracticeHands.both.quietStaff == nil)
 }
 
-/// Mão e trecho se combinam.
-@Test func handAndRangeCombine() {
-  let passage = fourBars().extracting(PracticeRange(first: 2, last: 2), hands: .left)
+// MARK: - Rule 113: o preview toca o que está em estudo
 
-  #expect(passage.rightHand.measures.count == 1)
-  #expect(passage.rightHand.measures.first?.notes.first?.pitches.first?.midiNoteNumber == 49)
+/// Rule 113 — sem trecho e com as duas mãos, o estudo é a peça inteira.
+@Test func withNothingChosenTheStudyIsTheWholePiece() {
+  let study = Study(range: nil, hands: .both)
+
+  #expect(study.isWholePiece)
+  #expect(study.listenTitle == "Ouvir a peça")
 }
 
-// MARK: - A anacruse
+/// Rule 113 — o botão diz o que vai tocar, porque é o que vai tocar.
+@Test func theListenButtonNamesWhatItWillPlay() {
+  #expect(
+    Study(range: PracticeRange(first: 3, last: 3), hands: .both).listenTitle
+      == "Ouvir o compasso 3")
+  #expect(
+    Study(range: PracticeRange(first: 3, last: 5), hands: .both).listenTitle
+      == "Ouvir os compassos 3–5")
+  #expect(Study(range: nil, hands: .right).listenTitle == "Ouvir a mão direita")
+  #expect(
+    Study(range: PracticeRange(first: 3, last: 5), hands: .left).listenTitle
+      == "Ouvir os compassos 3–5, mão esquerda")
+}
 
-/// O compasso 1 é o primeiro compasso cheio, mesmo com anacruse antes.
+/// Uma mão só continua sendo estudo mesmo sem trecho escolhido.
+@Test func aHandAloneIsAlreadyAStudy() {
+  #expect(Study(range: nil, hands: .left).isWholePiece == false)
+}
+
+// MARK: - Rule 106: um trecho é contíguo
+
+/// Rule 106 — marcar o 1 e tocar no 7 estuda tudo entre eles.
 ///
-/// Os números são os que o usuário vê na página; se o corte contasse posições
-/// em vez de números, estudar o compasso 2 traria o 1.
-@Test func barNumbersSurviveAnUpbeat() {
-  let passage = fourBars(pickup: true).extracting(PracticeRange(first: 1, last: 1))
+/// Estudar o 1 e o 7 soltos não é estudo de nada: o que se treina é a passagem
+/// de um compasso ao seguinte, e ela só existe entre vizinhos.
+@Test func extendingASelectionFillsTheGap() {
+  let passage = PracticeRange(first: 1, last: 7)
 
-  #expect(passage.rightHand.measures.count == 1)
-  #expect(passage.rightHand.measures.first?.notes.first?.pitches.first?.midiNoteNumber == 60)
+  #expect(passage.count == 7)
+  #expect((1...7).allSatisfy(passage.judges(bar:)))
 }
 
-/// Um trecho que não começa no início não tem anacruse.
-@Test func aPassageInTheMiddleHasNoUpbeat() {
-  let passage = fourBars(pickup: true).extracting(PracticeRange(first: 2, last: 3))
-
-  #expect(passage.hasPickup == false)
-  #expect(passage.isWellFormed, "sem anacruse, todos os compassos devem fechar")
+/// Rule 106 — estender para trás dá o mesmo trecho.
+@Test func aSelectionDoesNotCareWhichEndCameFirst() {
+  #expect(PracticeRange(first: 7, last: 1) == PracticeRange(first: 1, last: 7))
 }
 
-/// Quantos compassos há para escolher, sem contar a anacruse.
-@Test func theBarCountIgnoresTheUpbeat() {
-  #expect(fourBars().measureCount == 4)
-  #expect(fourBars(pickup: true).measureCount == 4)
+// MARK: - Rule 113: o preview toca sem sair da peça
+
+/// Rule 113 — o trecho é um pedaço das colunas da peça, e não outra peça.
+///
+/// É o que mantém o destaque e o scroll no lugar: o preview anuncia a coluna em
+/// que está, e essa coluna tem de ser a mesma que está gravada na tela.
+@Test func aPassageIsARangeOfTheSameColumns() {
+  let score = fourBars()
+  let bounds = score.columns(in: PracticeRange(first: 2, last: 3))
+
+  #expect(bounds.allSatisfy { (2...3).contains(score.measureNumber(atColumn: $0)) })
+  #expect(bounds.isEmpty == false)
 }
 
-/// Como o trecho se apresenta ao usuário.
-@Test func aRangeSaysWhatItIs() {
-  #expect(PracticeRange(first: 3, last: 3).label == "Compasso 3")
-  #expect(PracticeRange(first: 3, last: 6).label == "Compassos 3–6")
+/// Rule 113 — sem trecho escolhido, o preview percorre a peça inteira.
+@Test func withoutAPassageEveryColumnPlays() {
+  let score = fourBars()
+
+  #expect(score.columns(in: nil) == score.columns.indices.startIndex..<score.columns.count)
+}
+
+/// Um trecho fora da peça não devolve coluna nenhuma, em vez de estourar.
+@Test func aPassagePastTheEndIsEmpty() {
+  #expect(fourBars().columns(in: PracticeRange(first: 40, last: 50)).isEmpty)
+}
+
+/// Rule 111 — a mão fora de estudo não soa no preview, mas o tempo dela passa.
+@Test func onlyTheHandInStudySounds() {
+  let score = fourBars()
+  let column = score.columns[0]
+
+  #expect(column.pitches(for: .both).count == 2)
+  #expect(column.pitches(for: .right) == column.upper)
+  #expect(column.pitches(for: .left) == column.lower)
 }

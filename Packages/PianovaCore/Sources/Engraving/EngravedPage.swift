@@ -33,6 +33,13 @@ public struct EngravedShape: Equatable {
   /// Identifier of the bar this sits in.
   public let measureID: String?
 
+  /// Which staff this was drawn on, counting from one.
+  ///
+  /// What lets one hand be dimmed while the other is worked at: the hand not
+  /// being practised is still the reference for what the other has to fit into,
+  /// so it is faded rather than taken away.
+  public let staffNumber: Int?
+
   /// Identifier of the system this sits in.
   ///
   /// What the page scrolls by. Following the note instead makes the page rise
@@ -123,6 +130,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
   private var notes: [String?] = [nil]
   private var systemStack: [String?] = [nil]
   private var measures: [String?] = [nil]
+  private var staves: [Int?] = [nil]
 
   private var definingSymbol: String?
   private var symbolPath = CGMutablePath()
@@ -178,6 +186,9 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
     measures.append(
       isMeasure ? (attributes["id"] ?? measures.last ?? nil) : (measures.last ?? nil))
 
+    let isStaff = classes.contains("staff")
+    staves.append(isStaff ? (attributes["n"].flatMap(Int.init) ?? 1) : (staves.last ?? nil))
+
     switch name {
     case "g":
       // A `<g>` inside `<defs>` is a glyph waiting to be reused.
@@ -204,6 +215,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
             kind: kinds.last ?? nil,
             noteID: notes.last ?? nil,
             measureID: measures.last ?? nil,
+            staffNumber: staves.last ?? nil,
             systemID: systemStack.last ?? nil))
       }
 
@@ -218,7 +230,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
           path: placed, isFilled: true, strokeWidth: 0,
           elementID: ids.last ?? nil, kind: kinds.last ?? nil,
           noteID: notes.last ?? nil, measureID: measures.last ?? nil,
-          systemID: systemStack.last ?? nil))
+          staffNumber: staves.last ?? nil, systemID: systemStack.last ?? nil))
 
     case "defs":
       isInsideDefs = true
@@ -250,6 +262,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
     if notes.count > 1 { notes.removeLast() }
     if systemStack.count > 1 { systemStack.removeLast() }
     if measures.count > 1 { measures.removeLast() }
+    if staves.count > 1 { staves.removeLast() }
   }
 
   private var isInsideDefs = false

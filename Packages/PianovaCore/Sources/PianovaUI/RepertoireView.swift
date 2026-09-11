@@ -34,30 +34,17 @@ struct RepertoireView: View {
 
   var body: some View {
     if let score = playing {
-      PieceView(score: score, mode: mode, hub: hub, onFinished: { playing = nil })
-        .padding(.horizontal, 32)
-        .padding(.bottom, 32)
-        .id(score.title)
-        .safeAreaInset(edge: .top, spacing: 0) {
-          // Its own row rather than an overlay: floated over the corner it sat on
-          // top of the progress counter, and two numbers stacked on a button is
-          // not something anyone can read.
-          HStack {
-            Button {
-              playing = nil
-            } label: {
-              Label("Repertório", systemImage: "chevron.left")
-                .font(.system(size: 13, weight: .medium))
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-
-            Spacer()
-          }
-          .padding(.horizontal, 32)
-          .padding(.top, 20)
-          .padding(.bottom, 8)
-        }
+      // Its own title bar, because selection has to take it over: while a
+      // passage is picked out there is no way back to the list, the way Photos
+      // hides the back button while photos are selected.
+      PieceView(
+        score: score, mode: mode, hub: hub, onFinished: { playing = nil },
+        onBack: { playing = nil }
+      )
+      .padding(.horizontal, 32)
+      .padding(.top, 20)
+      .padding(.bottom, 32)
+      .id(score.title)
     } else {
       list
     }

@@ -76,6 +76,7 @@ let package = Package(
     .testTarget(name: "MIDIInputTests", dependencies: ["MIDIInput", "ScoreModel"]),
     .testTarget(name: "NoteQuizTests", dependencies: ["NoteQuiz", "ScoreModel"]),
     .testTarget(name: "CourseTests", dependencies: ["Course", "PianovaUI", "ScoreModel"]),
+    .testTarget(name: "PianovaUITests", dependencies: ["PianovaUI", "ScoreModel"]),
     .testTarget(name: "SoundTests", dependencies: ["Sound", "ScoreModel"]),
     .testTarget(name: "ProgressTests", dependencies: ["Progress", "ScoreModel"]),
   ]

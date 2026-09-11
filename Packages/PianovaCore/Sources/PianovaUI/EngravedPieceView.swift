@@ -15,6 +15,10 @@ struct EngravedPieceView: View {
   @Environment(\.colorScheme) private var colorScheme
 
   let score: Score
+
+  /// What is being worked at, shared with the bar that changes it.
+  @ObservedObject var session: StudySession
+
   let onFinished: () -> Void
 
   /// Called when a note is tapped, with the column it sits on.
@@ -38,29 +42,10 @@ struct EngravedPieceView: View {
       }
 
     }
-    // As a safe-area inset rather than a sibling: the scroll view then knows
-    // the keyboard is there and stops scrolling music underneath it. Stacked
-    // below, the keyboard simply covered the last system.
-    // The passage controls live over the music rather than beside it: they
-    // belong to the selection and go away with it.
-    .safeAreaInset(edge: .top, spacing: 0) {
-      if let range {
-        PracticeBar(
-          range: range, hands: $hands, loops: $loops,
-          hasBothHands: score.isTwoHanded,
-          onClear: {
-            self.range = nil
-            selectedMeasure = nil
-          }
-        )
-        .padding(.horizontal, 8)
-        .padding(.bottom, 10)
-        .transition(.move(edge: .top).combined(with: .opacity))
-      }
+    .onChange(of: session.study) { _, study in
+      controller.restrict(to: study.range, hands: study.hands)
     }
-    .onChange(of: hands) { _, _ in reload() }
-    .onChange(of: range) { _, _ in reload() }
-    .onChange(of: loops) { _, value in controller.loops = value }
+    .onChange(of: session.loops) { _, value in controller.loops = value }
     .safeAreaInset(edge: .bottom, spacing: 0) {
       if !hub.isConnected {
         PianoKeyboardView { controller.play($0) }
@@ -68,8 +53,13 @@ struct EngravedPieceView: View {
     }
     .onAppear {
       controller.onFinished = onFinished
-      controller.loops = loops
-      if let engraver { controller.load(studied, using: engraver) }
+      controller.loops = session.loops
+      if let engraver {
+        controller.load(score, using: engraver)
+        // Engraving resets what is judged, so a selection made before the page
+        // was ready — coming back to a piece, say — has to be applied again.
+        controller.restrict(to: session.range, hands: session.hands)
+      }
       hub.setListener(owner: controller) { [controller] event in
         guard case .pressed(let pitch, _) = event else { return }
         controller.play(pitch)
@@ -98,27 +88,6 @@ struct EngravedPieceView: View {
   /// Two is the floor: with one, reading ahead is impossible — the line is
   /// turned and only then discovered.
   private static let systemsInView: CGFloat = 2.2
-
-  /// The bar the player last tapped, marked on the page.
-  @State private var selectedMeasure: String?
-
-  /// The passage being worked at, or `nil` for the whole piece.
-  @State private var range: PracticeRange?
-
-  /// Which hands the passage is worked at with.
-  @State private var hands: PracticeHands = .both
-
-  /// Whether the passage starts again on its own.
-  @State private var loops = true
-
-  /// What is actually engraved: the passage, or the piece.
-  private var studied: Score { score.extracting(range, hands: hands) }
-
-  /// Bars picked out on the page, so a whole passage reads as selected.
-  private var selection: Set<String> {
-    guard range == nil else { return [] }
-    return selectedMeasure.map { [$0] } ?? []
-  }
 
   /// Every page, stacked, with the cursor kept in view.
   private var pages: some View {
@@ -158,8 +127,10 @@ struct EngravedPieceView: View {
             EngravedScoreView(
               page: page,
               highlights: controller.highlights,
-              onTap: { id in choose(id, on: page) },
-              selectedMeasure: selectedMeasure,
+              onTap: { id in tapped(id) },
+              onLongPress: { id in hold(id) },
+              selectedMeasures: selectedMeasures(on: page),
+              quietStaff: controller.quietStaff,
               width: drawnWidth
             )
             .overlay(alignment: .top) { systemAnchors(for: page) }
@@ -210,32 +181,48 @@ struct EngravedPieceView: View {
     .allowsHitTesting(false)
   }
 
-  /// Picks a bar, or extends the passage to reach it.
-  ///
-  /// The second tap extends rather than replaces, which is how selecting a
-  /// stretch works everywhere else and saves inventing a gesture for it.
-  private func choose(_ id: String, on page: EngravedPage) {
-    guard let column = controller.column(of: id) else { return }
-    let bar = studied.measureNumber(atColumn: column)
+  /// Which bars are drawn as selected: the whole passage, not just the last tap.
+  private func selectedMeasures(on page: EngravedPage) -> Set<String> {
+    guard let range = session.range else { return [] }
 
-    withAnimation(.easeOut(duration: 0.22)) {
-      if let current = range, current.count == 1, current.first != bar {
-        range = PracticeRange(first: current.first, last: bar)
-      } else if range?.count ?? 0 > 1 {
-        range = PracticeRange(first: bar, last: bar)
-      } else {
-        range = PracticeRange(first: bar, last: bar)
-      }
-      selectedMeasure = page.measure(containing: id)
-    }
+    return Set(
+      page.shapes.compactMap { shape -> String? in
+        guard let measure = shape.measureID, let note = shape.noteID,
+          let column = controller.column(of: note)
+        else { return nil }
 
-    onPickStart?(column)
+        let bar = score.measureNumber(atColumn: column)
+        return range.judges(bar: bar) ? measure : nil
+      })
   }
 
-  /// Re-engraves whatever is being studied now.
-  private func reload() {
-    guard let engraver else { return }
-    controller.load(studied, using: engraver)
+  /// A short tap: choose where to listen from, or extend a selection already
+  /// under way.
+  ///
+  /// The same division Photos makes. Outside selection a tap means "here";
+  /// inside it, it means "as far as here" — never "this one as well", because a
+  /// passage is the stretch between two bars and not a set of them.
+  private func tapped(_ id: String) {
+    guard let column = controller.column(of: id) else { return }
+
+    guard session.isSelecting else {
+      onPickStart?(column)
+      return
+    }
+
+    withAnimation(.easeOut(duration: 0.22)) {
+      session.extend(to: score.measureNumber(atColumn: column))
+    }
+  }
+
+  /// A long press: enter selection at this bar, as holding a photo does.
+  private func hold(_ id: String) {
+    guard let column = controller.column(of: id) else { return }
+
+    Haptics.selected()
+    withAnimation(.easeOut(duration: 0.22)) {
+      session.begin(at: score.measureNumber(atColumn: column))
+    }
   }
 
   /// Which system a note was drawn in, across every page.

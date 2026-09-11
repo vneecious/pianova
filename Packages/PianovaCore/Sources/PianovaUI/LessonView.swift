@@ -16,6 +16,9 @@ public struct LessonView: View {
   /// Called when the player leaves, finished or not.
   public let onClose: (Bool) -> Void
 
+  /// What is being worked at in the lesson's written piece, if anything.
+  @StateObject private var songStudy = StudySession()
+
   /// Creates the lesson screen.
   /// - Parameters:
   ///   - controller: The lesson being run.
@@ -162,9 +165,17 @@ public struct LessonView: View {
 
     case .song(let song):
       // A written piece goes to the engraver, wherever it appears.
-      EngravedPieceView(
-        hub: hub, score: song,
-        onFinished: { controller.completeStep() })
+      VStack(spacing: 12) {
+        if songStudy.isSelecting {
+          PracticeBar(
+            session: songStudy, hasBothHands: song.isTwoHanded,
+            onFinish: { songStudy.finish() })
+        }
+
+        EngravedPieceView(
+          hub: hub, score: song, session: songStudy,
+          onFinished: { controller.completeStep() })
+      }
 
     case .technique(let exercise):
       TechniqueStepView(

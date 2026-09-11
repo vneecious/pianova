@@ -21,6 +21,38 @@ public enum PracticeHands: String, CaseIterable, Identifiable, Sendable {
     }
   }
 
+  /// Whether notes written on a staff are being judged.
+  /// - Parameter staff: 1 for the upper staff, 2 for the lower.
+  /// - Returns: `true` when this hand is the one in study.
+  public func judges(staff: Int) -> Bool {
+    switch self {
+    case .both: return true
+    case .right: return staff == 1
+    case .left: return staff == 2
+    }
+  }
+
+  /// The staff left as reference, to be drawn faded.
+  ///
+  /// Faded and not removed: the other hand is what this one has to fit into,
+  /// and taking it off the page takes the reason for the passage with it.
+  public var quietStaff: Int? {
+    switch self {
+    case .both: return nil
+    case .right: return 2
+    case .left: return 1
+    }
+  }
+
+  /// How it is named inside a sentence.
+  public var spoken: String {
+    switch self {
+    case .both: return "as duas mãos"
+    case .right: return "mão direita"
+    case .left: return "mão esquerda"
+    }
+  }
+
   /// The short name, for a control with no room.
   public var shortTitle: String {
     switch self {
@@ -51,6 +83,16 @@ public struct PracticeRange: Equatable, Sendable {
   /// How many bars it covers.
   public var count: Int { last - first + 1 }
 
+  /// Whether a bar falls inside the passage, and so is judged.
+  /// - Parameter bar: A bar number, as the score counts them.
+  /// - Returns: `true` when it belongs to the passage.
+  public func judges(bar: Int) -> Bool { bar >= first && bar <= last }
+
+  /// How it is named inside a sentence.
+  public var spoken: String {
+    count == 1 ? "o compasso \(first)" : "os compassos \(first)–\(last)"
+  }
+
   /// How it is written out for the player.
   public var label: String {
     count == 1 ? "Compasso \(first)" : "Compassos \(first)–\(last)"
@@ -58,52 +100,59 @@ public struct PracticeRange: Equatable, Sendable {
 }
 
 extension Score {
-  /// The piece reduced to what is being studied.
+  /// Which columns a passage covers, in the piece's own numbering.
   ///
-  /// Re-engraved rather than cropped on screen: the passage becomes a score of
-  /// its own, so it keeps its clef, its key and its bar numbers, and everything
-  /// downstream — cursor, timemap, preview — works on it unchanged.
-  ///
-  /// - Parameters:
-  ///   - range: The bars to keep, or `nil` for the whole piece.
-  ///   - hands: Which staves to keep.
-  /// - Returns: The passage as a piece.
-  public func extracting(_ range: PracticeRange?, hands: PracticeHands = .both) -> Score {
-    let upper = hands == .left ? nil : slice(rightHand, to: range)
-    let lower = hands == .right ? nil : leftHand.flatMap { slice($0, to: range) }
+  /// The passage is a stretch of this score and not a score of its own, so that
+  /// everything keyed to a column — the highlight, the scroll, the cursor —
+  /// keeps meaning the same thing while a passage plays.
+  /// - Parameter range: The bars, or `nil` for all of them.
+  /// - Returns: The columns those bars occupy.
+  public func columns(in range: PracticeRange?) -> Range<Int> {
+    guard let range else { return 0..<columns.count }
 
-    // Studying the left hand alone must still give a piece, so whichever staff
-    // survives becomes the one that is read.
-    guard let played = upper ?? lower else { return self }
+    let inside = columns.indices.filter { range.judges(bar: measureNumber(atColumn: $0)) }
+    guard let first = inside.first, let last = inside.last else { return 0..<0 }
 
-    return Score(
-      title: title,
-      composer: composer,
-      timeSignature: timeSignature,
-      key: key,
-      rightHand: played,
-      leftHand: upper == nil ? nil : lower,
-      // A passage that does not start at the beginning has no upbeat: the
-      // first bar of it is a whole bar of music.
-      hasPickup: hasPickup && (range?.first ?? 1) <= 1)
-  }
-
-  /// One staff, cut to the bars asked for.
-  private func slice(_ part: Part, to range: PracticeRange?) -> Part? {
-    guard let range else { return part }
-
-    // Bar numbers are what the player sees, and an upbeat is not numbered — so
-    // they are turned back into positions before anything is cut.
-    let offset = hasPickup ? 1 : 0
-    let from = max(range.first - 1 + offset, 0)
-    let through = min(range.last - 1 + offset, part.measures.count - 1)
-    guard from <= through else { return nil }
-
-    return Part(clef: part.clef, measures: Array(part.measures[from...through]))
+    return first..<(last + 1)
   }
 
   /// How many bars the player can choose between.
   public var measureCount: Int {
     max(rightHand.measures.count - (hasPickup ? 1 : 0), 1)
   }
+}
+
+/// What is being worked at right now.
+///
+/// Studying a passage is not only about what is judged: hearing the whole piece
+/// while working at four bars of it is not a reference for those four bars.
+public struct Study: Equatable, Sendable {
+  /// The bars, or `nil` for all of them.
+  public let range: PracticeRange?
+
+  /// Which hands.
+  public let hands: PracticeHands
+
+  /// Creates a study.
+  /// - Parameters:
+  ///   - range: The bars, or `nil` for the whole piece.
+  ///   - hands: Which hands are being worked at.
+  public init(range: PracticeRange?, hands: PracticeHands) {
+    self.range = range
+    self.hands = hands
+  }
+
+  /// Whether nothing has been narrowed down yet.
+  public var isWholePiece: Bool { range == nil && hands == .both }
+
+  /// What the listen button says, which is what it will play.
+  public var listenTitle: String {
+    switch (range, hands) {
+    case (nil, .both): return "Ouvir a peça"
+    case (let bars?, .both): return "Ouvir \(bars.spoken)"
+    case (nil, let hands): return "Ouvir a \(hands.spoken)"
+    case (let bars?, let hands): return "Ouvir \(bars.spoken), \(hands.spoken)"
+    }
+  }
+
 }

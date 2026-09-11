@@ -19,8 +19,17 @@ struct EngravedScoreView: View {
   /// Called with the identifier nearest to a tap.
   var onTap: ((String) -> Void)?
 
-  /// A bar to pick out, as an editor marks the one you clicked.
-  var selectedMeasure: String?
+  /// Called when an element is held, to enter selection as Photos does.
+  var onLongPress: ((String) -> Void)?
+
+  /// Bars to pick out, as an editor marks what you selected.
+  var selectedMeasures: Set<String> = []
+
+  /// The staff not being practised, drawn faded.
+  ///
+  /// Faded and not removed: the other hand is the reference for what this one
+  /// has to fit into, and taking it away takes the reason for the passage.
+  var quietStaff: Int?
 
   /// How wide to draw the page, in points.
   ///
@@ -43,7 +52,8 @@ struct EngravedScoreView: View {
 
       // The selection sits under the music, the way an editor shades the bar
       // you clicked rather than covering it.
-      if let selected = selectedMeasure, let box = page.measureFrame(selected) {
+      for selected in selectedMeasures {
+        guard let box = page.measureFrame(selected) else { continue }
         let inset = box.insetBy(dx: -8, dy: -8)
         let shape = Path(roundedRect: inset, cornerRadius: 12)
 
@@ -72,10 +82,22 @@ struct EngravedScoreView: View {
     .frame(width: width, height: height)
     .contentShape(Rectangle())
     .onTapGesture { location in
-      guard let onTap else { return }
-      let point = CGPoint(x: location.x / scale, y: location.y / scale)
-      if let id = nearest(to: point) { onTap(id) }
+      guard let onTap, let id = element(at: location) else { return }
+      onTap(id)
     }
+    // Held, not dragged: the press has to win before any movement, so a finger
+    // that starts scrolling still scrolls instead of selecting a bar.
+    .gesture(
+      LongPressGesture(minimumDuration: 0.35)
+        .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .local))
+        .onEnded { value in
+          guard case .second(true, let drag?) = value, let onLongPress,
+            let id = element(at: drag.location)
+          else { return }
+
+          onLongPress(id)
+        }
+    )
   }
 
   /// The ink for one shape: its highlight if it has one, otherwise the page's.
@@ -85,7 +107,16 @@ struct EngravedScoreView: View {
     if let note = shape.noteID, let state = highlights[note] { return state.color }
     if let id = shape.elementID, let state = highlights[id] { return state.color }
 
-    return Color(PlatformColor.staffInk(colorScheme))
+    let ink = Color(PlatformColor.staffInk(colorScheme))
+    guard let quiet = quietStaff, shape.staffNumber == quiet else { return ink }
+
+    return ink.opacity(0.22)
+  }
+
+  /// The element under a point on screen, in the page's own coordinates.
+  private func element(at location: CGPoint) -> String? {
+    let scale = width / max(page.size.width, 1)
+    return nearest(to: CGPoint(x: location.x / scale, y: location.y / scale))
   }
 
   /// The element whose box is nearest a point, for tapping a passage.

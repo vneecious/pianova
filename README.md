@@ -477,14 +477,24 @@ Tocar a peça do início ao fim é **performance**. Estudo é trabalho cirúrgic
 dois a quatro compassos, uma mão de cada vez, devagar, repetindo. O app precisa
 servir ao segundo e permitir o primeiro, e não o contrário.
 
-105. Um **trecho** pode ser isolado: toca-se num compasso para escolhê-lo, e
-     noutro para estender a seleção até ele.
-106. Um trecho isolado pode ser estudado com **uma mão só**.
-107. Um trecho em estudo **repete sozinho** ao terminar, para que a repetição
+105. Um **trecho** é escolhido como se escolhem fotos: **segurar** num compasso
+     entra em modo de seleção e marca aquele compasso; daí em diante, tocar
+     noutro estende a seleção.
+106. Um trecho é sempre **contíguo**. Marcado o 1 e tocado o 7, ficam
+     selecionados os compassos de 1 a 7 — não se estuda o 1 e o 7 soltos, porque
+     o que se está treinando é a passagem de um ao outro.
+107. Fora do modo de seleção, tocar num compasso apenas escolhe **de onde
+     ouvir** — o gesto curto não muda o que está sendo estudado.
+108. Um trecho isolado pode ser estudado com **uma mão só**.
+109. Um trecho em estudo **repete sozinho** ao terminar, para que a repetição
      não custe um gesto a cada volta.
-108. O que se estuda é **regravado**, não recortado na tela: o trecho vira uma
-     partitura sua, com clave, armadura e numeração de compasso preservadas.
-109. Sempre há um caminho de volta para a **peça inteira**, num gesto.
+110. Estudar **restringe o que é avaliado, não o que é mostrado**. A peça
+     continua inteira na tela: some o contexto, some a possibilidade de
+     escolher o compasso seguinte, e perde-se de vista onde o trecho fica.
+111. A mão que não está em estudo é **esmaecida**, não removida. Ela é a
+     referência do que a outra tem de encaixar.
+112. Sempre há um caminho de volta para a **peça inteira**, num gesto.
+113. O preview toca **o que está em estudo** — aqueles compassos, aquela mão.
 
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o
