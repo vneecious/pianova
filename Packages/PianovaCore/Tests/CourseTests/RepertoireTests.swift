@@ -30,7 +30,7 @@ import Testing
 
 /// Rule 47 — a piece knows which unit introduces it.
 @Test func aPieceKnowsItsUnit() {
-  #expect(Course.unit(playing: Songs.auClairDeLaLune) == 1)
+  #expect(Course.unit(playing: Songs.lightlyRow) == 2)
   #expect(Course.unit(playing: Songs.carnivalOfVenice) == 16)
 }
 
@@ -71,7 +71,9 @@ import Testing
 
 /// Rule 49 — the first piece really is from the opening of the course.
 @Test func theEasiestPieceComesFirst() {
-  #expect(Course.unit(playing: Course.repertoire[0]) == 1)
+  // A unidade 1 é pré-pauta — sua música vive nos exercícios guiados, por
+  // dedos, como no método. A primeira partitura de verdade vem da unidade 2.
+  #expect(Course.unit(playing: Course.repertoire[0]) == 2)
 }
 
 /// The ordering is stable, so the list does not shuffle between launches.

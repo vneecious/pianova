@@ -87,29 +87,57 @@ public enum Course {
     Lesson(
       id: "u1-keyboard", unit: 1,
       title: "Achar-se no teclado",
-      subtitle: "Os grupos de duas e três teclas pretas",
+      subtitle: "Postura, e os grupos de duas e três teclas pretas",
       steps: [
         .reading(noteIDs: ["n-keyboard"]),
         .theory(count: 3),
+        .technique(Technique.blackKeyGroups),
       ]),
     Lesson(
       id: "u1-fingers", unit: 1,
       title: "Os cinco dedos",
-      subtitle: "Numeração e a posição de Dó nas duas mãos",
+      subtitle: "Numeração das mãos, e uma melodia guiada por dedos",
       steps: [
         .reading(noteIDs: ["n-fingers"]),
         .theory(count: 3),
-        .play(clef: .treble, range: 60...67, length: 6),
-        .play(clef: .bass, range: 53...60, length: 6),
+        .technique(Technique.amazingGrace),
+      ]),
+    Lesson(
+      id: "u1-rhythm", unit: 1,
+      title: "Pulso e figuras",
+      subtitle: "Semínima, mínima, mínima pontuada e semibreve",
+      steps: [
+        .technique(Technique.musicAlphabet),
+        .theory(count: 3),
+        .technique(Technique.camptownRaces),
+      ]),
+    Lesson(
+      id: "u1-cde", unit: 1,
+      title: "Dó-Ré-Mi",
+      subtitle: "As teclas achadas pelas pretas, e o intervalo de terça",
+      steps: [
+        .technique(Technique.cdeGroups),
+        .technique(Technique.merrilyCDE),
+        .technique(Technique.thirdInterval),
+      ]),
+    Lesson(
+      id: "u1-fga", unit: 1,
+      title: "Fá-Sol-Lá e transposição",
+      subtitle: "A mesma melodia começando noutra tecla",
+      steps: [
+        .technique(Technique.fgaGroups),
+        .technique(Technique.merrilyFGA),
+        .theory(count: 3),
       ]),
     Lesson(
       id: "u1-close", unit: 1,
-      title: "Segundas e terças",
-      subtitle: "Mão redonda, apoiada na ponta do dedo",
+      title: "Pentascale de Dó",
+      subtitle: "Cinco dedos, terças, e o Hino à Alegria",
       steps: [
-        .song(Songs.auClairDeLaLune),
-        .song(Songs.maryHadALittleLamb),
+        .technique(Technique.cPentascale),
+        .technique(Technique.pentascaleThirds),
         .technique(Technique.roundHand),
+        .technique(Technique.odeToJoyPentascale),
         .theory(count: 4),
       ]),
   ]

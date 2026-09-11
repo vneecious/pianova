@@ -116,8 +116,12 @@ private func writtenValues(in lesson: Lesson) -> [NoteValue] {
 // MARK: - Rule 23: nothing is asked before it is taught
 
 /// Rule 23 — no black key is written before unit 10, where accidentals debut.
+///
+/// One exception, the same one the method makes: the very first keyboard
+/// orientation happens on the black-key groups, found by touch and named as
+/// groups — nobody is asked to read them. Everything else holds to the rule.
 @Test func noAccidentalBeforeSharpsAreTaught() {
-  for lesson in Course.lessons where lesson.unit < 10 {
+  for lesson in Course.lessons where lesson.unit < 10 && lesson.id != "u1-keyboard" {
     for pitch in writtenPitches(in: lesson) where pitch.requiresSharp {
       Issue.record("\(lesson.id) pede \(pitch.scientificName) antes da unidade 10")
     }
