@@ -194,7 +194,9 @@ struct EngravedPieceView: View {
         dragHandle(to: point, isLeading: isLeading, ended: ended, pageIndex: index)
       },
       quietStaff: controller.quietStaff,
-      annotations: AnyView(annotationLayer(pageIndex: index)),
+      annotations: AnyView(
+        annotationLayer(page: page, pageIndex: index, scale: drawnWidth / max(page.size.width, 1))
+      ),
       studyMeasures: studyMeasures,
       width: drawnWidth
     )
@@ -209,19 +211,59 @@ struct EngravedPieceView: View {
   ///
   /// The pencil draws and the finger never does, so there is no mode: the
   /// layer is simply always there on the iPad, and absent where no pencil is.
+  /// Strokes are anchored to their bars (rule 131): composed onto this
+  /// engraving's boxes on the way in, split and re-hung on the way out — a
+  /// pinch reflows the page, and the circle around bar 12 stays on bar 12.
   @ViewBuilder
-  private func annotationLayer(pageIndex: Int) -> some View {
+  private func annotationLayer(page: EngravedPage, pageIndex: Int, scale: CGFloat) -> some View {
     #if canImport(UIKit) && canImport(PencilKit)
     AnnotationLayer(
-      saved: annotations.drawing(
-        title: score.title, units: controller.pageUnits, page: pageIndex),
+      saved: AnchoredAnnotations.compose(
+        annotations.strokes(title: score.title),
+        frameOfBar: { bar in frameForAnnotations(bar: bar, page: page, pageIndex: pageIndex) },
+        scale: scale),
       tool: AnnotationTool(rawValue: annotationTool) ?? .pen,
       onChange: { data in
-        annotations.save(
-          data, title: score.title, units: controller.pageUnits, page: pageIndex)
+        saveAnnotations(data, page: page, pageIndex: pageIndex, scale: scale)
       }
     )
     .id("\(score.title)|\(controller.pageUnits)|\(pageIndex)")
+    #endif
+  }
+
+  /// A bar's box for the annotation anchors — the page itself for the
+  /// off-staff sentinel.
+  private func frameForAnnotations(bar: Int, page: EngravedPage, pageIndex: Int) -> CGRect? {
+    #if canImport(UIKit) && canImport(PencilKit)
+    if bar == AnchoredAnnotations.pageBar(pageIndex) {
+      return CGRect(origin: .zero, size: page.size)
+    }
+    #endif
+    if bar < 0 { return nil }
+    return controller.frameOfBar(bar, pageIndex: pageIndex)
+  }
+
+  /// Re-hangs this page's strokes on their bars and keeps the others.
+  private func saveAnnotations(_ data: Data, page: EngravedPage, pageIndex: Int, scale: CGFloat) {
+    #if canImport(UIKit) && canImport(PencilKit)
+    let onThisPage = AnchoredAnnotations.decompose(
+      data, scale: scale,
+      barAt: { point in
+        guard let bar = controller.bar(atPagePoint: point, pageIndex: pageIndex),
+          let frame = controller.frameOfBar(bar, pageIndex: pageIndex)
+        else {
+          return (AnchoredAnnotations.pageBar(pageIndex), CGRect(origin: .zero, size: page.size))
+        }
+        return (bar, frame)
+      })
+
+    // The other pages' strokes stay exactly as they are.
+    let elsewhere = annotations.strokes(title: score.title)
+      .filter { anchored in
+        frameForAnnotations(bar: anchored.bar, page: page, pageIndex: pageIndex) == nil
+      }
+
+    annotations.save(elsewhere + onThisPage, title: score.title)
     #endif
   }
 

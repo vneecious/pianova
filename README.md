@@ -584,9 +584,11 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      valor); mudam a leitura, e leitura é o que a página serve.
 131. A partitura aceita **anotações à caneta**: a Apple Pencil desenha sobre
      a página a qualquer momento, o dedo nunca desenha — dedo rola, seleciona
-     e toca, como sempre. As anotações **persistem por peça e por zoom**
-     (a página que reflui é outra página), e o botão Anotar traz a paleta de
-     ferramentas para trocar tinta ou apagar.
+     e toca, como sempre. Cada traço é **ancorado ao compasso sob ele**,
+     guardado relativo à caixa desse compasso — e reaparece com ele em
+     **qualquer zoom**: a página que reflui é outra página, mas o compasso é
+     o mesmo, e um círculo no compasso 12 pertence ao compasso 12. O botão
+     Anotar traz a paleta de ferramentas para trocar tinta ou apagar.
 132. Os **sinais escritos na nota** — staccato, acento, tenuto e o trilo —
      atravessam o cano e são desenhados onde a edição os pôs. Como toda
      notação de leitura, não mudam o julgamento: o trilo é ornamento e
