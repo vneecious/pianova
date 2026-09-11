@@ -513,10 +513,12 @@ servir ao segundo e permitir o primeiro, e não o contrário.
 115. A **pinça é uma lupa e só**: aproxima e afasta o que está na tela —
      anotações juntas — e não mexe em nada; soltar não regrava, não reflui,
      não perde lugar. O **tamanho da partitura** é outro assunto: um ajuste
-     de acessibilidade em **degraus** (A− / A+), como o tamanho de letra de
-     um leitor. Mudar o tamanho regrava e reflui a página; o degrau escolhido
-     é **global e lembrado** — toda peça abre no tamanho configurado por
-     último.
+     de acessibilidade em **degraus**: um botão **A** abre um popover com um
+     slider dos tamanhos, do A pequeno ao A grande, como o tamanho de letra
+     de um leitor. Mudar o tamanho regrava e reflui a página; o degrau
+     escolhido é **global e lembrado** — toda peça abre no tamanho
+     configurado por último. O próprio popover lembra onde as anotações
+     moram.
 116. A tinta da página é **desenhada uma vez** e reaproveitada; por cima dela
      só se redesenha o que muda — destaques, seleção, alças. Uma peça longa
      não pode custar a tela inteira a cada tecla.
