@@ -555,10 +555,13 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      peça inteira por causa dela era pior. O importador preserva o ornamento
      ancorado à nota que ele decora — com a digitação que ele carrega e a
      ligadurinha até a nota real — e a gravura o desenha miúdo, como o
-     impresso. O julgamento não o vê: a ponte com a gravura remove os
-     ornamentos do mapa de eventos e recola a nota decorada no tempo escrito,
-     para que destaque e cobrança sigam casados coluna a coluna — execução de
-     ornamento continua assunto para depois.
+     impresso. A ligadura que o arquivo abre na grace e fecha na nota real
+     **é** a ligadurinha — o fecho dela pertence ao ornamento e não rouba a
+     ligadura de frase da coluna: a que abre na própria nota real segue viva
+     até onde a edição a levar. O julgamento não vê nada disso: a ponte com
+     a gravura remove os ornamentos do mapa de eventos e recola a nota
+     decorada no tempo escrito, para que destaque e cobrança sigam casados
+     coluna a coluna — execução de ornamento continua assunto para depois.
 128. O **pedal escrito atravessa o cano inteiro** e é desenhado como os
      **sinais clássicos**: Ped. onde pisa, o asterisco onde solta — e cada um
      no seu instante: o asterisco que a edição pôs no **fim do compasso**

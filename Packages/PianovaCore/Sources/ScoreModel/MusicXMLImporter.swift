@@ -210,10 +210,16 @@ public enum MusicXMLImporter {
 
       // The ornaments written at this moment, in file order, each carrying
       // its own fingering (rule 127).
-      let ornaments = events.filter { $0.isGrace && $0.start == moment }
-        .compactMap { raw in
-          raw.pitches.first.map { GraceNote(pitch: $0, finger: raw.fingers.first ?? 0) }
-        }
+      let ornamentEvents = events.filter { $0.isGrace && $0.start == moment }
+      let ornaments = ornamentEvents.compactMap { raw in
+        raw.pitches.first.map { GraceNote(pitch: $0, finger: raw.fingers.first ?? 0) }
+      }
+
+      // A slur the file opens on a grace closes on the note it decorates —
+      // that little arc IS the ornament's and is drawn with it (rule 127).
+      // Its stop must not steal the column's phrase slur: the one opening on
+      // the decorated note itself runs on to wherever the edition takes it.
+      let graceOpensSlur = ornamentEvents.contains { $0.slurStart }
 
       // Fingering rides its pitch through the merge and the sort. Zero means
       // "none written on this one", which keeps a partially fingered chord
@@ -253,7 +259,7 @@ public enum MusicXMLImporter {
           pedalLine: marked.contains { $0.pedalLine },
           ottava: marked.compactMap(\.ottava).first,
           slurStart: marked.contains { $0.slurStart },
-          slurStop: marked.contains { $0.slurStop },
+          slurStop: !graceOpensSlur && marked.contains { $0.slurStop },
           tupletStart: marked.contains { $0.tupletStart },
           tupletStop: marked.contains { $0.tupletStop },
           beam: struck.compactMap(\.beam).first,

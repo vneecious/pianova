@@ -365,6 +365,38 @@ private let twoVoices = """
   #expect(notes[1].graces.isEmpty)
 }
 
+/// Rule 127 — o fecho da ligadurinha da grace não rouba a ligadura de
+/// frase: a que abre na nota decorada segue até a nota seguinte.
+@Test func aGraceSlurDoesNotStealThePhraseSlur() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>4</divisions></attributes>
+      <note><grace/><pitch><step>E</step><octave>5</octave></pitch><type>16th</type>
+        <notations><slur type="start" number="1"/></notations></note>
+      <note><grace/><pitch><step>F</step><octave>5</octave></pitch><type>16th</type></note>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>8</duration>
+        <type>half</type>
+        <notations><slur type="stop" number="1"/><slur type="start" number="1"/></notations></note>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration>
+        <type>half</type><notations><slur type="stop" number="1"/></notations></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  let notes = try #require(score.rightHand.measures.first?.notes)
+
+  #expect(notes[0].slurStart, "a ligadura de frase abre na nota decorada")
+  #expect(!notes[0].slurStop, "o fecho da ligadurinha é do ornamento, não da coluna")
+  #expect(notes[1].slurStop, "a frase fecha na nota seguinte")
+
+  // E na exportação a ligadura de frase sai inteira: start na decorada,
+  // stop na seguinte — além da ligadurinha sintetizada (número 2).
+  let out = MusicXMLExporter.musicXML(for: score)
+  #expect(out.contains("<slur type=\"start\" number=\"1\"/>"))
+  #expect(out.components(separatedBy: "<slur type=\"stop\" number=\"1\"/>").count - 1 == 1)
+}
+
 /// Rule 128 — o estilo de linha do pedal sobrevive à importação.
 @Test func pedalLineStyleSurvivesImport() throws {
   let xml = """
