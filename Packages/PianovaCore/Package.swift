@@ -8,6 +8,7 @@ let package = Package(
     .library(name: "ScoreModel", targets: ["ScoreModel"]),
     .library(name: "ExerciseEngine", targets: ["ExerciseEngine"]),
     .library(name: "Engraving", targets: ["Engraving"]),
+    .library(name: "EngravingVerovio", targets: ["EngravingVerovio"]),
     .library(name: "MIDIInput", targets: ["MIDIInput"]),
     .library(name: "NoteQuiz", targets: ["NoteQuiz"]),
     .library(name: "Course", targets: ["Course"]),
@@ -15,12 +16,30 @@ let package = Package(
     .library(name: "Progress", targets: ["Progress"]),
     .library(name: "PianovaUI", targets: ["PianovaUI"]),
   ],
+  dependencies: [
+    // The engraver. Official Swift package; iOS 16+ and macOS 11+.
+    .package(url: "https://github.com/rism-digital/verovio.git", branch: "develop")
+  ],
   targets: [
     .target(name: "ScoreModel"),
     .target(name: "ExerciseEngine", dependencies: ["ScoreModel"]),
     .target(name: "MIDIInput", dependencies: ["ScoreModel"]),
     .target(name: "NoteQuiz", dependencies: ["ScoreModel"]),
+    // Pure Swift: the drawable page, the SVG reader, and the engraver's
+    // interface. Anything may import this.
     .target(name: "Engraving", dependencies: ["ScoreModel"]),
+
+    // The engraver itself is C++, and Swift's interop is viral: every module
+    // that can see it must be built for it. Keeping it in one target that
+    // nothing else imports is what stops that reaching the app.
+    .target(
+      name: "EngravingVerovio",
+      dependencies: [
+        "Engraving",
+        "ScoreModel",
+        .product(name: "VerovioToolkit", package: "verovio"),
+      ],
+      swiftSettings: [.interoperabilityMode(.Cxx)]),
     .target(name: "Course", dependencies: ["ScoreModel"]),
     .target(
       name: "Sound",
@@ -32,7 +51,8 @@ let package = Package(
     .target(
       name: "PianovaUI",
       dependencies: [
-        "Course", "ExerciseEngine", "MIDIInput", "NoteQuiz", "Progress", "ScoreModel", "Sound",
+        "Course", "Engraving", "ExerciseEngine", "MIDIInput", "NoteQuiz", "Progress",
+        "ScoreModel", "Sound",
       ],
       resources: [.process("Resources")]),
     .executableTarget(

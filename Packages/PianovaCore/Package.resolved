@@ -1,0 +1,15 @@
+{
+  "originHash" : "b2cf18831fb8565f145fe571deace61209346375d4fa656c0894fce501a51ebb",
+  "pins" : [
+    {
+      "identity" : "verovio",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/rism-digital/verovio.git",
+      "state" : {
+        "branch" : "develop",
+        "revision" : "e8389db03c974d9cf31412a19bdf30c0e55ccd22"
+      }
+    }
+  ],
+  "version" : 3
+}
