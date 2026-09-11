@@ -5,6 +5,10 @@ import Sound
 import SwiftUI
 import UniformTypeIdentifiers
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 /// The app shell: play, practise, and the trail.
 ///
 /// Three places, in the order the player lives in them. Playing pieces is the
@@ -34,6 +38,7 @@ public struct RootView: View {
   @ObservedObject private var hub: MIDIHub
 
   @State private var screen: Screen = .play
+  @Environment(\.scenePhase) private var scenePhase
   @State private var unlocksEverything = false
   @Environment(\.colorScheme) private var colorScheme
 
@@ -71,7 +76,21 @@ public struct RootView: View {
       hub.onInstrumentChanged = { tones.connectInstrument() }
       hub.start()
       tones.connectInstrument()
+      keepScreenAwake(true)
     }
+    // The system counts only touches on the glass as activity, and practising
+    // happens on the piano — the iPad slept mid-exercise. Awake while the app
+    // is up; back to normal the moment it leaves the front.
+    .onChange(of: scenePhase) { _, phase in
+      keepScreenAwake(phase == .active)
+    }
+  }
+
+  /// Keeps the display on while practising, where no finger touches the glass.
+  private func keepScreenAwake(_ awake: Bool) {
+    #if canImport(UIKit)
+    UIApplication.shared.isIdleTimerDisabled = awake
+    #endif
   }
 
   /// Trail state, rebuilt from the stored profile each time it is read.

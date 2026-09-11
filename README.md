@@ -532,6 +532,9 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      praticar moram dentro de Praticar, não na navegação.
 120. O app **abre em Tocar**. Tocar música é o motivo de estudar piano; abrir
      no curso era abrir no meio.
+121. Com o app aberto, **a tela não dorme**. O sistema só conta toques no
+     vidro como atividade, e quem pratica toca no piano — o iPad apagava no
+     meio do exercício. Em segundo plano, o descanso volta ao normal.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.
