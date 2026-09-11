@@ -155,3 +155,56 @@ private func parsedPage() -> EngravedPage? { EngravedPageParser.page(from: sampl
   #expect(page?.shapes.first?.noteID == nil)
   #expect(page?.shapes.first?.elementID == "bar-1")
 }
+
+// MARK: - Rolagem por sistema
+
+/// Uma página com dois sistemas, cada um com uma nota em cada clave.
+private let twoSystems = """
+  <svg><svg class="definition-scale" viewBox="0 0 1000 1000">
+    <g id="sys-1" class="system">
+      <g id="n-alto" class="note"><path d="M100 100 L110 100"/></g>
+      <g id="n-baixo" class="note"><path d="M120 260 L130 260"/></g>
+    </g>
+    <g id="sys-2" class="system">
+      <g id="n-2" class="note"><path d="M100 600 L110 600"/></g>
+    </g>
+  </svg></svg>
+  """
+
+/// Notas de mãos diferentes no mesmo sistema pertencem ao mesmo sistema.
+///
+/// É isso que impede a página de subir e descer: a esquerda está no pé do
+/// sistema e a direita no topo, e seguir a nota faria a página balançar a cada
+/// troca de mão.
+@Test func bothHandsShareASystem() {
+  let page = EngravedPageParser.page(from: twoSystems)
+
+  #expect(page?.system(containing: "n-alto") == "sys-1")
+  #expect(page?.system(containing: "n-baixo") == "sys-1")
+  #expect(page?.system(containing: "n-2") == "sys-2")
+}
+
+/// Os sistemas saem de cima para baixo, que é a ordem de leitura.
+@Test func systemsComeInReadingOrder() throws {
+  let page = try #require(EngravedPageParser.page(from: twoSystems))
+
+  #expect(page.systems.map(\.id) == ["sys-1", "sys-2"])
+  #expect(try #require(page.systems.first).frame.minY < #require(page.systems.last).frame.minY)
+}
+
+/// O contorno de um sistema cobre as duas claves dele.
+@Test func aSystemFrameCoversBothStaves() throws {
+  let page = try #require(EngravedPageParser.page(from: twoSystems))
+  let first = try #require(page.systems.first).frame
+
+  #expect(first.minY <= 100)
+  #expect(first.maxY >= 260, "o pé do sistema é a mão esquerda")
+}
+
+/// Uma página sem sistemas marcados não inventa nenhum.
+@Test func aPageWithoutSystemsHasNone() throws {
+  let page = try #require(parsedPage())
+
+  #expect(page.systems.isEmpty)
+  #expect(page.system(containing: "note-1") == nil)
+}

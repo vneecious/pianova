@@ -29,6 +29,13 @@ public struct EngravedShape: Equatable {
   /// their own: highlighting by element alone paints the note head and leaves
   /// the rest of the note in the old colour.
   public let noteID: String?
+
+  /// Identifier of the system this sits in.
+  ///
+  /// What the page scrolls by. Following the note instead makes the page rise
+  /// and fall with every change of hand, because the left hand sits at the foot
+  /// of a system and the right at its top.
+  public let systemID: String?
 }
 
 /// A page of engraved music, ready to draw.
@@ -41,6 +48,29 @@ public struct EngravedPage: Equatable {
 
   /// Where a given element sits, for scrolling to it or drawing over it.
   /// - Parameter id: The element identifier.
+  /// - Returns: Its bounding box, or `nil` if it is not on this page.
+  /// The systems on this page, top to bottom, with where each sits.
+  public var systems: [(id: String, frame: CGRect)] {
+    var boxes: [String: CGRect] = [:]
+
+    for shape in shapes {
+      guard let system = shape.systemID else { continue }
+      let box = shape.path.boundingBoxOfPath
+      boxes[system] = boxes[system].map { $0.union(box) } ?? box
+    }
+
+    return boxes.map { (id: $0.key, frame: $0.value) }.sorted { $0.frame.minY < $1.frame.minY }
+  }
+
+  /// Which system a given element was drawn in.
+  /// - Parameter id: A note or element identifier.
+  /// - Returns: The system's identifier, or `nil` if it is not on this page.
+  public func system(containing id: String) -> String? {
+    shapes.first { $0.noteID == id || $0.elementID == id }?.systemID
+  }
+
+  /// Where a given element sits, for scrolling to it or drawing over it.
+  /// - Parameter id: A note or element identifier.
   /// - Returns: Its bounding box, or `nil` if it is not on this page.
   public func frame(of id: String) -> CGRect? {
     let boxes = shapes.filter { $0.noteID == id || $0.elementID == id }
@@ -64,6 +94,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
   private var ids: [String?] = [nil]
   private var kinds: [String?] = [nil]
   private var notes: [String?] = [nil]
+  private var systemStack: [String?] = [nil]
 
   private var definingSymbol: String?
   private var symbolPath = CGMutablePath()
@@ -107,8 +138,13 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
 
     // Everything inside a `note` belongs to that note, whatever identifiers it
     // carries of its own.
-    let isNote = (attributes["class"] ?? "").split(separator: " ").contains("note")
+    let classes = (attributes["class"] ?? "").split(separator: " ")
+    let isNote = classes.contains("note")
     notes.append(isNote ? (attributes["id"] ?? notes.last ?? nil) : (notes.last ?? nil))
+
+    let isSystem = classes.contains("system")
+    systemStack.append(
+      isSystem ? (attributes["id"] ?? systemStack.last ?? nil) : (systemStack.last ?? nil))
 
     switch name {
     case "g":
@@ -134,7 +170,8 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
             strokeWidth: CGFloat(width) * scaleOf(transform),
             elementID: ids.last ?? nil,
             kind: kinds.last ?? nil,
-            noteID: notes.last ?? nil))
+            noteID: notes.last ?? nil,
+            systemID: systemStack.last ?? nil))
       }
 
     case "use":
@@ -147,7 +184,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
         EngravedShape(
           path: placed, isFilled: true, strokeWidth: 0,
           elementID: ids.last ?? nil, kind: kinds.last ?? nil,
-          noteID: notes.last ?? nil))
+          noteID: notes.last ?? nil, systemID: systemStack.last ?? nil))
 
     case "defs":
       isInsideDefs = true
@@ -177,6 +214,7 @@ public final class EngravedPageParser: NSObject, XMLParserDelegate {
     if ids.count > 1 { ids.removeLast() }
     if kinds.count > 1 { kinds.removeLast() }
     if notes.count > 1 { notes.removeLast() }
+    if systemStack.count > 1 { systemStack.removeLast() }
   }
 
   private var isInsideDefs = false

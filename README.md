@@ -462,6 +462,10 @@ representa isso. Competir com um gravador de verdade não é trabalho de semanas
     a página rola sozinha para mantê-la visível.
 100. Uma peça de várias páginas mostra **todas**, empilhadas, e não só a
      primeira.
+101. A rolagem acompanha o **sistema**, nunca a nota. Seguir a nota faz a página
+     subir e descer a cada troca de mão — a esquerda está no pé do sistema e a
+     direita no topo — e o que se lê fica pulando.
+102. Enquanto o cursor está **dentro do sistema visível**, a página não se mexe.
 
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o

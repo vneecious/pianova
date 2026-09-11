@@ -59,12 +59,11 @@ struct EngravedPieceView: View {
     }
   }
 
-  /// How tall one scroll anchor band is, in page units.
+  /// The system the page is currently showing.
   ///
-  /// The page is banded so the cursor can be followed *within* a page. Scrolling
-  /// to the page itself centres the whole thing, which on the very first note
-  /// means jumping to the middle of the piece.
-  private static let bandHeight: CGFloat = 400
+  /// Held so the page only moves when the cursor leaves it. Scrolling on every
+  /// note makes the page rise and fall with each change of hand.
+  @State private var shownSystem: String?
 
   /// Every page, stacked, with the cursor kept in view.
   private var pages: some View {
@@ -79,44 +78,46 @@ struct EngravedPieceView: View {
                 if let column = controller.column(of: id) { onPickStart?(column) }
               }
             )
-            .overlay(alignment: .top) { anchors(for: page, page: index) }
+            .overlay(alignment: .top) { systemAnchors(for: page) }
             .id(index)
           }
         }
         .padding(.horizontal, 8)
       }
       .onChange(of: controller.focus) { _, id in
-        guard let id, let target = anchor(of: id) else { return }
-        withAnimation(.easeOut(duration: 0.3)) { scroller.scrollTo(target, anchor: .center) }
+        guard let id, let system = system(containing: id) else { return }
+
+        // Only when the cursor leaves the system on screen. Inside it, the
+        // reader's eye does the moving and the page stays put.
+        guard system != shownSystem else { return }
+        shownSystem = system
+
+        withAnimation(.easeInOut(duration: 0.45)) {
+          scroller.scrollTo(system, anchor: .top)
+        }
       }
     }
   }
 
-  /// Invisible markers down a page, so a note can be scrolled to precisely.
-  private func anchors(for engraved: EngravedPage, page index: Int) -> some View {
-    let bands = max(Int(engraved.size.height / Self.bandHeight), 1)
+  /// An invisible marker at the top of each system, to scroll to.
+  private func systemAnchors(for engraved: EngravedPage) -> some View {
+    GeometryReader { proxy in
+      let scale = proxy.size.height / max(engraved.size.height, 1)
 
-    return GeometryReader { proxy in
-      VStack(spacing: 0) {
-        ForEach(0..<bands, id: \.self) { band in
-          Color.clear
-            .frame(height: proxy.size.height / CGFloat(bands))
-            .id("p\(index)-b\(band)")
-        }
+      ForEach(engraved.systems, id: \.id) { system in
+        Color.clear
+          .frame(height: 1)
+          .id(system.id)
+          // A little above the system, so the line being read is not pinned
+          // to the very edge of the screen.
+          .offset(y: max(system.frame.minY * scale - 24, 0))
       }
     }
     .allowsHitTesting(false)
   }
 
-  /// Which marker sits nearest a note.
-  private func anchor(of id: String) -> String? {
-    for (index, engraved) in controller.pages.enumerated() {
-      guard let frame = engraved.frame(of: id) else { continue }
-
-      let bands = max(Int(engraved.size.height / Self.bandHeight), 1)
-      let band = Int(frame.midY / engraved.size.height * CGFloat(bands))
-      return "p\(index)-b\(min(max(band, 0), bands - 1))"
-    }
-    return nil
+  /// Which system a note was drawn in, across every page.
+  private func system(containing id: String) -> String? {
+    controller.pages.compactMap { $0.system(containing: id) }.first
   }
 }
