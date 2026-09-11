@@ -477,29 +477,33 @@ Tocar a peça do início ao fim é **performance**. Estudo é trabalho cirúrgic
 dois a quatro compassos, uma mão de cada vez, devagar, repetindo. O app precisa
 servir ao segundo e permitir o primeiro, e não o contrário.
 
-105. Um **trecho** é escolhido como se escolhem fotos: **segurar** num compasso
-     entra em modo de seleção e marca aquele compasso; daí em diante, tocar
-     noutro estende a seleção. A peça inteira continua na tela enquanto se
-     escolhe.
-106. Um trecho é sempre **contíguo**. Marcado o 1 e tocado o 7, ficam
-     selecionados os compassos de 1 a 7 — não se estuda o 1 e o 7 soltos, porque
-     o que se está treinando é a passagem de um ao outro.
-107. Fora do modo de seleção, tocar num compasso apenas escolhe **de onde
-     ouvir** — o gesto curto não muda o que está sendo estudado.
-108. Confirmada a seleção, entra-se no **modo estudo, sem distração**: só os
-     compassos escolhidos ficam na tela, regravados. Estudo é trabalho de
-     lupa, e o resto da peça na tela é o que a lupa existe para tirar.
-109. No modo estudo, pode-se trabalhar **uma mão só**. A mão em descanso fica
+105. Um **trecho** é escolhido como se seleciona texto no iOS: **segurar** num
+     compasso entra em modo de seleção e marca aquele compasso, com **alças
+     nas duas pontas**. A peça inteira continua na tela enquanto se escolhe.
+106. Um trecho é sempre **contíguo**. Do 1 ao 7 vai tudo que há entre eles —
+     não se estuda o 1 e o 7 soltos, porque o que se treina é a passagem de um
+     ao outro.
+107. Ajustar é **arrastar uma alça** — com um tique háptico a cada compasso —
+     ou tocar num compasso de fora para estender a seleção até ele. Nenhum
+     gesto de ajuste confirma nada: ajustar e confirmar são atos diferentes.
+108. A confirmação é o botão **Estudar**, flutuando junto à seleção como o
+     menu de edição do iOS flutua junto ao texto. É ele que entra no modo
+     estudo.
+109. O modo estudo é **sem distração**: só os compassos escolhidos ficam na
+     tela, regravados. Estudo é trabalho de lupa, e o resto da peça na tela é
+     o que a lupa existe para tirar.
+110. No modo estudo, pode-se trabalhar **uma mão só**. A mão em descanso fica
      **esmaecida na pauta**, não removida — ela é a referência do que a outra
-     tem de encaixar. O esmaecido é sinal exclusivo de mão em descanso: nada
-     mais na página fica cinza.
-110. Um trecho em estudo **repete sozinho** ao terminar, para que a repetição
+     tem de encaixar. O esmaecido é sinal exclusivo de mão em descanso.
+111. Um trecho em estudo **repete sozinho** ao terminar, para que a repetição
      não custe um gesto a cada volta.
-111. Enquanto há seleção ou estudo, o botão de sair da peça **some**: sair do
-     trecho e sair da peça são gestos diferentes, e só um deles fica visível
-     de cada vez.
-112. Sempre há um caminho de volta para a **peça inteira**, num gesto.
-113. O preview toca **o que está em estudo** — aqueles compassos, aquela mão.
+112. Fora do modo de seleção, tocar num compasso apenas escolhe **de onde
+     ouvir**. Enquanto há seleção ou estudo, o botão de sair da peça some:
+     sair do trecho e sair da peça são gestos diferentes.
+113. Sempre há um caminho de volta para a **peça inteira**, num gesto — e a
+     volta é **imediata**. A peça inteira já foi gravada uma vez; sair do
+     estudo a restaura, não a regrava.
+114. O preview toca **o que está em estudo** — aqueles compassos, aquela mão.
 
 > **Por que não uma biblioteca pronta de gravação.** Não existe uma madura em
 > Swift nativo. As alternativas são o Verovio (C++, renderiza para SVG) e o

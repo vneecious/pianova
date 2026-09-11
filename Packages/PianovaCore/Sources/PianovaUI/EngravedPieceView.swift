@@ -46,6 +46,7 @@ struct EngravedPieceView: View {
       // study engraves the passage alone, everything else engraves the piece.
       if was == .studying || now == .studying { reload() }
     }
+    .onChange(of: session.range) { _, _ in refreshSelection() }
     .onChange(of: session.hands) { _, hands in
       controller.restrict(to: nil, hands: hands)
     }
@@ -155,10 +156,16 @@ struct EngravedPieceView: View {
               onTap: { id in tapped(id) },
               onLongPress: { id in hold(id) },
               selectedMeasures: selectedMeasures,
+              leadingHandle: handleFrame(end: \.first, pageIndex: index),
+              trailingHandle: handleFrame(end: \.last, pageIndex: index),
+              onHandleDrag: { point, isLeading, ended in
+                dragHandle(to: point, isLeading: isLeading, ended: ended, pageIndex: index)
+              },
               quietStaff: controller.quietStaff,
               width: drawnWidth
             )
             .overlay(alignment: .top) { systemAnchors(for: page) }
+            .overlay(alignment: .topLeading) { studyPill(for: page, pageIndex: index) }
             .padding(.vertical, 18)
             .asPage(colorScheme)
             .id(index)
@@ -206,10 +213,11 @@ struct EngravedPieceView: View {
     .allowsHitTesting(false)
   }
 
-  /// A short tap: pick where to listen from, or close the passage being chosen.
+  /// A short tap: pick where to listen from, or widen the selection to here.
   ///
-  /// The same division Photos makes. Browsing, a tap means "here"; selecting,
-  /// it means "as far as here" — and that tap is the one that enters study.
+  /// The same division text selection makes: while selecting, a tap adjusts
+  /// and only adjusts — confirming is the floating button's job, never a side
+  /// effect of a tap.
   private func tapped(_ id: String) {
     switch session.phase {
     case .browsing:
@@ -217,12 +225,82 @@ struct EngravedPieceView: View {
 
     case .selecting:
       guard let bar = controller.bar(of: id) else { return }
-      Haptics.selected()
-      withAnimation(.easeOut(duration: 0.22)) { session.choose(bar) }
+      let before = session.range
+      withAnimation(.easeOut(duration: 0.18)) { session.extend(to: bar) }
+      if session.range != before { Haptics.selected() }
 
     case .studying:
       break
     }
+  }
+
+  /// Follows a handle drag: the bar under the finger becomes that end.
+  private func dragHandle(to point: CGPoint, isLeading: Bool, ended: Bool, pageIndex: Int) {
+    guard session.phase == .selecting, let range = session.range,
+      let bar = controller.bar(atPagePoint: point, pageIndex: pageIndex)
+    else { return }
+
+    let resized =
+      isLeading
+      ? PracticeRange(first: bar, last: range.last)
+      : PracticeRange(first: range.first, last: bar)
+
+    guard resized != range else { return }
+    Haptics.selected()
+    withAnimation(.easeOut(duration: 0.12)) { session.resize(resized) }
+  }
+
+  /// The frame for one selection handle on one page, while selecting.
+  private func handleFrame(end: KeyPath<PracticeRange, Int>, pageIndex: Int) -> CGRect? {
+    guard session.phase == .selecting, let range = session.range else { return nil }
+    return controller.frameOfBar(range[keyPath: end], pageIndex: pageIndex)
+  }
+
+  /// The floating confirmation, hovering by the selection as an edit menu
+  /// does.
+  @ViewBuilder
+  private func studyPill(for page: EngravedPage, pageIndex: Int) -> some View {
+    if session.phase == .selecting, let range = session.range,
+      let union = unionFrame(of: range, pageIndex: pageIndex)
+    {
+      GeometryReader { proxy in
+        let scale = proxy.size.width / max(page.size.width, 1)
+        let above = union.minY * scale - 34
+        let x = min(max(union.midX * scale, 90), proxy.size.width - 90)
+
+        Button {
+          withAnimation(.easeOut(duration: 0.22)) { session.commit() }
+        } label: {
+          HStack(spacing: 8) {
+            Text("Estudar")
+              .font(.system(size: 14, weight: .semibold))
+              .foregroundStyle(Theme.accent)
+            Text(range.count == 1 ? "1 compasso" : "\(range.count) compassos")
+              .font(.system(size: 12))
+              .foregroundStyle(.secondary)
+          }
+          .padding(.horizontal, 14)
+          .padding(.vertical, 9)
+          .background(.regularMaterial, in: Capsule())
+          .shadow(color: Theme.shadow(colorScheme), radius: 10, y: 3)
+        }
+        .buttonStyle(.plain)
+        // Above the selection, as the edit menu sits above text — below it
+        // only when there is no room above.
+        .position(x: x, y: above > 24 ? above : union.maxY * scale + 34)
+      }
+      .allowsHitTesting(true)
+    }
+  }
+
+  /// Every selected bar's box on one page, joined.
+  private func unionFrame(of range: PracticeRange, pageIndex: Int) -> CGRect? {
+    let boxes = (range.first...range.last)
+      .compactMap {
+        controller.frameOfBar($0, pageIndex: pageIndex)
+      }
+    guard let first = boxes.first else { return nil }
+    return boxes.dropFirst().reduce(first) { $0.union($1) }
   }
 
   /// A long press: begin choosing a passage at this bar.

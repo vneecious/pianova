@@ -130,7 +130,7 @@ struct PieceView: View {
   private var title: String {
     switch session.phase {
     case .browsing: return score.title
-    case .selecting: return "Escolhendo trecho"
+    case .selecting: return session.range?.label ?? "Escolhendo trecho"
     case .studying: return session.range?.label ?? score.title
     }
   }
@@ -141,7 +141,7 @@ struct PieceView: View {
     case .browsing:
       return "Segure num compasso para estudar um trecho."
     case .selecting:
-      return "Toque no último compasso do trecho — ou no mesmo, para estudar só ele."
+      return "Arraste as alças ou toque noutro compasso. Estudar confirma."
     case .studying:
       return "Só o trecho está na tela. Conclua para voltar à peça."
     }

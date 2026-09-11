@@ -25,6 +25,18 @@ struct EngravedScoreView: View {
   /// Bars to pick out, as an editor marks what you selected.
   var selectedMeasures: Set<String> = []
 
+  /// The selection's end frames, in page coordinates, for the grab handles.
+  ///
+  /// The way iOS marks a range of anything — text, a recording, a region:
+  /// a handle at each end, dragged to adjust. Their presence is also what
+  /// says "you are selecting", with no mode label to read.
+  var leadingHandle: CGRect?
+  var trailingHandle: CGRect?
+
+  /// Called as a handle is dragged: the point in page coordinates, whether it
+  /// is the leading handle, and whether the drag just ended.
+  var onHandleDrag: ((CGPoint, Bool, Bool) -> Void)?
+
   /// The staff not being practised, drawn faded.
   ///
   /// Faded and not removed: the other hand is the reference for what this one
@@ -80,6 +92,7 @@ struct EngravedScoreView: View {
       }
     }
     .frame(width: width, height: height)
+    .overlay { handles(scale: scale) }
     .contentShape(Rectangle())
     .onTapGesture { location in
       guard let onTap, let id = element(at: location) else { return }
@@ -96,6 +109,52 @@ struct EngravedScoreView: View {
           else { return }
 
           onLongPress(id)
+        }
+    )
+  }
+
+  /// The grab handles at the selection's ends, draggable across bars.
+  @ViewBuilder
+  private func handles(scale: CGFloat) -> some View {
+    if let leadingHandle {
+      handle(over: leadingHandle, scale: scale, isLeading: true)
+    }
+    if let trailingHandle {
+      handle(over: trailingHandle, scale: scale, isLeading: false)
+    }
+  }
+
+  /// One handle: a stem with a knob, like the text-selection grab points.
+  private func handle(over frame: CGRect, scale: CGFloat, isLeading: Bool) -> some View {
+    let barHeight = frame.height * scale + 16
+    let x = (isLeading ? frame.minX : frame.maxX) * scale
+    let y = frame.midY * scale
+
+    return ZStack {
+      Capsule()
+        .fill(Theme.accent)
+        .frame(width: 3, height: barHeight)
+      Circle()
+        .fill(Theme.accent)
+        .frame(width: 11, height: 11)
+        .offset(y: (isLeading ? -1 : 1) * (barHeight / 2 + 4))
+    }
+    // A finger is not a cursor: the visible handle is thin, the touchable
+    // area is not.
+    .frame(width: 44, height: barHeight + 44)
+    .contentShape(Rectangle())
+    .position(x: x, y: y)
+    .gesture(
+      DragGesture(minimumDistance: 0)
+        .onChanged { value in
+          onHandleDrag?(
+            CGPoint(x: value.location.x / scale, y: value.location.y / scale),
+            isLeading, false)
+        }
+        .onEnded { value in
+          onHandleDrag?(
+            CGPoint(x: value.location.x / scale, y: value.location.y / scale),
+            isLeading, true)
         }
     )
   }

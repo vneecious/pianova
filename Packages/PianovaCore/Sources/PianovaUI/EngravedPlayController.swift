@@ -72,6 +72,30 @@ public final class EngravedPlayController: ObservableObject {
   /// The measures drawn in each bar, for marking a selection.
   private var measureIDsOfBar: [Int: Set<String>] = [:]
 
+  /// Each page's measures with their bar and frame, for hit-testing drags.
+  private var measureFramesByPage: [[(bar: Int, frame: CGRect)]] = []
+
+  /// Ready engravings of recent scores, so leaving study is instant.
+  ///
+  /// Tapping "Concluir" re-engraved the whole piece from scratch, seconds of
+  /// stall that read as a dead button — and the second tap landed on whatever
+  /// button appeared under the finger. The whole piece was engraved once
+  /// already; it is restored, not redone.
+  private var engravings: [(score: Score, engraved: Engraving)] = []
+
+  /// Everything one engraving produced, kept together so it can be swapped in.
+  private struct Engraving {
+    var pages: [EngravedPage]
+    var events: [EngravedEvent]
+    var columnOfEvent: [Int]
+    var staffOfEvent: [Int]
+    var barOfColumn: [Int]
+    var eventOfColumn: [Int: Int]
+    var columnOfElement: [String: Int]
+    var measureIDsOfBar: [Int: Set<String>]
+    var measureFramesByPage: [[(bar: Int, frame: CGRect)]]
+  }
+
   /// Creates an empty controller, ready to be handed a piece.
   public init() {}
 
@@ -80,6 +104,13 @@ public final class EngravedPlayController: ObservableObject {
   ///   - score: The piece.
   ///   - engraver: Who draws it.
   public func load(_ score: Score, using engraver: ScoreEngraver) {
+    if let ready = engravings.first(where: { $0.score == score }) {
+      apply(ready.engraved)
+      remember(score, ready.engraved)
+      restrict(to: nil, hands: .both)
+      return
+    }
+
     let xml = MusicXMLExporter.musicXML(for: score)
 
     guard engraver.load(musicXML: xml) else {
@@ -87,32 +118,29 @@ public final class EngravedPlayController: ObservableObject {
       return
     }
 
-    pages = (1...max(engraver.pageCount, 1)).compactMap { engraver.page($0) }
-    events = engraver.events()
+    let pages = (1...max(engraver.pageCount, 1)).compactMap { engraver.page($0) }
+    let events = engraver.events()
     failure = pages.isEmpty ? "A gravação não produziu página nenhuma." : nil
 
-    columnOfEvent = score.soundingColumns
+    let columnOfEvent = score.soundingColumns
 
     // Which hand an event belongs to comes from the score, not the drawing: the
     // upper staff's notes are the right hand's, whatever register they sit in.
     let columns = score.columns
-    staffOfEvent = columnOfEvent.map { column in
+    let staffOfEvent = columnOfEvent.map { column -> Int in
       guard columns.indices.contains(column) else { return 1 }
       return columns[column].upper.isEmpty ? 2 : 1
     }
 
-    barOfColumn = columns.indices.map { score.measureNumber(atColumn: $0) }
+    let barOfColumn = columns.indices.map { score.measureNumber(atColumn: $0) }
 
-    eventOfColumn = Dictionary(
-      columnOfEvent.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
-
-    columnOfElement = [:]
+    var columnOfElement: [String: Int] = [:]
     for (event, column) in columnOfEvent.enumerated() {
       guard events.indices.contains(event) else { continue }
       for id in events[event].elementIDs { columnOfElement[id] = column }
     }
 
-    measureIDsOfBar = [:]
+    var measureIDsOfBar: [Int: Set<String>] = [:]
     for page in pages {
       for shape in page.shapes {
         guard let measure = shape.measureID, let note = shape.noteID,
@@ -122,7 +150,90 @@ public final class EngravedPlayController: ObservableObject {
       }
     }
 
+    var barOfMeasureID: [String: Int] = [:]
+    for (bar, ids) in measureIDsOfBar {
+      for id in ids { barOfMeasureID[id] = bar }
+    }
+
+    let engraved = Engraving(
+      pages: pages,
+      events: events,
+      columnOfEvent: columnOfEvent,
+      staffOfEvent: staffOfEvent,
+      barOfColumn: barOfColumn,
+      eventOfColumn: Dictionary(
+        columnOfEvent.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first }),
+      columnOfElement: columnOfElement,
+      measureIDsOfBar: measureIDsOfBar,
+      measureFramesByPage: pages.map { page in
+        barOfMeasureID.compactMap { id, bar in
+          page.measureFrame(id).map { (bar: bar, frame: $0) }
+        }
+      })
+
+    apply(engraved)
+    remember(score, engraved)
     restrict(to: nil, hands: .both)
+  }
+
+  /// Swaps a ready engraving in.
+  private func apply(_ engraved: Engraving) {
+    pages = engraved.pages
+    events = engraved.events
+    columnOfEvent = engraved.columnOfEvent
+    staffOfEvent = engraved.staffOfEvent
+    barOfColumn = engraved.barOfColumn
+    eventOfColumn = engraved.eventOfColumn
+    columnOfElement = engraved.columnOfElement
+    measureIDsOfBar = engraved.measureIDsOfBar
+    measureFramesByPage = engraved.measureFramesByPage
+  }
+
+  /// Keeps the most recent engravings, the piece and its current passage.
+  private func remember(_ score: Score, _ engraved: Engraving) {
+    engravings.removeAll { $0.score == score }
+    engravings.insert((score, engraved), at: 0)
+    if engravings.count > 2 { engravings.removeLast(engravings.count - 2) }
+  }
+
+  /// Which bar sits under a point on a page, for dragging a handle across.
+  /// - Parameters:
+  ///   - point: A point in the page's own coordinates.
+  ///   - pageIndex: Which page it is on.
+  /// - Returns: The bar there, or the nearest one on that line of music.
+  public func bar(atPagePoint point: CGPoint, pageIndex: Int) -> Int? {
+    guard measureFramesByPage.indices.contains(pageIndex) else { return nil }
+    let frames = measureFramesByPage[pageIndex]
+
+    // The bar whose box holds the point; failing that, the nearest box whose
+    // vertical band holds it, so a drag along a system never loses the line.
+    if let hit = frames.first(where: { $0.frame.insetBy(dx: -4, dy: -12).contains(point) }) {
+      return hit.bar
+    }
+
+    return
+      frames
+      .filter { point.y >= $0.frame.minY - 20 && point.y <= $0.frame.maxY + 20 }
+      .min(by: { distance($0.frame, to: point) < distance($1.frame, to: point) })?
+      .bar
+  }
+
+  /// The frame of one bar on one page, for placing its selection handles.
+  /// - Parameters:
+  ///   - bar: The bar number.
+  ///   - pageIndex: Which page to look on.
+  /// - Returns: Its box in page coordinates, or `nil` if it is not there.
+  public func frameOfBar(_ bar: Int, pageIndex: Int) -> CGRect? {
+    guard measureFramesByPage.indices.contains(pageIndex) else { return nil }
+    let boxes = measureFramesByPage[pageIndex].filter { $0.bar == bar }.map { $0.frame }
+    guard let first = boxes.first else { return nil }
+    return boxes.dropFirst().reduce(first) { $0.union($1) }
+  }
+
+  private func distance(_ frame: CGRect, to point: CGPoint) -> CGFloat {
+    let dx = max(frame.minX - point.x, 0, point.x - frame.maxX)
+    let dy = max(frame.minY - point.y, 0, point.y - frame.maxY)
+    return dx * dx + dy * dy
   }
 
   /// The measures a passage covers on the page, for drawing it as selected.
