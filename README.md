@@ -491,8 +491,9 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      ou tocar num compasso de fora para estender a seleção até ele. Tocar
      **fora da pauta desfaz a seleção**, como tocar fora do texto. Nenhum
      gesto de ajuste confirma nada: ajustar e confirmar são atos diferentes.
-108. A confirmação é o botão **Estudar**, flutuando junto à seleção como o
-     menu de edição do iOS flutua junto ao texto. É o único caminho para o
+108. A confirmação é o botão **Estudar**, flutuando **imediatamente abaixo
+     do último compasso selecionado** — sempre aí, onde o dedo acabou de
+     estar, nunca no fim da página fora da vista. É o único caminho para o
      modo estudo — nenhum toque na pauta confirma nada por acidente.
 109. O modo estudo acontece **na própria página**: os compassos escolhidos
      ficam como estão e todo o resto da partitura **esmaece**. Mesma página,

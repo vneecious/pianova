@@ -347,13 +347,12 @@ struct EngravedPieceView: View {
         if let anchor, session.phase == .selecting, !adjusting,
           let range = session.range
         {
+          // Always right below the last selected bar (rule 108).
           let rect = proxy[anchor]
-          let above = rect.minY - 32
           let x = min(max(rect.midX, 96), proxy.size.width - 96)
-          let y = above > 40 ? above : rect.maxY + 38
 
           studyPill(for: range)
-            .position(x: x, y: max(y, 40))
+            .position(x: x, y: rect.maxY + 36)
         }
       }
     }
@@ -444,8 +443,10 @@ struct EngravedPieceView: View {
   /// Publishes where the selection sits on screen, for the pill to follow.
   @ViewBuilder
   private func selectionMarker(for page: EngravedPage, pageIndex: Int) -> some View {
+    // The pill hangs off the LAST selected bar (rule 108): right below where
+    // the finger just was, never at the far end of the page off screen.
     if session.phase == .selecting, let range = session.range,
-      let union = unionFrame(of: range, pageIndex: pageIndex)
+      let union = controller.frameOfBar(range.last, pageIndex: pageIndex)
     {
       GeometryReader { proxy in
         let scale = proxy.size.width / max(page.size.width, 1)
