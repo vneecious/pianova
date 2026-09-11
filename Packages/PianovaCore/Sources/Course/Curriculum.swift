@@ -206,6 +206,7 @@ public enum Course {
       title: "O Sol da clave de sol",
       subtitle: "A linha que dá nome à clave",
       steps: [
+        .song(Songs.fanfarra),
         .cards(clef: .treble, range: 60...67, count: 10),
         .ear(clef: .treble, range: 60...67, count: 6),
         .play(clef: .treble, range: 60...67, length: 8),
@@ -217,6 +218,7 @@ public enum Course {
       steps: [
         .reading(noteIDs: ["n-ledger"]),
         .cards(clef: .bass, range: 53...60, count: 10),
+        .song(Songs.cantoAntigo),
         .song(Songs.odeToJoy),
         .technique(Technique.threeTempos),
         .theory(count: 4),
@@ -258,6 +260,8 @@ public enum Course {
       subtitle: "Três notas de uma vez",
       steps: [
         .harmony(clef: .bass, range: 48...60, length: 5, voices: 3),
+        .song(Songs.cortejo),
+        .song(Songs.jingleBells),
         .song(Songs.newWorldTheme),
         .technique(Technique.brokenThirds),
         .theory(count: 4),
@@ -283,6 +287,7 @@ public enum Course {
       steps: [
         .reading(noteIDs: ["n-articulation"]),
         .play(clef: .bass, range: 48...60, length: 8),
+        .song(Songs.surpresa),
         .song(Songs.londonBridge),
         .technique(Technique.contraryMotion),
         .theory(count: 5),
@@ -319,6 +324,7 @@ public enum Course {
         .cards(clef: .bass, range: 48...55, count: 8),
         .song(Songs.happyBirthday),
         .song(Songs.taps),
+        .song(Songs.manha),
       ]),
     Lesson(
       id: "u6-close", unit: 6,

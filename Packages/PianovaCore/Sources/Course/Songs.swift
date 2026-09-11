@@ -23,6 +23,11 @@ public enum Songs {
   /// One bar.
   private static func m(_ notes: ScoreNote...) -> Measure { Measure(notes) }
 
+  /// Several keys struck together.
+  private static func chord(_ ps: [Int], _ v: NoteValue = .quarter) -> ScoreNote {
+    ScoreNote(pitches: ps.map { Pitch(UInt8($0)) }, duration: Duration(v))
+  }
+
   /// A left hand of one held note per bar.
   private static func drone(_ roots: [Int], _ v: NoteValue, _ dot: Bool = false) -> Part {
     Part(clef: .bass, measures: roots.map { Measure([n($0, v, dot)]) })
@@ -87,6 +92,105 @@ public enum Songs {
         m(n(65, .half), n(62, .half)),
         m(ScoreNote(pitches: [Pitch(60)], duration: .init(.whole), isTiedToNext: true)),
         m(n(60, .whole)),
+      ]))
+
+  /// A chant-style study in bass-clef reading, written for the course.
+  ///
+  /// Own composition: stepwise, unhurried, living around the bass clef's G
+  /// and F — the two notes the unit anchors the clef on.
+  public static let cantoAntigo = Score(
+    title: "Canto Antigo", composer: "Pianova",
+    rightHand: Part(
+      clef: .bass,
+      measures: [
+        m(n(55, .half), n(57, .half)),
+        m(n(59, .half), n(57, .half)),
+        m(n(55, .half), n(53, .half)),
+        m(n(55, .whole)),
+        m(n(57, .half), n(59, .half)),
+        m(n(60, .half), n(59, .half)),
+        m(n(57, .half), n(55, .half)),
+        m(n(55, .whole)),
+      ]))
+
+  /// A fanfare study anchored on the treble G, written for the course.
+  ///
+  /// Own composition: repeated notes and thirds, the shapes of a call —
+  /// and every phrase leaves from and returns to the G line.
+  public static let fanfarra = Score(
+    title: "Fanfarra", composer: "Pianova",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        m(n(67), n(67), n(64), n(67)),
+        m(n(67, .half), n(64, .half)),
+        m(n(60), n(64), n(67), n(64)),
+        m(n(67, .whole)),
+        m(n(67), n(67), n(69), n(67)),
+        m(n(65, .half), n(64, .half)),
+        m(n(62), n(64), n(65), n(62)),
+        m(n(60, .whole)),
+      ]))
+
+  /// A procession over the blocked C chord, written for the course.
+  ///
+  /// Own composition for the unit's new object: the three notes of C major
+  /// sounding together, alternating with a melody that outlines them.
+  public static let cortejo = Score(
+    title: "Cortejo", composer: "Pianova",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        m(chord([60, 64, 67], .half), chord([60, 64, 67], .half)),
+        m(n(67), n(64), n(60, .half)),
+        m(chord([60, 64, 67], .half), chord([60, 64, 67], .half)),
+        m(n(64), n(62), n(60, .half)),
+        m(n(60), n(64), n(67), n(64)),
+        m(chord([60, 64, 67], .whole)),
+        m(n(67), n(65), n(64), n(62)),
+        m(chord([60, 64, 67], .whole)),
+      ]))
+
+  /// The theme from Haydn's "Surprise" symphony, arranged for the course.
+  ///
+  /// Own simplified setting of the public-domain theme: quarters walking the
+  /// triad, and the famous jolt reduced to a plain loud arrival.
+  public static let surpresa = Score(
+    title: "Sinfonia Surpresa", composer: "Haydn",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        m(n(60), n(60), n(64), n(64)),
+        m(n(67), n(67), n(64, .half)),
+        m(n(65), n(65), n(62), n(62)),
+        m(n(59), n(59), n(55, .half)),
+        m(n(60), n(60), n(64), n(64)),
+        m(n(67), n(67), n(64, .half)),
+        m(n(65), n(62), n(59), n(62)),
+        m(n(60, .whole)),
+      ]))
+
+  /// The morning theme from Grieg's Peer Gynt, arranged for the course.
+  ///
+  /// Own setting of the public-domain melody in 6/8: pairs of eighths doing
+  /// exactly what the unit teaches them to do.
+  public static let manha = Score(
+    title: "Manhã", composer: "Grieg",
+    timeSignature: TimeSignature(beatsPerBar: 6, beatValue: .eighth),
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        m(
+          n(67, .eighth), n(64, .eighth), n(62, .eighth), n(60, .eighth), n(62, .eighth),
+          n(64, .eighth)),
+        m(
+          n(67, .eighth), n(64, .eighth), n(62, .eighth), n(60, .eighth), n(62, .eighth),
+          n(64, .eighth)),
+        m(
+          n(67, .eighth), n(64, .eighth), n(67, .eighth), n(69, .eighth), n(64, .eighth),
+          n(69, .eighth)),
+        m(n(67, .eighth), n(64, .eighth), n(62, .quarter), n(60, .eighth), n(62, .eighth)),
+        m(n(60, .quarter, true), n(60, .quarter, true)),
       ]))
 
   /// *Mary Had a Little Lamb*, a traditional melody.
@@ -597,7 +701,7 @@ public enum Songs {
   /// bar fills — which is the check that a hand-written score most needs.
   public static let all: [Score] = [
     auClairDeLaLune, auClairDeLaLuneBass, auClairDeLaLuneTwoHands, maryHadALittleLamb,
-    eveningBell,
+    eveningBell, cantoAntigo, fanfarra, cortejo, surpresa, manha,
     twinkle, frereJacques, jingleBells, lightlyRow, odeToJoy, rowYourBoat,
     newWorldTheme, londonBridge, happyBirthday, taps, reveille, auraLee,
     whenTheSaints, michaelRow, twinkleInG, odeToJoyInG, greensleeves, nobodyKnows,
