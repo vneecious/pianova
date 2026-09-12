@@ -526,6 +526,12 @@ public final class EngravedPlayController: ObservableObject {
     refresh()
   }
 
+  /// Starts the run again from the top (rule 5): the whole piece, or the
+  /// passage in study — repetition is a choice, never a punishment.
+  public func startOver() {
+    restart()
+  }
+
   /// Starts the passage again from its first note.
   private func restart() {
     session = ExerciseSession(

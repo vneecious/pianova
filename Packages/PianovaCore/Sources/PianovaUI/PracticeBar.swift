@@ -20,6 +20,9 @@ struct PracticeBar: View {
   /// it with.
   var onListen: (() -> Void)?
 
+  /// Puts the cursor back at the passage's start (rule 5).
+  var onRestart: (() -> Void)?
+
   /// Leaves the selection, where nothing else offers a way out.
   ///
   /// On the piece screen the title bar takes selection over and carries this
@@ -36,6 +39,13 @@ struct PracticeBar: View {
         .pickerStyle(.segmented)
         .labelsHidden()
         .frame(width: 190)
+      }
+
+      if let onRestart {
+        Button(action: onRestart) {
+          Label("Voltar ao início", systemImage: "arrow.counterclockwise")
+            .font(.system(size: 12, weight: .medium))
+        }
       }
 
       if let onListen {

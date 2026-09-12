@@ -31,6 +31,9 @@ struct EngravedPieceView: View {
   /// Bumped by the owner when annotations are cleared, rebirthing canvases.
   var annotationsEpoch = 0
 
+  /// Bumped by the owner's voltar-ao-início button (rule 5).
+  var restartEpoch = 0
+
   var body: some View {
     Group {
       if let failure = controller.failure {
@@ -91,6 +94,7 @@ struct EngravedPieceView: View {
     }
     .onChange(of: judgesPedal) { _, value in controller.judgesPedal = value }
     .onChange(of: scoreUnits) { _, _ in reload() }
+    .onChange(of: restartEpoch) { _, _ in controller.startOver() }
     .onAppear {
       controller.onFinished = onFinished
       controller.loops = session.loopsNow

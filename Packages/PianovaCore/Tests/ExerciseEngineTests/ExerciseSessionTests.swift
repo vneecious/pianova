@@ -69,8 +69,8 @@ private func threeNoteExercise() -> Exercise {
 }
 
 /// README › Modelo de interação — rule 4: a press outside the current item is
-/// an error, and the cursor rolls back one position.
-@Test func wrongPressRollsCursorBackOnePosition() {
+/// an error, and the cursor stays put, waiting for the right note.
+@Test func wrongPressKeepsTheCursorWhereItIs() {
   var session = ExerciseSession(exercise: threeNoteExercise())
 
   let correct = session.press(c4, at: 0)
@@ -78,8 +78,8 @@ private func threeNoteExercise() -> Exercise {
 
   #expect(correct == .advanced)
   #expect(mistake == .wrong)
-  #expect(session.cursorIndex == 0)
-  #expect(session.currentItem == ExerciseItem(c4))
+  #expect(session.cursorIndex == 1, "errar não perde o chão já conquistado")
+  #expect(session.currentItem == ExerciseItem(d4))
 }
 
 /// Wrong presses are counted, so progression can use them.
@@ -123,13 +123,11 @@ private func threeNoteExercise() -> Exercise {
 
   _ = session.press(c4, at: 0)
   let mistake = session.press(g4, at: 1)
-  let retry = session.press(c4, at: 2)
-  let second = session.press(d4, at: 3)
-  let third = session.press(e4, at: 4)
+  let retry = session.press(d4, at: 2)
+  let third = session.press(e4, at: 3)
 
   #expect(mistake == .wrong)
-  #expect(retry == .advanced)
-  #expect(second == .advanced)
+  #expect(retry == .advanced, "a nota certa depois do erro avança como sempre")
   #expect(third == .finished)
 }
 
@@ -156,8 +154,13 @@ private func threeNoteExercise() -> Exercise {
   _ = session.press(g4, at: 0)
   let partial = session.press(c4, at: 1)
   let mistake = session.press(d4, at: 1.01)
+  let cursorAfterMistake = session.cursorIndex
+  let cleanC = session.press(c4, at: 2)
+  let cleanE = session.press(e4, at: 2.01)
 
   #expect(partial == .incomplete)
   #expect(mistake == .wrong)
-  #expect(session.cursorIndex == 0)
+  #expect(cursorAfterMistake == 1, "o acorde continua sendo o item atual")
+  #expect(cleanC == .incomplete)
+  #expect(cleanE == .finished, "a nova tentativa parte de lousa limpa")
 }

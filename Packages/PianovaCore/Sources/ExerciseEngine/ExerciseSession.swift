@@ -54,12 +54,11 @@ public struct ExerciseSession {
     guard let item = currentItem else { return .finished }
 
     // Rule 4: anything outside the current item is an error, and the cursor
-    // steps back so the failed transition gets played again. Rule 5: there is
-    // no position before the first item, so the cursor stays put there.
+    // stays where it is, waiting for the right note. The staff waits;
+    // repetition is a choice (rule 5), never a punishment.
     guard item.pitches.contains(pitch) else {
       clearPending()
       mistakeCount += 1
-      cursorIndex = max(0, cursorIndex - 1)
       return .wrong
     }
 

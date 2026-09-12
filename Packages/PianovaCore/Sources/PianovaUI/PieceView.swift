@@ -32,6 +32,9 @@ struct PieceView: View {
   /// reborn empty instead of keeping their ink.
   @State private var annotationsEpoch = 0
 
+  /// Bumped by the voltar-ao-início button: repetition by choice (rule 5).
+  @State private var restartEpoch = 0
+
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       titleBar
@@ -39,7 +42,8 @@ struct PieceView: View {
       if session.phase == .studying {
         PracticeBar(
           session: session, hasBothHands: score.isTwoHanded,
-          isPlaying: preview.isPlaying, onListen: listen
+          isPlaying: preview.isPlaying, onListen: listen,
+          onRestart: { restartEpoch += 1 }
         )
         .padding(.bottom, 12)
         .transition(.move(edge: .top).combined(with: .opacity))
@@ -48,7 +52,8 @@ struct PieceView: View {
       EngravedPieceView(
         hub: hub, score: score, session: session, onFinished: onFinished,
         onPickStart: { startFrom = $0 },
-        annotationsEpoch: annotationsEpoch)
+        annotationsEpoch: annotationsEpoch,
+        restartEpoch: restartEpoch)
     }
     .onDisappear { preview.stop() }
     // What is being studied changed, so whatever is sounding is no longer it.
@@ -99,6 +104,7 @@ struct PieceView: View {
         fingeringToggle
         pedalToggle
         sizeControl
+        restartButton
 
         if startFrom > 0 {
           Button("Do começo") { startFrom = 0 }
@@ -189,6 +195,18 @@ struct PieceView: View {
   /// The accessibility steps of rule 115: global, remembered, and the size
   /// every piece opens at.
   @AppStorage("pianova.scoreUnits") private var scoreUnits = 2100
+
+  /// Back to the top of the piece (rule 5): repeating is a choice.
+  private var restartButton: some View {
+    Button {
+      restartEpoch += 1
+    } label: {
+      Image(systemName: "arrow.counterclockwise").font(.system(size: 13))
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(.secondary)
+    .help("Voltar ao início")
+  }
 
   /// The steps the size control walks, from smallest music to biggest.
   private static let sizeSteps = [2700, 2400, 2100, 1850, 1600, 1400]

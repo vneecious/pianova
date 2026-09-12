@@ -38,16 +38,19 @@ Regras de avanço:
    as notas exigidas estiverem pressionadas simultaneamente, dentro de uma
    janela de tolerância.
 4. **Erro** (qualquer nota fora do item esperado) → feedback visual de erro e o
-   cursor **recua uma posição**, para que o trecho seja refeito a partir do item
-   anterior.
-5. Se o erro ocorre no primeiro item da sequência, o cursor permanece nele — não
-   existe posição anterior.
+   cursor **fica onde está**, esperando a nota certa. A pauta espera; punir o
+   erro fazendo perder chão já conquistado só frustra — a repetição é escolha,
+   não castigo.
+5. Repetir de propósito é o botão **voltar ao início**: na peça completa, volta
+   ao começo da peça; no estudo de um trecho, ao começo do trecho.
 6. Não há penalidade de tempo nem pontuação. O objetivo é repetir até a resposta
    sair sem hesitação.
 
-O recuo em caso de erro é deliberado: refazer a transição que falhou treina a
-passagem entre as notas, não apenas a nota isolada. O funcionamento é inspirado
-no Duolingo Music — o comportamento, não a estética.
+> O recuo em caso de erro — voltar uma posição para refazer a transição — foi a
+> regra original, inspirada no Duolingo Music. Caiu por decisão do dono em
+> 2026-09-12: na prática de iniciante, perder chão a cada erro é punitivo. A
+> transição que falhou continua treinável, agora por escolha, com o voltar ao
+> início.
 
 ## Os dois elos
 
