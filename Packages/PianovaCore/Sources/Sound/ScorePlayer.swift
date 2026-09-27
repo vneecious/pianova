@@ -108,6 +108,74 @@ public final class ScorePlayer: ObservableObject {
     /// The column it belongs to — `nil` for an ornament, which the page
     /// does not follow.
     public let column: Int?
+
+    /// What stops sounding here, let go before anything is struck (rule 142).
+    public let releases: [Pitch]
+
+    /// Creates a note of the schedule.
+    public init(
+      time: TimeInterval, pitches: [Pitch], velocity: UInt8, column: Int?,
+      releases: [Pitch] = []
+    ) {
+      self.time = time
+      self.pitches = pitches
+      self.velocity = velocity
+      self.column = column
+      self.releases = releases
+    }
+  }
+
+  /// One key going down: where its tie chain starts and how long it holds.
+  private struct Strike {
+    let pitch: Pitch
+    let sustainBeats: Double
+  }
+
+  /// Every strike of a part, keyed by its column moment.
+  ///
+  /// A tie chain is one strike: the continuation never re-attacks, and the
+  /// sustain runs to the chain's end (rule 142). Quantised to the same
+  /// 720-per-crotchet grid the columns use, so the keys meet.
+  private nonisolated static func strikes(of part: Part) -> [Double: [Strike]] {
+    var strikes: [Double: [Strike]] = [:]
+    var open: [Pitch: (start: Double, beats: Double)] = [:]
+    var carried: Set<Pitch> = []
+    var elapsed = 0.0
+
+    for note in part.notes {
+      let time = (elapsed * 720).rounded() / 720
+
+      for pitch in note.pitches {
+        if carried.contains(pitch), let chain = open[pitch] {
+          open[pitch] = (chain.start, chain.beats + note.beats)
+        } else {
+          open[pitch] = (time, note.beats)
+        }
+      }
+
+      if note.isTiedToNext {
+        carried = Set(note.pitches)
+      } else {
+        for pitch in note.pitches {
+          if let chain = open.removeValue(forKey: pitch) {
+            strikes[chain.start, default: []]
+              .append(
+                Strike(pitch: pitch, sustainBeats: chain.beats))
+          }
+        }
+        carried = []
+      }
+      elapsed += note.beats
+    }
+
+    // A tie into nothing still has to let go somewhere: at its chain's end.
+    for (pitch, chain) in open {
+      strikes[chain.start, default: []]
+        .append(
+          Strike(pitch: pitch, sustainBeats: chain.beats))
+    }
+
+    return strikes
   }
 
   /// The whole run, note by note, each with its absolute instant.
@@ -128,15 +196,30 @@ public final class ScorePlayer: ObservableObject {
     let beat = 60 / max(tempo, 1)
     let columns = score.columns
     let graces = score.columnGraces
+    let pedals = score.columnPedals
     let touches = touches(for: score)
+    let upperStrikes = strikes(of: score.rightHand)
+    let lowerStrikes = score.leftHand.map(strikes(of:)) ?? [:]
 
     var notes: [PlaybackNote] = []
+    var offs: [(pitch: Pitch, strike: TimeInterval, off: TimeInterval)] = []
+    var pedalSpans: [(down: TimeInterval, lift: TimeInterval)] = []
+    var pedalDownAt: TimeInterval?
     var time = 0.0
     var previousStart = 0.0
 
     for index in order {
       guard columns.indices.contains(index) else { continue }
       let touch = touches.indices.contains(index) ? touches[index] : 74
+
+      // The written damper opens and closes spans of held sound (rule 142).
+      if let mark = pedals.indices.contains(index) ? pedals[index] : nil {
+        if mark != .down, let down = pedalDownAt {
+          pedalSpans.append((down, time))
+          pedalDownAt = nil
+        }
+        if mark != .up { pedalDownAt = time }
+      }
 
       if hands != .left, graces.indices.contains(index), !graces[index].isEmpty {
         let pickups = graces[index]
@@ -150,19 +233,67 @@ public final class ScorePlayer: ObservableObject {
               PlaybackNote(
                 time: when, pitches: [pitch],
                 velocity: max(touch, 12) - 8, column: nil))
+            offs.append((pitch, when, time))
           }
         }
       }
 
+      // A tie continuation is not struck again: only chains that start here
+      // sound, each carrying its own written sustain (rule 142).
+      let moment = columns[index].beats
+      var struck: [Strike] = []
+      if hands != .left { struck += upperStrikes[moment] ?? [] }
+      if hands != .right { struck += lowerStrikes[moment] ?? [] }
+
       notes.append(
         PlaybackNote(
-          time: time, pitches: columns[index].pitches(for: hands),
+          time: time, pitches: struck.map(\.pitch),
           velocity: touch, column: index))
+      for strike in struck {
+        offs.append((strike.pitch, time, time + strike.sustainBeats * beat))
+      }
+
       previousStart = time
       time += columns[index].duration.beats * beat
     }
+    if let down = pedalDownAt { pedalSpans.append((down, time)) }
 
-    return notes
+    // The damper holds a note past its written end, until the star (rule 142);
+    // and a pitch struck again while ringing is let go right at the restrike.
+    let restrikes = offs.map { (pitch: $0.pitch, at: $0.strike) }
+    for index in offs.indices {
+      var off = offs[index].off
+      if let span = pedalSpans.first(where: { $0.down < off && off < $0.lift }) {
+        off = span.lift
+      }
+      let next =
+        restrikes
+        .filter { $0.pitch == offs[index].pitch && $0.at > offs[index].strike }
+        .map(\.at).min()
+      if let next, next < off { off = next }
+      offs[index].off = off
+    }
+
+    // Releases join the event already at their instant, or get one of their
+    // own; within an event everything lets go before anything is struck.
+    func slot(_ time: TimeInterval) -> Int64 { Int64((time * 1_000_000).rounded()) }
+    var releasesAt: [Int64: [Pitch]] = [:]
+    for off in offs { releasesAt[slot(off.off), default: []].append(off.pitch) }
+
+    notes = notes.map { note in
+      guard let releases = releasesAt.removeValue(forKey: slot(note.time)) else { return note }
+      return PlaybackNote(
+        time: note.time, pitches: note.pitches, velocity: note.velocity,
+        column: note.column, releases: releases)
+    }
+    for (key, pitches) in releasesAt {
+      notes.append(
+        PlaybackNote(
+          time: Double(key) / 1_000_000, pitches: [], velocity: 0,
+          column: nil, releases: pitches))
+    }
+
+    return notes.sorted { $0.time < $1.time }
   }
 
   /// How long a score lasts at a tempo.
@@ -221,8 +352,11 @@ public final class ScorePlayer: ObservableObject {
         if Task.isCancelled { break }
 
         if let column = note.column { self.column = column }
+        for pitch in note.releases {
+          tones.release(pitch)
+        }
         for pitch in note.pitches {
-          tones.play(pitch, velocity: note.velocity)
+          tones.strike(pitch, velocity: note.velocity)
         }
       }
 

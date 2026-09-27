@@ -374,6 +374,43 @@ public final class TonePlayer: ObservableObject {
     }
   }
 
+  /// Sounds a note that playback will explicitly let go of (rule 142).
+  ///
+  /// Unlike ``play(_:velocity:)`` there is no timer letting the note decay on
+  /// its own: whoever struck it owns its release, so a restrike is never cut
+  /// short by a stale timer.
+  /// - Parameters:
+  ///   - pitch: The key going down.
+  ///   - velocity: How hard, 1...127.
+  public func strike(_ pitch: Pitch, velocity: UInt8 = 80) {
+    guard !isMuted else { return }
+
+    if isRoutingToInstrument {
+      instrument.noteOn(pitch, velocity: velocity)
+      return
+    }
+
+    start()
+
+    guard usesSampledPiano else {
+      voices.add(PianoTone(pitch: pitch, velocity: velocity))
+      return
+    }
+    sampler.startNote(pitch.midiNoteNumber, withVelocity: velocity, onChannel: 0)
+  }
+
+  /// Lets a struck note go (rule 142).
+  /// - Parameter pitch: The key coming up.
+  public func release(_ pitch: Pitch) {
+    if isRoutingToInstrument {
+      instrument.noteOff(pitch)
+      return
+    }
+    // The synthesised tone decays on its own; only the sampler holds a note.
+    guard usesSampledPiano else { return }
+    sampler.stopNote(pitch.midiNoteNumber, onChannel: 0)
+  }
+
   /// Sounds a metronome click.
   /// - Parameter isAccent: Whether it marks the first beat of the bar.
   public func click(isAccent: Bool = false) {

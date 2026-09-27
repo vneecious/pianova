@@ -653,6 +653,13 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      meio ao longo de até quatro compassos — a leitura editorial de sempre.
      Sem marca nenhuma, o toque médio. O julgamento não cobra dinâmica; a
      avaliação de expressão é assunto para depois.
+142. O **Ouvir solta as teclas**: cada nota soa pelo tempo **escrito** e é
+     solta ao fim dele — deixar tudo ringando até apagar sozinho soa como um
+     sustain preso que ninguém pediu. Uma **ligadura de prolongamento** é uma
+     nota só: não re-ataca, e solta no fim da cadeia. E o **Ped. escrito vale
+     no Ouvir**: com o pedal pisado as notas seguem soando além do escrito,
+     até o ✻ (ou a troca) levantar o abafador — aí solta tudo que ficou
+     ringando.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

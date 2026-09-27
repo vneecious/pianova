@@ -1,3 +1,4 @@
+import Foundation
 import ScoreModel
 import Testing
 
@@ -91,8 +92,9 @@ import Testing
   let notes = ScorePlayer.schedule(
     for: score, order: [0, 1, 2], tempo: 120, hands: .both)
 
-  #expect(notes.map(\.time) == [0.0, 0.5, 1.0])
-  #expect(notes.map(\.column) == [0, 1, 2])
+  let mains = notes.filter { $0.column != nil }
+  #expect(mains.map(\.time) == [0.0, 0.5, 1.0])
+  #expect(mains.map(\.column) == [0, 1, 2])
 }
 
 /// Rule 139 — a grace soa ANTES do tempo e a nota decorada não se move.
@@ -120,8 +122,9 @@ import Testing
   #expect(mains.map(\.time) == [0.0, 0.5, 1.0])
 
   // As duas graces soam antes do tempo da decorada, em ordem, depois da
-  // coluna anterior.
-  let graces = notes.filter { $0.column == nil }
+  // coluna anterior. (Um evento sem coluna e sem ataque é um soltar da
+  // regra 142, não um ornamento.)
+  let graces = notes.filter { $0.column == nil && !$0.pitches.isEmpty }
   #expect(graces.count == 2)
   #expect(graces.allSatisfy { $0.time > 0.0 && $0.time < 0.5 })
   #expect(graces[0].time < graces[1].time)
@@ -148,7 +151,81 @@ import Testing
 
   let notes = ScorePlayer.schedule(for: score, order: [0], tempo: 60, hands: .left)
 
-  #expect(notes.filter { $0.column == nil }.isEmpty, "ornamento é da direita")
-  #expect(notes.count == 1)
-  #expect(notes[0].pitches == [Pitch(48)])
+  let strikes = notes.filter { !$0.pitches.isEmpty }
+  #expect(strikes.count == 1, "ornamento é da direita")
+  #expect(strikes[0].pitches == [Pitch(48)])
+}
+
+// MARK: - Rule 142: o Ouvir solta as teclas
+
+/// Rule 142 — a nota solta ao fim do seu tempo escrito, não segundos depois.
+@Test func notesReleaseAtTheirWrittenDuration() {
+  let score = Score(
+    title: "Solta", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(Pitch(60), .quarter), ScoreNote(Pitch(62), .quarter),
+          ScoreNote(Pitch(64), .quarter),
+        ])
+      ]))
+
+  let notes = ScorePlayer.schedule(
+    for: score, order: [0, 1, 2], tempo: 120, hands: .both)
+
+  #expect(releaseTime(of: Pitch(60), in: notes) == 0.5)
+  #expect(releaseTime(of: Pitch(62), in: notes) == 1.0)
+  #expect(releaseTime(of: Pitch(64), in: notes) == 1.5)
+}
+
+/// Rule 142 — a ligadura de prolongamento é uma nota só: um ataque, solta no
+/// fim da cadeia.
+@Test func aTieStrikesOnceAndReleasesAtItsEnd() {
+  let score = Score(
+    title: "Ligada", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(60)], duration: Duration(.half), isTiedToNext: true),
+          ScoreNote(pitches: [Pitch(60)], duration: Duration(.half)),
+        ])
+      ]))
+
+  let notes = ScorePlayer.schedule(
+    for: score, order: [0, 1], tempo: 120, hands: .both)
+
+  let strikes = notes.filter { $0.pitches.contains(Pitch(60)) }
+  #expect(strikes.count == 1, "a continuação da ligadura não re-ataca")
+  #expect(releaseTime(of: Pitch(60), in: notes) == 2.0)
+}
+
+/// Rule 142 — com Ped. pisado a nota segue soando além do escrito, até o ✻.
+@Test func thePedalHoldsTheReleaseUntilTheStar() {
+  let score = Score(
+    title: "Pedalada", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(60)], duration: Duration(.quarter), pedal: .down),
+          ScoreNote(Pitch(62), .quarter),
+          ScoreNote(pitches: [Pitch(64)], duration: Duration(.quarter), pedal: .up),
+        ])
+      ]))
+
+  let notes = ScorePlayer.schedule(
+    for: score, order: [0, 1, 2], tempo: 120, hands: .both)
+
+  #expect(releaseTime(of: Pitch(60), in: notes) == 1.0, "o abafador só levanta no ✻")
+  #expect(releaseTime(of: Pitch(62), in: notes) == 1.0)
+  #expect(releaseTime(of: Pitch(64), in: notes) == 1.5, "depois do ✻ a nota dura o escrito")
+}
+
+/// When a pitch stops sounding, per the schedule.
+private func releaseTime(of pitch: Pitch, in notes: [ScorePlayer.PlaybackNote]) -> TimeInterval? {
+  notes.last(where: { $0.releases.contains(pitch) })?.time
 }
