@@ -23,6 +23,27 @@ public final class ScorePlayer: ObservableObject {
     self.tones = tones
   }
 
+  /// How hard each written dynamic strikes (rule 141).
+  ///
+  /// The scale every keyboardist carries: piano soft, forte firm, the rest
+  /// in between. No mark plays the usual middle touch.
+  /// - Parameter dynamic: The mark in force, or `nil` for none.
+  /// - Returns: The MIDI velocity to strike with.
+  public nonisolated static func velocity(for dynamic: String?) -> UInt8 {
+    switch dynamic {
+    case "ppp": return 24
+    case "pp": return 34
+    case "p": return 46
+    case "mp": return 58
+    case "mf": return 70
+    case "f": return 84
+    case "ff": return 98
+    case "fff": return 110
+    case "sf", "sfz", "fp": return 90
+    default: return 74
+    }
+  }
+
   /// How long a score lasts at a tempo.
   /// - Parameters:
   ///   - score: The piece.
@@ -65,6 +86,7 @@ public final class ScorePlayer: ObservableObject {
       ? score.playbackColumns
       : Array(first..<max(last, first))
     let graces = score.columnGraces
+    let dynamics = score.columnDynamics
 
     task = Task { [weak self] in
       guard let self else { return }
@@ -74,6 +96,10 @@ public final class ScorePlayer: ObservableObject {
         let event = score.columns[index]
         column = index
 
+        // The written dynamic in force decides the touch (rule 141).
+        let touch = Self.velocity(
+          for: dynamics.indices.contains(index) ? dynamics[index] : nil)
+
         // The ornament sounds quick, stealing its instant from the note it
         // decorates (rule 139) — unless only the left hand plays, which is
         // not where these ornaments live.
@@ -81,7 +107,7 @@ public final class ScorePlayer: ObservableObject {
         if hands != .left, graces.indices.contains(index) {
           for pitch in graces[index] {
             if Task.isCancelled { break }
-            tones.play(pitch, velocity: 66)
+            tones.play(pitch, velocity: max(touch, 12) - 8)
             let stolen = min(0.09, remaining * 0.2)
             remaining -= stolen
             try? await Task.sleep(for: .seconds(stolen))
@@ -89,7 +115,7 @@ public final class ScorePlayer: ObservableObject {
         }
 
         for pitch in event.pitches(for: hands) {
-          tones.play(pitch, velocity: 74)
+          tones.play(pitch, velocity: touch)
         }
 
         try? await Task.sleep(for: .seconds(max(remaining, 0)))

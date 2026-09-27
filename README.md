@@ -641,6 +641,10 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      (CC 64) pisado junto das notas dele, e o ✻ espera a troca; o pedal
      errado não pune, apenas não completa — a mesma paciência do resto do
      app. Desligado, as marcas são só leitura.
+141. O **Ouvir respeita as dinâmicas escritas**: *p* toca piano, *f* toca
+     forte, e a marca **vale até a próxima** — como na leitura. Sem marca
+     nenhuma, o toque médio de sempre. O julgamento não cobra dinâmica; a
+     avaliação de expressão é assunto para depois.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

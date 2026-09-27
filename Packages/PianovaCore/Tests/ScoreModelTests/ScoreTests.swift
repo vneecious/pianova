@@ -261,3 +261,40 @@ import Testing
   #expect(pedals[1] == nil)
   #expect(pedals[2] == .up)
 }
+
+// MARK: - Rule 141: a dinâmica em vigor em cada coluna
+
+/// Rule 141 — a marca vale até a próxima: mf no começo segura até o f, que
+/// segura até o fim.
+@Test func columnsCarryTheDynamicInForce() {
+  let score = Score(
+    title: "Dinâmica", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(72)], duration: Duration(.quarter), dynamic: "mf"),
+          ScoreNote(Pitch(74), .quarter),
+          ScoreNote(Pitch(76), .quarter),
+        ]),
+        Measure([
+          ScoreNote(pitches: [Pitch(77)], duration: Duration(.quarter), dynamic: "f"),
+          ScoreNote(Pitch(79), .quarter),
+          ScoreNote(Pitch(81), .quarter),
+        ]),
+      ]))
+
+  #expect(score.columnDynamics == ["mf", "mf", "mf", "f", "f", "f"])
+}
+
+/// Rule 141 — sem marca nenhuma, nenhuma dinâmica em vigor.
+@Test func noMarksMeansNoDynamicInForce() {
+  let score = Score(
+    title: "Neutra", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [Measure([ScoreNote(Pitch(60), .whole)])]))
+
+  #expect(score.columnDynamics == [nil])
+}

@@ -527,6 +527,29 @@ public struct Score: Equatable, Sendable {
     return columns.map { marks[$0.beats] }
   }
 
+  /// The dynamic in force at each column (rule 141).
+  ///
+  /// A written mark holds until the next one, the way reading holds it.
+  /// `nil` before any mark: no dynamic was ever asked.
+  public var columnDynamics: [String?] {
+    var marks: [Double: String] = [:]
+
+    for part in [rightHand, leftHand].compactMap({ $0 }) {
+      var elapsed = 0.0
+      for note in part.notes {
+        let time = (elapsed * 720).rounded() / 720
+        if let dynamic = note.dynamic, marks[time] == nil { marks[time] = dynamic }
+        elapsed += note.beats
+      }
+    }
+
+    var inForce: String?
+    return columns.map { column in
+      if let mark = marks[column.beats] { inForce = mark }
+      return inForce
+    }
+  }
+
   /// The column order a straight play-through follows, ritornellos honoured
   /// (rule 137): a repeated span plays twice, then the piece moves on.
   ///
