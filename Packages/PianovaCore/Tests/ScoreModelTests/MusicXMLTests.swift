@@ -630,3 +630,25 @@ private let twoVoices = """
 
   #expect(try MusicXMLImporter.score(from: Data(xml.utf8)).tempo == nil)
 }
+
+/// Rule 136 — a palavra fica onde a edição a pôs: embaixo sobrevive embaixo.
+@Test func wordPlacementSurvivesTheRoundTrip() throws {
+  let xml = """
+    <score-partwise><part-list><score-part id="P1"/></part-list>
+    <part id="P1"><measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <direction placement="below"><direction-type><words>cresc.</words></direction-type></direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration>
+        <type>whole</type></note>
+    </measure></part></score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+  let note = try #require(score.rightHand.measures.first?.notes.first)
+
+  #expect(note.words == "cresc.")
+  #expect(note.wordsBelow, "a edição pôs embaixo")
+
+  let out = MusicXMLExporter.musicXML(for: score)
+  #expect(out.contains("<direction placement=\"below\"><direction-type><words>cresc."))
+}

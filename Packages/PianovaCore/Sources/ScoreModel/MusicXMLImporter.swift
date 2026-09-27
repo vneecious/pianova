@@ -266,6 +266,7 @@ public enum MusicXMLImporter {
           beam: struck.compactMap(\.beam).first,
           dynamic: marked.compactMap(\.dynamic).first,
           words: marked.compactMap(\.words).first,
+          wordsBelow: marked.first(where: { $0.words != nil })?.wordsBelow ?? false,
           articulations: marked.reduce(into: Set<Articulation>()) {
             $0.formUnion($1.articulations)
           },

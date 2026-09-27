@@ -44,6 +44,56 @@ public final class ScorePlayer: ObservableObject {
     }
   }
 
+  /// The touch of every column, written marks and ramps applied (rule 141).
+  ///
+  /// Steps come from the dynamic in force. A written "cresc." (or "dim.")
+  /// ramps from there: linearly into the next explicit mark when one exists;
+  /// with no target written, a step and a half over up to four bars — the
+  /// usual editorial reading — and the new level holds.
+  /// - Parameter score: The piece.
+  /// - Returns: One velocity per column.
+  public nonisolated static func touches(for score: Score) -> [UInt8] {
+    let dynamics = score.columnDynamics
+    let words = score.columnWords
+    let beats = score.columns.map(\.beats)
+    var touches = dynamics.map { Int(velocity(for: $0)) }
+
+    for index in touches.indices {
+      guard let word = words[index]?.lowercased(),
+        word.contains("cresc") || word.contains("dim") || word.contains("decresc")
+      else { continue }
+      let rising = word.contains("cresc") && !word.contains("decresc")
+      let from = touches[index]
+
+      // The ramp runs to the next explicit mark; without one, it grows a
+      // step and a half over up to four bars and the level holds.
+      var end = touches.count
+      var goal: Int
+      if let marked = ((index + 1)..<touches.count)
+        .first(where: { dynamics[$0] != dynamics[index] }
+        )
+      {
+        end = marked
+        goal = Int(velocity(for: dynamics[marked]))
+      } else {
+        goal = max(20, min(112, from + (rising ? 16 : -16)))
+        let horizon = beats[index] + 4 * score.timeSignature.barBeats
+        end = ((index + 1)..<touches.count).first(where: { beats[$0] >= horizon }) ?? touches.count
+        for later in end..<touches.count { touches[later] = goal }
+      }
+
+      let span = end - index
+      guard span > 1 else { continue }
+      for step in 1..<span {
+        let fraction = Double(step) / Double(span)
+        touches[index + step] = Int(
+          (Double(from) + (Double(goal) - Double(from)) * fraction).rounded())
+      }
+    }
+
+    return touches.map { UInt8(max(1, min(127, $0))) }
+  }
+
   /// How long a score lasts at a tempo.
   /// - Parameters:
   ///   - score: The piece.
@@ -86,7 +136,7 @@ public final class ScorePlayer: ObservableObject {
       ? score.playbackColumns
       : Array(first..<max(last, first))
     let graces = score.columnGraces
-    let dynamics = score.columnDynamics
+    let touches = Self.touches(for: score)
 
     task = Task { [weak self] in
       guard let self else { return }
@@ -96,9 +146,8 @@ public final class ScorePlayer: ObservableObject {
         let event = score.columns[index]
         column = index
 
-        // The written dynamic in force decides the touch (rule 141).
-        let touch = Self.velocity(
-          for: dynamics.indices.contains(index) ? dynamics[index] : nil)
+        // The written dynamics decide the touch, ramps included (rule 141).
+        let touch = touches.indices.contains(index) ? touches[index] : 74
 
         // The ornament sounds quick, stealing its instant from the note it
         // decorates (rule 139) — unless only the left hand plays, which is

@@ -620,8 +620,9 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      agrupamento escrito, o exportador **agrupa por tempo**, como um
      tipógrafo faria — o gravador sozinho não agrupa nada, e colcheia de
      bandeirola em bandeirola não é partitura impressa.
-136. As **palavras de andamento e expressão** ("Allegretto", "dolce") são
-     escritas **acima da pauta**, como toda edição impressa as põe. As
+136. As **palavras de andamento e expressão** ficam **onde a edição as
+     pôs**: "Allegretto" acima da pauta, "cresc." e "dolce" embaixo, junto
+     das dinâmicas — sem indicação no arquivo, acima. As
      **dinâmicas** de um sistema de piano ficam **entre as pautas**: abaixo
      da pauta de cima quando presas à melodia, acima da pauta de baixo
      quando presas ao baixo.
@@ -642,8 +643,11 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      errado não pune, apenas não completa — a mesma paciência do resto do
      app. Desligado, as marcas são só leitura.
 141. O **Ouvir respeita as dinâmicas escritas**: *p* toca piano, *f* toca
-     forte, e a marca **vale até a próxima** — como na leitura. Sem marca
-     nenhuma, o toque médio de sempre. O julgamento não cobra dinâmica; a
+     forte, e a marca **vale até a próxima** — como na leitura. Um
+     **cresc./dim. escrito é uma rampa**: cresce (ou míngua) gradualmente
+     até a próxima marca quando ela existe; sem alvo escrito, um degrau e
+     meio ao longo de até quatro compassos — a leitura editorial de sempre.
+     Sem marca nenhuma, o toque médio. O julgamento não cobra dinâmica; a
      avaliação de expressão é assunto para depois.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o

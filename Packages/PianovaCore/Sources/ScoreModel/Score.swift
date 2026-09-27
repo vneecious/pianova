@@ -163,6 +163,12 @@ public struct ScoreNote: Equatable, Sendable {
   /// A written word at this note — "Andante", "dolce" — if any.
   public let words: String?
 
+  /// Whether the word was written below the staff, with the dynamics.
+  ///
+  /// Tempo words live above; expression words like "cresc." live below
+  /// (rule 136). The edition decided; the model remembers.
+  public let wordsBelow: Bool
+
   /// The articulations written on this note.
   public let articulations: Set<Articulation>
 
@@ -185,6 +191,7 @@ public struct ScoreNote: Equatable, Sendable {
   ///   - beam: Where this note stands in its written beam group, if said.
   ///   - dynamic: A dynamic written here, if any.
   ///   - words: A written word here, if any.
+  ///   - wordsBelow: Whether the word was written below the staff.
   ///   - articulations: The articulations written on this note.
   ///   - graces: The ornament notes drawn small before this one.
   public init(
@@ -193,7 +200,7 @@ public struct ScoreNote: Equatable, Sendable {
     slurStart: Bool = false, slurStop: Bool = false,
     tupletStart: Bool = false, tupletStop: Bool = false,
     beam: BeamMark? = nil,
-    dynamic: String? = nil, words: String? = nil,
+    dynamic: String? = nil, words: String? = nil, wordsBelow: Bool = false,
     articulations: Set<Articulation> = [],
     graces: [GraceNote] = []
   ) {
@@ -211,6 +218,7 @@ public struct ScoreNote: Equatable, Sendable {
     self.beam = beam
     self.dynamic = dynamic
     self.words = words
+    self.wordsBelow = wordsBelow
     self.articulations = articulations
     self.graces = graces
   }
@@ -548,6 +556,25 @@ public struct Score: Equatable, Sendable {
       if let mark = marks[column.beats] { inForce = mark }
       return inForce
     }
+  }
+
+  /// The written word at each column, if any (rule 141).
+  ///
+  /// This is how listening finds a "cresc." — the word sits at its column;
+  /// it does not carry forward the way a dynamic does.
+  public var columnWords: [String?] {
+    var at: [Double: String] = [:]
+
+    for part in [rightHand, leftHand].compactMap({ $0 }) {
+      var elapsed = 0.0
+      for note in part.notes {
+        let time = (elapsed * 720).rounded() / 720
+        if let words = note.words, at[time] == nil { at[time] = words }
+        elapsed += note.beats
+      }
+    }
+
+    return columns.map { at[$0.beats] }
   }
 
   /// The column order a straight play-through follows, ritornellos honoured

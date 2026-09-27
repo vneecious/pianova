@@ -39,6 +39,8 @@ extension MusicXMLImporter {
     var dynamic: String?
     /// A word written at this note.
     var words: String?
+    /// Whether that word was written below the staff.
+    var wordsBelow = false
     /// The articulations written on this note.
     var articulations: Set<Articulation> = []
     /// Written fingering, one number per pitch of this raw note.
@@ -101,6 +103,7 @@ extension MusicXMLImporter {
       var ottava: OttavaMark?
       var dynamic: String?
       var words: String?
+      var below = false
       var staff: Int?
     }
 
@@ -110,7 +113,7 @@ extension MusicXMLImporter {
     private var pendingPedal: (mark: PedalMark, line: Bool, staff: Int?)?
     private var pendingOttava: (mark: OttavaMark, staff: Int?)?
     private var pendingDynamic: (mark: String, staff: Int?)?
-    private var pendingWords: String?
+    private var pendingWords: (text: String, below: Bool)?
     private var inWords = false
     private var inDynamics = false
 
@@ -212,6 +215,7 @@ extension MusicXMLImporter {
         event.articulations.insert(.trill)
       case "direction":
         direction = OpenDirection()
+        direction?.below = attributes["placement"] == "below"
       case "pedal":
         direction?.pedalLine = attributes["line"] == "yes"
         switch attributes["type"] {
@@ -359,8 +363,9 @@ extension MusicXMLImporter {
           event.dynamic = pending.mark
           pendingDynamic = nil
         }
-        if pendingWords != nil {
-          event.words = pendingWords
+        if let pending = pendingWords {
+          event.words = pending.text
+          event.wordsBelow = pending.below
           pendingWords = nil
         }
 
@@ -392,7 +397,7 @@ extension MusicXMLImporter {
           }
           if let ottava = closed.ottava { pendingOttava = (ottava, closed.staff) }
           if let dynamic = closed.dynamic { pendingDynamic = (dynamic, closed.staff) }
-          if let words = closed.words { pendingWords = words }
+          if let words = closed.words { pendingWords = (words, closed.below) }
         }
         direction = nil
       case "words":

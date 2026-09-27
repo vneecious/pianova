@@ -281,9 +281,11 @@ public enum MusicXMLExporter {
     let staffTag = staff.map { "<staff>\($0)</staff>" } ?? ""
 
     if let words = event.words {
-      // Tempo and expression words sit above the staff, as printed (rule 136).
+      // The word sits where the edition put it (rule 136): tempo above,
+      // expression like "cresc." below, with the dynamics.
+      let placement = event.wordsBelow ? "below" : "above"
       parts.append(
-        "<direction placement=\"above\"><direction-type><words>\(words)</words>"
+        "<direction placement=\"\(placement)\"><direction-type><words>\(words)</words>"
           + "</direction-type></direction>")
     }
     if let dynamic = event.dynamic {

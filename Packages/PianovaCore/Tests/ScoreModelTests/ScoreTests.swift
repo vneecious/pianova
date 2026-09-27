@@ -298,3 +298,19 @@ import Testing
 
   #expect(score.columnDynamics == [nil])
 }
+
+/// Rule 141 — as palavras de cada coluna, para o Ouvir achar o cresc.
+@Test func columnsCarryTheirWords() {
+  let score = Score(
+    title: "Rampa", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(60)], duration: Duration(.half), words: "cresc."),
+          ScoreNote(Pitch(64), .half),
+        ])
+      ]))
+
+  #expect(score.columnWords == ["cresc.", nil])
+}
