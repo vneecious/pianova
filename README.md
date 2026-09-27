@@ -634,9 +634,13 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      (o `sound tempo` que acompanha o "Allegretto") é tocado nele. Sem
      andamento escrito, vale o tempo de leitura suave de sempre — ler não é
      performar.
-139. O **Ouvir toca os ornamentos**: a grace soa rápida, roubando o instante
-     da nota que decora, como um pianista a executaria. O julgamento segue a
-     regra 127 — nem cobra, nem pune.
+139. O **Ouvir toca os ornamentos**: a grace soa rápida, **antes do tempo**,
+     como uma apojatura — e a nota decorada cai exatamente no seu tempo. O
+     ritmo de referência não se move por causa do enfeite: roubar o instante
+     da nota real mancava a melodia a cada ornamento. O julgamento segue a
+     regra 127 — nem cobra, nem pune. E o relógio do Ouvir é **absoluto**:
+     cada nota tem seu instante calculado de antemão contra o relógio de
+     parede — somar esperas relativas acumula folga e desafina o ritmo.
 140. O **pedal escrito pode ser avaliado** — opcional e desligável, como a
      escolha de mãos. Ligado, um compasso com Ped. espera o pedal de sustain
      (CC 64) pisado junto das notas dele, e o ✻ espera a troca; o pedal

@@ -94,6 +94,77 @@ public final class ScorePlayer: ObservableObject {
     return touches.map { UInt8(max(1, min(127, $0))) }
   }
 
+  /// One thing to sound, at its instant on the wall clock (rule 139).
+  public struct PlaybackNote: Equatable, Sendable {
+    /// Seconds from the start of playback.
+    public let time: TimeInterval
+
+    /// What sounds together.
+    public let pitches: [Pitch]
+
+    /// How hard it is struck.
+    public let velocity: UInt8
+
+    /// The column it belongs to — `nil` for an ornament, which the page
+    /// does not follow.
+    public let column: Int?
+  }
+
+  /// The whole run, note by note, each with its absolute instant.
+  ///
+  /// Computed up front so playing is only "sleep until, then sound" — adding
+  /// relative waits accumulates scheduling slack and the rhythm drifts. The
+  /// ornament sounds BEFORE the beat, as quick pickups in the tail of the
+  /// previous column; the decorated note lands exactly on the grid (rule 139).
+  /// - Parameters:
+  ///   - score: The piece.
+  ///   - order: The columns in playing order.
+  ///   - tempo: Beats per minute.
+  ///   - hands: Which hands should sound.
+  /// - Returns: The notes to play, in time order.
+  public nonisolated static func schedule(
+    for score: Score, order: [Int], tempo: Double, hands: PracticeHands
+  ) -> [PlaybackNote] {
+    let beat = 60 / max(tempo, 1)
+    let columns = score.columns
+    let graces = score.columnGraces
+    let touches = touches(for: score)
+
+    var notes: [PlaybackNote] = []
+    var time = 0.0
+    var previousStart = 0.0
+
+    for index in order {
+      guard columns.indices.contains(index) else { continue }
+      let touch = touches.indices.contains(index) ? touches[index] : 74
+
+      if hands != .left, graces.indices.contains(index), !graces[index].isEmpty {
+        let pickups = graces[index]
+        let lead = min(0.08, beat * 0.15)
+        let earliest = max(previousStart + 0.02, time - Double(pickups.count) * lead)
+
+        if earliest < time {
+          for (offset, pitch) in pickups.enumerated() {
+            let when = earliest + (time - earliest) * Double(offset) / Double(pickups.count)
+            notes.append(
+              PlaybackNote(
+                time: when, pitches: [pitch],
+                velocity: max(touch, 12) - 8, column: nil))
+          }
+        }
+      }
+
+      notes.append(
+        PlaybackNote(
+          time: time, pitches: columns[index].pitches(for: hands),
+          velocity: touch, column: index))
+      previousStart = time
+      time += columns[index].duration.beats * beat
+    }
+
+    return notes
+  }
+
   /// How long a score lasts at a tempo.
   /// - Parameters:
   ///   - score: The piece.
@@ -135,41 +206,28 @@ public final class ScorePlayer: ObservableObject {
       (first == 0 && end == nil)
       ? score.playbackColumns
       : Array(first..<max(last, first))
-    let graces = score.columnGraces
-    let touches = Self.touches(for: score)
+    let notes = Self.schedule(for: score, order: order, tempo: tempo, hands: hands)
+    let total = order.reduce(0.0) { $0 + score.columns[$1].duration.beats * beat }
 
     task = Task { [weak self] in
       guard let self else { return }
+      let clock = ContinuousClock()
+      let started = clock.now
 
-      for index in order {
+      for note in notes {
         if Task.isCancelled { break }
-        let event = score.columns[index]
-        column = index
+        try? await clock.sleep(
+          until: started + .seconds(note.time), tolerance: .milliseconds(5))
+        if Task.isCancelled { break }
 
-        // The written dynamics decide the touch, ramps included (rule 141).
-        let touch = touches.indices.contains(index) ? touches[index] : 74
-
-        // The ornament sounds quick, stealing its instant from the note it
-        // decorates (rule 139) — unless only the left hand plays, which is
-        // not where these ornaments live.
-        var remaining = event.duration.beats * beat
-        if hands != .left, graces.indices.contains(index) {
-          for pitch in graces[index] {
-            if Task.isCancelled { break }
-            tones.play(pitch, velocity: max(touch, 12) - 8)
-            let stolen = min(0.09, remaining * 0.2)
-            remaining -= stolen
-            try? await Task.sleep(for: .seconds(stolen))
-          }
+        if let column = note.column { self.column = column }
+        for pitch in note.pitches {
+          tones.play(pitch, velocity: note.velocity)
         }
-
-        for pitch in event.pitches(for: hands) {
-          tones.play(pitch, velocity: touch)
-        }
-
-        try? await Task.sleep(for: .seconds(max(remaining, 0)))
       }
 
+      try? await clock.sleep(
+        until: started + .seconds(total), tolerance: .milliseconds(10))
       if !Task.isCancelled { finish() }
     }
   }

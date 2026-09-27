@@ -70,3 +70,85 @@ import Testing
   #expect(touches.last == peak, "depois da rampa, segura o novo patamar")
   #expect(touches[1] > touches[0], "mas cresce de verdade")
 }
+
+// MARK: - Rule 139: a agenda do Ouvir
+
+/// Rule 139 — sem ornamento, cada coluna cai exatamente no seu tempo
+/// acumulado: o grid é a soma dos valores escritos.
+@Test func theScheduleLandsColumnsOnTheGrid() {
+  let score = Score(
+    title: "Grid", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(Pitch(60), .quarter), ScoreNote(Pitch(62), .quarter),
+          ScoreNote(Pitch(64), .quarter),
+        ])
+      ]))
+
+  let notes = ScorePlayer.schedule(
+    for: score, order: [0, 1, 2], tempo: 120, hands: .both)
+
+  #expect(notes.map(\.time) == [0.0, 0.5, 1.0])
+  #expect(notes.map(\.column) == [0, 1, 2])
+}
+
+/// Rule 139 — a grace soa ANTES do tempo e a nota decorada não se move.
+@Test func gracesSoundBeforeTheirBeat() {
+  let score = Score(
+    title: "Apojatura", composer: "—",
+    timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(Pitch(60), .quarter),
+          ScoreNote(
+            pitches: [Pitch(64)], duration: Duration(.quarter),
+            graces: [GraceNote(pitch: Pitch(64)), GraceNote(pitch: Pitch(65))]),
+          ScoreNote(Pitch(67), .quarter),
+        ])
+      ]))
+
+  let notes = ScorePlayer.schedule(
+    for: score, order: [0, 1, 2], tempo: 120, hands: .both)
+
+  // As colunas seguem no grid exato.
+  let mains = notes.filter { $0.column != nil }
+  #expect(mains.map(\.time) == [0.0, 0.5, 1.0])
+
+  // As duas graces soam antes do tempo da decorada, em ordem, depois da
+  // coluna anterior.
+  let graces = notes.filter { $0.column == nil }
+  #expect(graces.count == 2)
+  #expect(graces.allSatisfy { $0.time > 0.0 && $0.time < 0.5 })
+  #expect(graces[0].time < graces[1].time)
+  #expect(graces[0].pitches == [Pitch(64)])
+  #expect(graces[1].pitches == [Pitch(65)])
+}
+
+/// Rule 139 — só a mão esquerda em estudo: a grace da direita não soa.
+@Test func leftHandOnlySkipsTheGraces() {
+  let score = Score(
+    title: "Só esquerda", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(
+            pitches: [Pitch(72)], duration: Duration(.whole),
+            graces: [GraceNote(pitch: Pitch(74))])
+        ])
+      ]),
+    leftHand: Part(
+      clef: .bass,
+      measures: [Measure([ScoreNote(Pitch(48), .whole)])]))
+
+  let notes = ScorePlayer.schedule(for: score, order: [0], tempo: 60, hands: .left)
+
+  #expect(notes.filter { $0.column == nil }.isEmpty, "ornamento é da direita")
+  #expect(notes.count == 1)
+  #expect(notes[0].pitches == [Pitch(48)])
+}
