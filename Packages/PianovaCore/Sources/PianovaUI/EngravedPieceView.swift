@@ -492,26 +492,59 @@ struct EngravedPieceView: View {
   }
 
   /// The floating confirmation, hovering by the selection as an edit menu
-  /// does.
+  /// does — with a listen right beside it (rule 144): hearing the passage
+  /// comes before committing to it.
   private func studyPill(for range: PracticeRange) -> some View {
-    Button {
-      Haptics.confirmed()
-      withAnimation(.easeOut(duration: 0.22)) { session.commit() }
-    } label: {
-      HStack(spacing: 8) {
-        Text("Estudar")
-          .font(.system(size: 14, weight: .semibold))
-          .foregroundStyle(Theme.accent)
-        Text(range.count == 1 ? "1 compasso" : "\(range.count) compassos")
-          .font(.system(size: 12))
-          .foregroundStyle(.secondary)
+    HStack(spacing: 0) {
+      Button {
+        if preview.isPlaying {
+          preview.stop()
+        } else {
+          let bounds = score.columns(in: range)
+          preview.play(
+            score, tempo: ScorePlayer.readingTempo(for: score),
+            from: bounds.lowerBound, through: bounds.upperBound)
+        }
+      } label: {
+        HStack(spacing: 6) {
+          Image(systemName: preview.isPlaying ? "stop.fill" : "play.fill")
+            .font(.system(size: 11))
+          Text(preview.isPlaying ? "Parar" : "Ouvir")
+            .font(.system(size: 14, weight: .medium))
+        }
+        .foregroundStyle(Theme.accent)
+        .padding(.leading, 14)
+        .padding(.trailing, 12)
+        .padding(.vertical, 9)
+        .contentShape(Rectangle())
       }
-      .padding(.horizontal, 14)
-      .padding(.vertical, 9)
-      .background(.regularMaterial, in: Capsule())
-      .shadow(color: Theme.shadow(colorScheme), radius: 10, y: 3)
+      .buttonStyle(.plain)
+
+      Divider()
+        .frame(height: 18)
+
+      Button {
+        Haptics.confirmed()
+        preview.stop()
+        withAnimation(.easeOut(duration: 0.22)) { session.commit() }
+      } label: {
+        HStack(spacing: 8) {
+          Text("Estudar")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Theme.accent)
+          Text(range.count == 1 ? "1 compasso" : "\(range.count) compassos")
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, 14)
+        .padding(.vertical, 9)
+        .contentShape(Rectangle())
+      }
+      .buttonStyle(.plain)
     }
-    .buttonStyle(.plain)
+    .background(.regularMaterial, in: Capsule())
+    .shadow(color: Theme.shadow(colorScheme), radius: 10, y: 3)
   }
 
   /// Every selected bar's box on one page, joined.

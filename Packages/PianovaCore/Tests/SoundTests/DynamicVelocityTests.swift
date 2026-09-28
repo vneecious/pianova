@@ -229,3 +229,19 @@ import Testing
 private func releaseTime(of pitch: Pitch, in notes: [ScorePlayer.PlaybackNote]) -> TimeInterval? {
   notes.last(where: { $0.releases.contains(pitch) })?.time
 }
+
+// MARK: - Rule 138: o tempo ouvido
+
+/// Rule 138 — com tempo escrito, ouve-se nele; sem, um passo de leitura.
+@Test func theHeardTempoIsTheWrittenOneOrAReadingPace() {
+  let written = Score(
+    title: "Com tempo", composer: "—",
+    rightHand: Part(clef: .treble, measures: [Measure([ScoreNote(Pitch(60), .whole)])]),
+    tempo: 132)
+  let silent = Score(
+    title: "Sem tempo", composer: "—",
+    rightHand: Part(clef: .treble, measures: [Measure([ScoreNote(Pitch(60), .whole)])]))
+
+  #expect(ScorePlayer.readingTempo(for: written) == 132)
+  #expect(ScorePlayer.readingTempo(for: silent) == 72)
+}

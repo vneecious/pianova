@@ -669,6 +669,14 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      estudo dispensa o foco — o trecho manda. E o foco é uma **coluna da
      partitura**, não um lugar da tela: sobrevive a zoom, tamanho e
      re-gravação.
+144. **Ouvir o trecho antes de estudá-lo**: durante a seleção, o pill
+     oferece *Ouvir* ao lado de *Estudar* — o trecho toca ali mesmo, sem
+     sair da seleção, e tocar de novo para. O tempo é o de sempre: o
+     escrito quando há (regra 138), um passo de leitura quando não há.
+145. **A barra diz o que está em uso e aceita dedos**: o botão da caneta
+     mostra a ferramenta ativa (caneta, marca-texto ou borracha — e o menu
+     marca a escolhida), e os botões da barra têm alvo de toque
+     confortável — ícone pequeno demais para tocar é botão que não existe.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

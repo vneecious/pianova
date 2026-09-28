@@ -179,7 +179,9 @@ struct PieceView: View {
       showsFingering.toggle()
     } label: {
       Image(systemName: showsFingering ? "hand.raised.fill" : "hand.raised.slash")
-        .font(.system(size: 13))
+        .font(.system(size: 17))
+        .frame(width: 34, height: 34)
+        .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .foregroundStyle(showsFingering ? Theme.accent : .secondary)
@@ -195,7 +197,9 @@ struct PieceView: View {
       judgesPedal.toggle()
     } label: {
       Image(systemName: "shoeprints.fill")
-        .font(.system(size: 13))
+        .font(.system(size: 17))
+        .frame(width: 34, height: 34)
+        .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .foregroundStyle(judgesPedal ? Theme.accent : .secondary)
@@ -213,7 +217,10 @@ struct PieceView: View {
     Button {
       restartEpoch += 1
     } label: {
-      Image(systemName: "arrow.counterclockwise").font(.system(size: 13))
+      Image(systemName: "arrow.counterclockwise")
+        .font(.system(size: 17))
+        .frame(width: 34, height: 34)
+        .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .foregroundStyle(.secondary)
@@ -232,7 +239,10 @@ struct PieceView: View {
     Button {
       showsSizePopover = true
     } label: {
-      Image(systemName: "textformat.size").font(.system(size: 14))
+      Image(systemName: "textformat.size")
+        .font(.system(size: 17))
+        .frame(width: 34, height: 34)
+        .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .foregroundStyle(.secondary)
@@ -270,11 +280,10 @@ struct PieceView: View {
   private var annotateMenu: some View {
     Menu {
       #if canImport(UIKit) && canImport(PencilKit)
-      ForEach(AnnotationTool.allCases, id: \.rawValue) { tool in
-        Button {
-          annotationTool = tool.rawValue
-        } label: {
-          Label(tool.title, systemImage: tool.symbol)
+      // A picker rather than buttons: the chosen tool wears the checkmark.
+      Picker("Ferramenta", selection: $annotationTool) {
+        ForEach(AnnotationTool.allCases, id: \.rawValue) { tool in
+          Label(tool.title, systemImage: tool.symbol).tag(tool.rawValue)
         }
       }
 
@@ -291,13 +300,26 @@ struct PieceView: View {
         Label("Limpar anotações da peça", systemImage: "trash")
       }
     } label: {
-      Image(systemName: "pencil.tip.crop.circle")
-        .font(.system(size: 14))
-        .foregroundStyle(.secondary)
+      // The button wears the active tool (rule 145): what the pencil will
+      // do is visible before it touches the page.
+      Image(systemName: activeToolSymbol)
+        .font(.system(size: 17))
+        .foregroundStyle(Theme.accent)
+        .frame(width: 34, height: 34)
+        .contentShape(Rectangle())
     }
     .menuStyle(.borderlessButton)
     .fixedSize()
     .help("Anotar com a caneta")
+  }
+
+  /// The symbol of the tool the pencil holds right now (rule 145).
+  private var activeToolSymbol: String {
+    #if canImport(UIKit) && canImport(PencilKit)
+    return AnnotationTool(rawValue: annotationTool)?.symbol ?? "pencil.tip"
+    #else
+    return "pencil.tip"
+    #endif
   }
 
   /// One line saying what the current gesture does, per phase.
@@ -329,19 +351,11 @@ struct PieceView: View {
       // are the ones on the page and the highlight lands where the sound is.
       let bounds = score.columns(in: session.range)
       preview.play(
-        score, tempo: Self.tempo(for: score),
+        score, tempo: ScorePlayer.readingTempo(for: score),
         from: bounds.lowerBound, through: bounds.upperBound, hands: session.hands)
     } else {
-      preview.play(score, tempo: Self.tempo(for: score), from: startFrom)
+      preview.play(score, tempo: ScorePlayer.readingTempo(for: score), from: startFrom)
     }
   }
 
-  /// The tempo the piece asks for, or a gentle reading pace without one.
-  ///
-  /// A score that declares its tempo — the number behind the "Allegretto" —
-  /// is heard at it (rule 138). One that does not gets a pace to read at:
-  /// reading speed is not performance speed.
-  private static func tempo(for score: Score) -> Double {
-    score.tempo ?? (score.timeSignature.beatValue == .eighth ? 108 : 72)
-  }
 }

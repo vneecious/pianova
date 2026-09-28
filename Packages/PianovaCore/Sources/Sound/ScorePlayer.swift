@@ -296,6 +296,18 @@ public final class ScorePlayer: ObservableObject {
     return notes.sorted { $0.time < $1.time }
   }
 
+  /// The tempo a piece is heard at: the written one, or a reading pace.
+  ///
+  /// A score that declares its tempo — the number behind the "Allegretto" —
+  /// is heard at it (rule 138). One that does not gets a pace to read at:
+  /// reading speed is not performance speed, and eighth-based metres count
+  /// faster beats.
+  /// - Parameter score: The piece.
+  /// - Returns: Beats per minute.
+  public nonisolated static func readingTempo(for score: Score) -> Double {
+    score.tempo ?? (score.timeSignature.beatValue == .eighth ? 108 : 72)
+  }
+
   /// How long a score lasts at a tempo.
   /// - Parameters:
   ///   - score: The piece.
