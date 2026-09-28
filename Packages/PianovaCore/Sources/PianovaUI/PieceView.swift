@@ -74,29 +74,35 @@ struct PieceView: View {
   /// shown at a time — a back button sitting there was being pressed all day
   /// in the hope of getting the score back.
   private var titleBar: some View {
-    ZStack {
+    // One row, not layers: the title block owns only the space between the
+    // side clusters, so a long hint wraps instead of sliding under buttons.
+    HStack(spacing: 12) {
+      if session.phase == .browsing {
+        Button(action: onBack) {
+          Label("Repertório", systemImage: "chevron.left")
+            .font(.system(size: 13, weight: .medium))
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .layoutPriority(1)
+      }
+
+      Spacer(minLength: 12)
+
       VStack(spacing: 1) {
         Text(title)
           .font(.system(size: 15, weight: .semibold))
         Text(subtitle)
           .font(.system(size: 11))
           .foregroundStyle(.secondary)
+          .lineLimit(2)
       }
+      .multilineTextAlignment(.center)
 
-      HStack(spacing: 12) {
-        if session.phase == .browsing {
-          Button(action: onBack) {
-            Label("Repertório", systemImage: "chevron.left")
-              .font(.system(size: 13, weight: .medium))
-          }
-          .buttonStyle(.plain)
-          .foregroundStyle(.secondary)
-        }
+      Spacer(minLength: 12)
 
-        Spacer(minLength: 0)
-
-        trailing
-      }
+      trailing
+        .layoutPriority(1)
     }
     .padding(.bottom, 12)
     .animation(.easeInOut(duration: 0.2), value: session.phase)
