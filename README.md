@@ -660,6 +660,15 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      no Ouvir**: com o pedal pisado as notas seguem soando além do escrito,
      até o ✻ (ou a troca) levantar o abafador — aí solta tudo que ficou
      ringando.
+143. **Tocar numa nota escolhe o ponto de partida**: o cursor azul — a mesma
+     linguagem visual de sempre, nada novo na tela — vai para ela, e tanto o
+     Tocar quanto o Ouvir passam a partir dali (o botão de ouvir diz de
+     onde). Tocar na mesma nota outra vez, tocar fora das pautas ou o botão
+     "Do começo" devolvem o início. O toque **só conta perto de uma nota**:
+     um toque na margem não escolhe nada por acidente. Escolher um trecho de
+     estudo dispensa o foco — o trecho manda. E o foco é uma **coluna da
+     partitura**, não um lugar da tela: sobrevive a zoom, tamanho e
+     re-gravação.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

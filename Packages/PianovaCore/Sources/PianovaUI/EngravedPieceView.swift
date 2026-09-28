@@ -25,8 +25,11 @@ struct EngravedPieceView: View {
 
   let onFinished: () -> Void
 
-  /// Called when a note is tapped while browsing, with the column it sits on.
+  /// Called when a note is tapped while browsing, with the column to focus.
   var onPickStart: ((Int) -> Void)?
+
+  /// The focused column the run starts at (rule 143), owned by the parent.
+  var startColumn = 0
 
   /// Bumped by the owner when annotations are cleared, rebirthing canvases.
   var annotationsEpoch = 0
@@ -95,6 +98,15 @@ struct EngravedPieceView: View {
     .onChange(of: judgesPedal) { _, value in controller.judgesPedal = value }
     .onChange(of: scoreUnits) { _, _ in reload() }
     .onChange(of: restartEpoch) { _, _ in controller.startOver() }
+    // A new starting note re-restricts the run there; the engraving, the
+    // scroll and the ink all stay put (rule 143).
+    .onChange(of: startColumn) { _, value in
+      controller.startColumn = value
+      let studying = session.phase == .studying
+      controller.restrict(
+        to: studying ? session.range : nil,
+        hands: studying ? session.hands : .both)
+    }
     .onAppear {
       controller.onFinished = onFinished
       controller.loops = session.loopsNow
@@ -410,12 +422,21 @@ struct EngravedPieceView: View {
   /// A short tap on a note while browsing picks where to listen from.
   private func tapped(_ id: String) {
     guard session.phase == .browsing, let column = controller.column(of: id) else { return }
-    onPickStart?(column)
+    onPickStart?(NoteFocus.afterTap(on: column, current: startColumn))
   }
 
   /// A short tap while selecting speaks the tap grammar: inside confirms,
   /// beyond extends, and off the staves deselects — like tapping around text.
   private func tappedPoint(_ point: CGPoint, pageIndex: Int) {
+    // Off the staves the focus lets go (rule 143). A tap near a note has
+    // already landed on it before this runs.
+    if session.phase == .browsing {
+      if startColumn > 0, controller.bar(exactlyAtPagePoint: point, pageIndex: pageIndex) == nil {
+        onPickStart?(0)
+      }
+      return
+    }
+
     guard session.phase == .selecting else { return }
 
     let bar = controller.bar(exactlyAtPagePoint: point, pageIndex: pageIndex)

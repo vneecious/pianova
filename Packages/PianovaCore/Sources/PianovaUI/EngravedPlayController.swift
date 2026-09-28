@@ -406,6 +406,34 @@ public final class EngravedPlayController: ObservableObject {
       }
   }
 
+  /// The column the run starts at while no passage is in study (rule 143).
+  ///
+  /// Chosen by tapping a note. A column index rather than a place on the
+  /// screen, so it survives zoom, size and re-engraving.
+  public var startColumn = 0
+
+  /// Whether a column is asked for, given the passage and the focus
+  /// (rule 143).
+  ///
+  /// A study passage overrules the focus: inside one, its bars decide. With
+  /// no passage, practice begins at the focused column and what comes
+  /// before is not asked.
+  /// - Parameters:
+  ///   - column: The column being considered.
+  ///   - bar: The bar it sits in, when known.
+  ///   - range: The passage in study, or `nil` for the whole piece.
+  ///   - startColumn: The focused column, `0` for the top.
+  /// - Returns: Whether the column takes part in the run.
+  public nonisolated static func isWithinPractice(
+    column: Int, bar: Int?, range: PracticeRange?, startColumn: Int
+  ) -> Bool {
+    if let range {
+      guard let bar else { return true }
+      return range.judges(bar: bar)
+    }
+    return column >= startColumn
+  }
+
   /// Narrows what is judged to a passage and a hand.
   /// - Parameters:
   ///   - range: The bars to work at, or `nil` for all of them.
@@ -419,11 +447,12 @@ public final class EngravedPlayController: ObservableObject {
       guard columnOfEvent.indices.contains(index) else { continue }
       let column = columnOfEvent[index]
 
-      if let range, barOfColumn.indices.contains(column),
-        !range.judges(bar: barOfColumn[column])
-      {
-        continue
-      }
+      guard
+        Self.isWithinPractice(
+          column: column,
+          bar: barOfColumn.indices.contains(column) ? barOfColumn[column] : nil,
+          range: range, startColumn: startColumn)
+      else { continue }
 
       // Note by note, never event by event: where the hands play together,
       // the studied hand answers for its own notes only.

@@ -52,12 +52,18 @@ struct PieceView: View {
       EngravedPieceView(
         hub: hub, score: score, session: session, onFinished: onFinished,
         onPickStart: { startFrom = $0 },
+        startColumn: startFrom,
         annotationsEpoch: annotationsEpoch,
         restartEpoch: restartEpoch)
     }
     .onDisappear { preview.stop() }
     // What is being studied changed, so whatever is sounding is no longer it.
     .onChange(of: session.study) { _, _ in preview.stop() }
+    // A passage in study overrules the focus (rule 143): choosing one lets
+    // the focused note go.
+    .onChange(of: session.phase) { _, phase in
+      if phase != .browsing { startFrom = 0 }
+    }
 
   }
 
@@ -292,7 +298,7 @@ struct PieceView: View {
   private var subtitle: String {
     switch session.phase {
     case .browsing:
-      return "Segure num compasso para estudar um trecho."
+      return "Toque numa nota para partir dela. Segure num compasso para estudar."
     case .selecting:
       return "Arraste as alças ou toque noutro compasso. Estudar confirma."
     case .studying:

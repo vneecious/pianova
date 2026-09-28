@@ -292,23 +292,12 @@ struct EngravedScoreView: View {
 
   /// The element whose box is nearest a point, for tapping a note.
   private func nearest(to point: CGPoint) -> String? {
-    var best: (id: String, distance: CGFloat)?
-
-    for shape in page.shapes {
-      guard let id = shape.noteID ?? shape.elementID else { continue }
-      let box = shape.path.boundingBoxOfPath
-      guard box.width > 0 || box.height > 0 else { continue }
-
-      let dx = max(box.minX - point.x, 0, point.x - box.maxX)
-      let dy = max(box.minY - point.y, 0, point.y - box.maxY)
-      let distance = dx * dx + dy * dy
-
-      if distance < (best?.distance ?? .infinity) {
-        best = (id, distance)
-      }
-    }
-
-    return best?.id
+    TapTarget.nearest(
+      to: point,
+      among: page.shapes.compactMap { shape in
+        guard let id = shape.noteID ?? shape.elementID else { return nil }
+        return (id, shape.path.boundingBoxOfPath)
+      })
   }
 
 }
