@@ -57,8 +57,8 @@ public struct ScoreLibrary {
     }
   }
 
-  /// Extensions the library will keep.
-  public static let extensions = ["musicxml", "xml"]
+  /// Extensions the library will keep (rule 146).
+  public static let extensions = ["musicxml", "xml", "mxl"]
 
   /// The files kept, oldest name first.
   public func files() -> [URL] {

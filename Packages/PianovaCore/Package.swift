@@ -71,7 +71,9 @@ let package = Package(
       name: "PianovaCLI",
       dependencies: ["ExerciseEngine", "MIDIInput", "ScoreModel"]),
     .testTarget(name: "EngravingTests", dependencies: ["Engraving", "ScoreModel"]),
-    .testTarget(name: "ScoreModelTests", dependencies: ["ScoreModel"]),
+    .testTarget(
+      name: "ScoreModelTests", dependencies: ["ScoreModel"],
+      resources: [.copy("Fixtures")]),
     .testTarget(name: "ExerciseEngineTests", dependencies: ["ExerciseEngine", "ScoreModel"]),
     .testTarget(name: "MIDIInputTests", dependencies: ["MIDIInput", "ScoreModel"]),
     .testTarget(name: "NoteQuizTests", dependencies: ["NoteQuiz", "ScoreModel"]),

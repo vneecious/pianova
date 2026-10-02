@@ -49,8 +49,10 @@ public enum MusicXMLImporter {
   /// - Returns: The score.
   /// - Throws: ``MusicXMLError`` when the file cannot be read faithfully.
   public static func score(from data: Data) throws -> Score {
+    // A compressed MusicXML is the same score in a zip envelope (rule 146).
+    let payload = MXLArchive.isZip(data) ? (MXLArchive.musicXML(in: data) ?? data) : data
     let parser = Parser()
-    guard parser.parse(data) else { throw MusicXMLError.notXML }
+    guard parser.parse(payload) else { throw MusicXMLError.notXML }
     guard parser.sawPartwise else { throw MusicXMLError.notPartwise }
     guard !parser.measures.isEmpty else { throw MusicXMLError.empty }
     if let failure = parser.failure { throw failure }

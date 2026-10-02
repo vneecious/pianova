@@ -677,6 +677,12 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      mostra a ferramenta ativa (caneta, marca-texto ou borracha — e o menu
      marca a escolhida), e os botões da barra têm alvo de toque
      confortável — ícone pequeno demais para tocar é botão que não existe.
+146. O **.mxl é bem-vindo**: o MusicXML comprimido (um zip) abre como o
+     plano — o `META-INF/container.xml` aponta o arquivo raiz, e sem
+     container vale o primeiro `.xml` do pacote. A biblioteca guarda e
+     lista `.mxl` como qualquer partitura. Metade do que se baixa por aí
+     vem assim, e "formato inválido" para um formato oficial é bug, não
+     opinião.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.
