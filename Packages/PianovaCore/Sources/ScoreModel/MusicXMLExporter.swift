@@ -127,10 +127,17 @@ public enum MusicXMLExporter {
           let stop =
             release && events.count > 1 && position == events.count - 1
             ? pedalStop(staff: staff) : ""
+          // The tie's far end: the event before this one, even across the
+          // barline (rule 148).
+          let previous =
+            position > 0
+            ? events[position - 1]
+            : (index > 0 ? part?.measures[index - 1].notes.last : nil)
           return stop
             + note(
               event, staff: staff, voice: voice, beam: beams[position],
               suppressPedalStop: position == 0 && index > 0,
+              previous: previous,
               accidentals: &state)
         }
         .joined()
@@ -155,6 +162,10 @@ public enum MusicXMLExporter {
       body +=
         "<barline location=\"right\"><bar-style>light-heavy</bar-style>"
         + "<repeat direction=\"backward\"/></barline>"
+    } else if index == score.rightHand.measures.count - 1 {
+      // The piece closes with the final barline (rule 148) — a score ending
+      // on a plain line looks torn off.
+      body += "<barline location=\"right\"><bar-style>light-heavy</bar-style></barline>"
     }
 
     return "<measure number=\"\(index + 1)\">\(body)</measure>"
@@ -226,6 +237,7 @@ public enum MusicXMLExporter {
   private static func note(
     _ event: ScoreNote, staff: Int?, voice: Int, beam: BeamMark?,
     suppressPedalStop: Bool = false,
+    previous: ScoreNote? = nil,
     accidentals: inout AccidentalState
   ) -> String {
     let length = Int((event.duration.beats * Double(divisions)).rounded())
@@ -278,11 +290,21 @@ public enum MusicXMLExporter {
         )
         .map { "<accidental>\($0)</accidental>" } ?? ""
 
-      body +=
-        "<note>\(chord)\(pitchXML(spelled))<duration>\(length)</duration>\(voiceTag)"
-        + "<type>\(type)</type>\(dot)\(accidental)\(timeModTag)\(staffTag)"
-        + "\(index == 0 ? beamTag : "")"
-        + "\(notations(of: event, pitchIndex: index, staff: staff))</note>"
+      // The tie is written out, both ends (rule 148): sound in <tie>,
+      // drawing in <tied>.
+      let tieStarts = event.isTiedToNext
+      let tieStops = previous?.isTiedToNext == true && previous?.pitches.contains(pitch) == true
+      let tie =
+        (tieStops ? "<tie type=\"stop\"/>" : "")
+        + (tieStarts ? "<tie type=\"start\"/>" : "")
+
+      let marks = notations(
+        of: event, pitchIndex: index, staff: staff,
+        tieStarts: tieStarts, tieStops: tieStops)
+      let head = "<note>\(chord)\(pitchXML(spelled))<duration>\(length)</duration>"
+      let middle = "\(tie)\(voiceTag)<type>\(type)</type>\(dot)\(accidental)"
+      let tail = "\(timeModTag)\(staffTag)\(index == 0 ? beamTag : "")\(marks)</note>"
+      body += head + middle + tail
     }
 
     return body
@@ -406,11 +428,13 @@ public enum MusicXMLExporter {
   /// Slur and articulations ride the first note of a chord; fingering rides
   /// each note that has one.
   private static func notations(
-    of event: ScoreNote, pitchIndex index: Int, staff: Int? = nil
-  )
-    -> String
-  {
+    of event: ScoreNote, pitchIndex index: Int, staff: Int? = nil,
+    tieStarts: Bool = false, tieStops: Bool = false
+  ) -> String {
     var inner = ""
+
+    if tieStops { inner += "<tied type=\"stop\"/>" }
+    if tieStarts { inner += "<tied type=\"start\"/>" }
 
     if event.fingers.indices.contains(index) && event.fingers[index] > 0 {
       // The bass hand reads its numbers under the staff, as editions print

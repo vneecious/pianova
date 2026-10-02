@@ -699,3 +699,65 @@ private let twoVoices = """
   #expect(MusicXMLExporter.musicXML(for: written).contains("<words>♩ = 152</words>"))
   #expect(!MusicXMLExporter.musicXML(for: silent).contains("♩ ="))
 }
+
+// MARK: - Rule 148: o fim se escreve
+
+/// Rule 148 — a ligadura de prolongamento sai no export, começo e fim.
+@Test func aTieIsWrittenOutForTheEngraver() {
+  let score = Score(
+    title: "Ligada", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(60)], duration: Duration(.half), isTiedToNext: true),
+          ScoreNote(pitches: [Pitch(60)], duration: Duration(.half)),
+        ])
+      ]))
+
+  let out = MusicXMLExporter.musicXML(for: score)
+
+  #expect(out.contains("<tie type=\"start\"/>"))
+  #expect(out.contains("<tied type=\"start\"/>"))
+  #expect(out.contains("<tied type=\"stop\"/>"))
+}
+
+/// Rule 148 — a ligadura atravessa a barra de compasso.
+@Test func aTieCrossesTheBarline() {
+  let score = Score(
+    title: "Através", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote.rest(.half),
+          ScoreNote(pitches: [Pitch(64)], duration: Duration(.half), isTiedToNext: true),
+        ]),
+        Measure([
+          ScoreNote(pitches: [Pitch(64)], duration: Duration(.whole))
+        ]),
+      ]))
+
+  let out = MusicXMLExporter.musicXML(for: score)
+  let last = out.components(separatedBy: "<measure").last ?? ""
+
+  #expect(last.contains("<tied type=\"stop\"/>"))
+}
+
+/// Rule 148 — a peça fecha com barra final, com ou sem ritornello.
+@Test func thePieceClosesWithAFinalBarline() {
+  let score = Score(
+    title: "Fecho", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([ScoreNote(Pitch(60), .whole)]),
+        Measure([ScoreNote(Pitch(62), .whole)]),
+      ]))
+
+  let out = MusicXMLExporter.musicXML(for: score)
+  let measures = out.components(separatedBy: "<measure")
+
+  #expect(measures.last?.contains("<bar-style>light-heavy</bar-style>") == true)
+  #expect(measures.dropLast().last?.contains("light-heavy") == false, "só a última fecha")
+}

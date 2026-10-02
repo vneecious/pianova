@@ -690,6 +690,10 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      existe; senão um degrau e meio, e o nível fica. A mesma leitura
      editorial do cresc. escrito (regra 141), agora com começo e fim
      desenhados.
+148. **O fim se escreve**: a ligadura de prolongamento é desenhada — o
+     export carrega o tied do começo ao fim, não só o som da regra 142 —
+     e a última barra da peça é a **barra final** (fina-grossa), como toda
+     edição fecha. Partitura que termina em barra simples parece rasgada.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.
