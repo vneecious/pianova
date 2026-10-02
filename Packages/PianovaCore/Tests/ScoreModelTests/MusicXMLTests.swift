@@ -696,6 +696,6 @@ private let twoVoices = """
     title: "Sem tempo", composer: "—",
     rightHand: Part(clef: .treble, measures: [Measure([ScoreNote(Pitch(60), .whole)])]))
 
-  #expect(MusicXMLExporter.musicXML(for: written).contains("<per-minute>152</per-minute>"))
-  #expect(!MusicXMLExporter.musicXML(for: silent).contains("<metronome>"))
+  #expect(MusicXMLExporter.musicXML(for: written).contains("<words>♩ = 152</words>"))
+  #expect(!MusicXMLExporter.musicXML(for: silent).contains("♩ ="))
 }

@@ -89,15 +89,16 @@ public enum MusicXMLExporter {
         """
 
       // The declared tempo appears on the page, as every edition prints it
-      // (rule 138). The sound tempo rides along for any other reader.
+      // (rule 138) — as plain words with the unicode crotchet, because the
+      // engraver's own metronome glyphs live in a music font the native
+      // text renderer does not carry, and a tofu box is not a tempo.
       if let tempo = score.tempo {
         let shown =
           tempo == tempo.rounded()
           ? String(Int(tempo)) : String(tempo)
         body +=
           "<direction placement=\"above\"><direction-type>"
-          + "<metronome><beat-unit>quarter</beat-unit>"
-          + "<per-minute>\(shown)</per-minute></metronome>"
+          + "<words>♩ = \(shown)</words>"
           + "</direction-type><staff>1</staff>"
           + "<sound tempo=\"\(shown)\"/></direction>"
       }
@@ -281,7 +282,7 @@ public enum MusicXMLExporter {
         "<note>\(chord)\(pitchXML(spelled))<duration>\(length)</duration>\(voiceTag)"
         + "<type>\(type)</type>\(dot)\(accidental)\(timeModTag)\(staffTag)"
         + "\(index == 0 ? beamTag : "")"
-        + "\(notations(of: event, pitchIndex: index))</note>"
+        + "\(notations(of: event, pitchIndex: index, staff: staff))</note>"
     }
 
     return body
@@ -404,11 +405,19 @@ public enum MusicXMLExporter {
   ///
   /// Slur and articulations ride the first note of a chord; fingering rides
   /// each note that has one.
-  private static func notations(of event: ScoreNote, pitchIndex index: Int) -> String {
+  private static func notations(
+    of event: ScoreNote, pitchIndex index: Int, staff: Int? = nil
+  )
+    -> String
+  {
     var inner = ""
 
     if event.fingers.indices.contains(index) && event.fingers[index] > 0 {
-      inner += "<technical><fingering>\(event.fingers[index])</fingering></technical>"
+      // The bass hand reads its numbers under the staff, as editions print
+      // them; the melody keeps them above.
+      let placement = staff == 2 ? " placement=\"below\"" : ""
+      inner +=
+        "<technical><fingering\(placement)>\(event.fingers[index])</fingering></technical>"
     }
 
     if index == 0 {
