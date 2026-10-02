@@ -652,3 +652,50 @@ private let twoVoices = """
   let out = MusicXMLExporter.musicXML(for: score)
   #expect(out.contains("<direction placement=\"below\"><direction-type><words>cresc."))
 }
+
+// MARK: - Rule 147: reguladores valem
+
+/// Rule 147 — o regulador escrito sobrevive à leitura e volta na escrita.
+@Test func aWedgeSurvivesTheRoundTrip() throws {
+  let xml = """
+    <score-partwise>
+      <part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
+      <part id="P1"><measure number="1">
+        <attributes><divisions>1</divisions>
+          <time><beats>3</beats><beat-type>4</beat-type></time>
+          <clef><sign>G</sign><line>2</line></clef></attributes>
+        <direction placement="below"><direction-type><wedge type="crescendo"/></direction-type></direction>
+        <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+        <note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+        <direction placement="below"><direction-type><wedge type="stop"/></direction-type></direction>
+        <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      </measure></part>
+    </score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+
+  #expect(score.rightHand.notes[0].wedge == .crescendo)
+  #expect(score.rightHand.notes[1].wedge == nil)
+  #expect(score.rightHand.notes[2].wedge == .stop)
+
+  let out = MusicXMLExporter.musicXML(for: score)
+  #expect(out.contains("<wedge type=\"crescendo\"/>"))
+  #expect(out.contains("<wedge type=\"stop\"/>"))
+}
+
+// MARK: - Rule 138: o tempo declarado aparece na página
+
+/// Rule 138 — o tempo escrito vira metrônomo desenhado; sem tempo, nada.
+@Test func theWrittenTempoIsEngraved() {
+  let written = Score(
+    title: "Com tempo", composer: "—",
+    rightHand: Part(clef: .treble, measures: [Measure([ScoreNote(Pitch(60), .whole)])]),
+    tempo: 152)
+  let silent = Score(
+    title: "Sem tempo", composer: "—",
+    rightHand: Part(clef: .treble, measures: [Measure([ScoreNote(Pitch(60), .whole)])]))
+
+  #expect(MusicXMLExporter.musicXML(for: written).contains("<per-minute>152</per-minute>"))
+  #expect(!MusicXMLExporter.musicXML(for: silent).contains("<metronome>"))
+}

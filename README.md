@@ -633,7 +633,8 @@ servir ao segundo e permitir o primeiro, e não o contrário.
 138. O **Ouvir toca no andamento escrito**: o arquivo que declara seu tempo
      (o `sound tempo` que acompanha o "Allegretto") é tocado nele. Sem
      andamento escrito, vale o tempo de leitura suave de sempre — ler não é
-     performar.
+     performar. E o tempo declarado **aparece na página** (♩ = N), como
+     toda edição imprime.
 139. O **Ouvir toca os ornamentos**: a grace soa rápida, **antes do tempo**,
      como uma apojatura — e a nota decorada cai exatamente no seu tempo. O
      ritmo de referência não se move por causa do enfeite: roubar o instante
@@ -683,6 +684,12 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      lista `.mxl` como qualquer partitura. Metade do que se baixa por aí
      vem assim, e "formato inválido" para um formato oficial é bug, não
      opinião.
+147. **Reguladores valem**: o < e o > desenhados (wedge) aparecem na página
+     como na edição e, no Ouvir, crescem ou míngua ao longo do **próprio
+     arco** — até a marca escrita que chega com o fim do arco, quando ela
+     existe; senão um degrau e meio, e o nível fica. A mesma leitura
+     editorial do cresc. escrito (regra 141), agora com começo e fim
+     desenhados.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

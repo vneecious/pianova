@@ -245,3 +245,53 @@ private func releaseTime(of pitch: Pitch, in notes: [ScorePlayer.PlaybackNote]) 
   #expect(ScorePlayer.readingTempo(for: written) == 132)
   #expect(ScorePlayer.readingTempo(for: silent) == 72)
 }
+
+// MARK: - Rule 147: o regulador é uma rampa com começo e fim desenhados
+
+/// Rule 147 — a marca que chega com o fim do arco é o alvo da rampa.
+@Test func aWedgeRampsToTheMarkAtItsEnd() {
+  let score = Score(
+    title: "Com alvo", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(60)], duration: Duration(.quarter), dynamic: "p"),
+          ScoreNote(pitches: [Pitch(62)], duration: Duration(.quarter), wedge: .crescendo),
+          ScoreNote(Pitch(64), .quarter),
+          ScoreNote(pitches: [Pitch(65)], duration: Duration(.quarter), dynamic: "f", wedge: .stop),
+          ScoreNote(Pitch(67), .quarter),
+        ])
+      ]))
+
+  let touches = ScorePlayer.touches(for: score)
+
+  #expect(touches[0] == ScorePlayer.velocity(for: "p"))
+  #expect(touches[3] == ScorePlayer.velocity(for: "f"))
+  #expect(touches[1] < touches[2] && touches[2] < touches[3], "a rampa sobe pelo arco")
+  #expect(touches[4] == ScorePlayer.velocity(for: "f"))
+}
+
+/// Rule 147 — sem alvo escrito, um degrau e meio até o fim do arco, e fica.
+@Test func aWedgeWithoutTargetGrowsAStepAndAHalf() {
+  let score = Score(
+    title: "Sem alvo", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(pitches: [Pitch(60)], duration: Duration(.quarter), dynamic: "p"),
+          ScoreNote(pitches: [Pitch(62)], duration: Duration(.quarter), wedge: .crescendo),
+          ScoreNote(Pitch(64), .quarter),
+          ScoreNote(pitches: [Pitch(65)], duration: Duration(.quarter), wedge: .stop),
+          ScoreNote(Pitch(67), .quarter),
+        ])
+      ]))
+
+  let touches = ScorePlayer.touches(for: score)
+  let from = Int(ScorePlayer.velocity(for: "p"))
+
+  #expect(touches[3] == UInt8(from + 16), "um degrau e meio no fim do arco")
+  #expect(touches[4] == UInt8(from + 16), "e o nível fica")
+  #expect(touches[1] < touches[2] && touches[2] < touches[3])
+}

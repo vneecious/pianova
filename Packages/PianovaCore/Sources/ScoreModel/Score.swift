@@ -39,6 +39,16 @@ public struct KeySignature: Equatable, Sendable {
   }
 }
 
+/// A written hairpin — the drawn crescendo or diminuendo (rule 147).
+public enum WedgeMark: String, Equatable, Sendable {
+  /// The arc opens — grow from here.
+  case crescendo
+  /// The arc opens the other way — fade from here.
+  case diminuendo
+  /// The arc closes.
+  case stop
+}
+
 /// A written pedal instruction, anchored to the note it precedes.
 public enum PedalMark: String, Equatable, Sendable {
   /// Press the damper pedal — "Ped."
@@ -160,6 +170,9 @@ public struct ScoreNote: Equatable, Sendable {
   /// A dynamic written at this note — "p", "mf", "ff" — if any.
   public let dynamic: String?
 
+  /// A hairpin opening or closing at this note (rule 147), if any.
+  public let wedge: WedgeMark?
+
   /// A written word at this note — "Andante", "dolce" — if any.
   public let words: String?
 
@@ -190,6 +203,7 @@ public struct ScoreNote: Equatable, Sendable {
   ///   - tupletStop: Whether a tuplet bracket closes here.
   ///   - beam: Where this note stands in its written beam group, if said.
   ///   - dynamic: A dynamic written here, if any.
+  ///   - wedge: A hairpin opening or closing here, if any.
   ///   - words: A written word here, if any.
   ///   - wordsBelow: Whether the word was written below the staff.
   ///   - articulations: The articulations written on this note.
@@ -200,7 +214,8 @@ public struct ScoreNote: Equatable, Sendable {
     slurStart: Bool = false, slurStop: Bool = false,
     tupletStart: Bool = false, tupletStop: Bool = false,
     beam: BeamMark? = nil,
-    dynamic: String? = nil, words: String? = nil, wordsBelow: Bool = false,
+    dynamic: String? = nil, wedge: WedgeMark? = nil,
+    words: String? = nil, wordsBelow: Bool = false,
     articulations: Set<Articulation> = [],
     graces: [GraceNote] = []
   ) {
@@ -217,6 +232,7 @@ public struct ScoreNote: Equatable, Sendable {
     self.tupletStop = tupletStop
     self.beam = beam
     self.dynamic = dynamic
+    self.wedge = wedge
     self.words = words
     self.wordsBelow = wordsBelow
     self.articulations = articulations
@@ -528,6 +544,25 @@ public struct Score: Equatable, Sendable {
       for note in part.notes {
         let time = (elapsed * 720).rounded() / 720
         if let pedal = note.pedal, marks[time] == nil { marks[time] = pedal }
+        elapsed += note.beats
+      }
+    }
+
+    return columns.map { marks[$0.beats] }
+  }
+
+  /// The written hairpin at each column (rule 147).
+  ///
+  /// Merged per moment the way the pedal is: the mark rides whichever
+  /// hand's note carried it.
+  public var columnWedges: [WedgeMark?] {
+    var marks: [Double: WedgeMark] = [:]
+
+    for part in [rightHand, leftHand].compactMap({ $0 }) {
+      var elapsed = 0.0
+      for note in part.notes {
+        let time = (elapsed * 720).rounded() / 720
+        if let wedge = note.wedge, marks[time] == nil { marks[time] = wedge }
         elapsed += note.beats
       }
     }

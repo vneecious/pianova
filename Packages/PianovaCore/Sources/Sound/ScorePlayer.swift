@@ -91,6 +91,40 @@ public final class ScorePlayer: ObservableObject {
       }
     }
 
+    // A drawn hairpin is the same editorial reading with its ends written
+    // out (rule 147): ramp along the arc to the mark arriving at its end,
+    // or a step and a half, and the level holds.
+    let wedges = score.columnWedges
+    for index in wedges.indices {
+      guard let wedge = wedges[index], wedge != .stop else { continue }
+      let rising = wedge == .crescendo
+      let from = touches[index]
+      let stop =
+        ((index + 1)..<wedges.count).first { wedges[$0] == .stop } ?? (touches.count - 1)
+      let span = stop - index
+      guard span > 0 else { continue }
+
+      if dynamics[stop] != dynamics[index] {
+        let goal = Int(velocity(for: dynamics[stop]))
+        for step in 1..<span {
+          let fraction = Double(step) / Double(span)
+          touches[index + step] = Int(
+            (Double(from) + (Double(goal) - Double(from)) * fraction).rounded())
+        }
+      } else {
+        let goal = max(20, min(112, from + (rising ? 16 : -16)))
+        for step in 1...span {
+          let fraction = Double(step) / Double(span)
+          touches[index + step] = Int(
+            (Double(from) + (Double(goal) - Double(from)) * fraction).rounded())
+        }
+        let settles =
+          ((stop + 1)..<touches.count).first { dynamics[$0] != dynamics[index] }
+          ?? touches.count
+        for later in (stop + 1)..<settles { touches[later] = goal }
+      }
+    }
+
     return touches.map { UInt8(max(1, min(127, $0))) }
   }
 

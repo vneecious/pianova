@@ -87,6 +87,20 @@ public enum MusicXMLExporter {
         <beat-type>\(beatType)</beat-type></time>
         \(clefs)</attributes>
         """
+
+      // The declared tempo appears on the page, as every edition prints it
+      // (rule 138). The sound tempo rides along for any other reader.
+      if let tempo = score.tempo {
+        let shown =
+          tempo == tempo.rounded()
+          ? String(Int(tempo)) : String(tempo)
+        body +=
+          "<direction placement=\"above\"><direction-type>"
+          + "<metronome><beat-unit>quarter</beat-unit>"
+          + "<per-minute>\(shown)</per-minute></metronome>"
+          + "</direction-type><staff>1</staff>"
+          + "<sound tempo=\"\(shown)\"/></direction>"
+      }
     }
 
     if bar.repeatStart {
@@ -295,6 +309,13 @@ public enum MusicXMLExporter {
       parts.append(
         "<direction placement=\"\(placement)\"><direction-type>"
           + "<dynamics><\(dynamic)/></dynamics>"
+          + "</direction-type>\(staffTag)</direction>")
+    }
+    if let wedge = event.wedge {
+      // The hairpin lives with the dynamics, between the staves (rule 147).
+      parts.append(
+        "<direction placement=\"below\"><direction-type>"
+          + "<wedge type=\"\(wedge.rawValue)\"/>"
           + "</direction-type>\(staffTag)</direction>")
     }
     if let ottava = event.ottava {

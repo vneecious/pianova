@@ -17,6 +17,8 @@ extension MusicXMLImporter {
     var isGrace = false
     /// A pedal instruction written just before this note.
     var pedal: PedalMark?
+    /// A hairpin opening or closing at this note (rule 147).
+    var wedge: WedgeMark?
     /// Whether that pedal is the line style rather than the sign style.
     var pedalLine = false
     /// An octave line starting or stopping at this note.
@@ -99,6 +101,7 @@ extension MusicXMLImporter {
     /// earlier one's, and the dynamic sailed into the wrong hand.
     private struct OpenDirection {
       var pedal: PedalMark?
+      var wedge: WedgeMark?
       var pedalLine = false
       var ottava: OttavaMark?
       var dynamic: String?
@@ -114,6 +117,7 @@ extension MusicXMLImporter {
     private var pendingOttava: (mark: OttavaMark, staff: Int?)?
     private var pendingDynamic: (mark: String, staff: Int?)?
     private var pendingWords: (text: String, below: Bool)?
+    private var pendingWedge: WedgeMark?
     private var inWords = false
     private var inDynamics = false
 
@@ -222,6 +226,13 @@ extension MusicXMLImporter {
         case "start", "resume": direction?.pedal = .down
         case "stop": direction?.pedal = .up
         case "change": direction?.pedal = .change
+        default: break
+        }
+      case "wedge":
+        switch attributes["type"] {
+        case "crescendo": direction?.wedge = .crescendo
+        case "diminuendo": direction?.wedge = .diminuendo
+        case "stop": direction?.wedge = .stop
         default: break
         }
       case "octave-shift":
@@ -368,6 +379,10 @@ extension MusicXMLImporter {
           event.wordsBelow = pending.below
           pendingWords = nil
         }
+        if let pending = pendingWedge {
+          event.wedge = pending
+          pendingWedge = nil
+        }
 
         // A chord shares the moment of the note it hangs off, and does not move
         // the cursor; anything else starts where the cursor is and advances it.
@@ -398,6 +413,7 @@ extension MusicXMLImporter {
           if let ottava = closed.ottava { pendingOttava = (ottava, closed.staff) }
           if let dynamic = closed.dynamic { pendingDynamic = (dynamic, closed.staff) }
           if let words = closed.words { pendingWords = (words, closed.below) }
+          if let wedge = closed.wedge { pendingWedge = wedge }
         }
         direction = nil
       case "words":
