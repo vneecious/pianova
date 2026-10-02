@@ -334,6 +334,14 @@ public enum MusicXMLExporter {
           + "<dynamics><\(dynamic)/></dynamics>"
           + "</direction-type>\(staffTag)</direction>")
     }
+    if let chord = event.chord {
+      // The chord label is a guide, not a headline (rule 149): smaller type,
+      // between the staves where the book prints it.
+      parts.append(
+        "<direction placement=\"below\"><direction-type>"
+          + "<words font-size=\"x-small\">\(chord)</words>"
+          + "</direction-type><staff>1</staff></direction>")
+    }
     if let wedge = event.wedge {
       // The hairpin lives with the dynamics, between the staves (rule 147).
       parts.append(

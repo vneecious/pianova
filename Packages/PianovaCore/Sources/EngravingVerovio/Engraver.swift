@@ -29,6 +29,17 @@ public final class Engraver: ScoreEngraver, @unchecked Sendable {
     toolkit = VerovioToolkit(resources)
   }
 
+  /// Chord labels in smaller type (rule 149): a guide, not a headline.
+  ///
+  /// Asked of the engraver first — it ignores a words font-size — so the
+  /// page is adjusted here, by the vocabulary the importer writes.
+  private static func withDiscreetChords(_ page: EngravedPage?) -> EngravedPage? {
+    guard let page, page.texts.contains(where: \.isChordLabel) else { return page }
+    return EngravedPage(
+      size: page.size, shapes: page.shapes,
+      texts: page.texts.map { $0.isChordLabel ? $0.resized(to: $0.fontSize * 0.7) : $0 })
+  }
+
   /// Lays out a piece at the default page size.
   /// - Parameter musicXML: The piece, as MusicXML.
   /// - Returns: Whether it could be laid out.
@@ -75,7 +86,8 @@ public final class Engraver: ScoreEngraver, @unchecked Sendable {
   public func page(_ number: Int) -> EngravedPage? {
     lock.lock()
     defer { lock.unlock() }
-    return EngravedPageParser.page(from: toolkit.renderToSVG(number, false))
+    let page = EngravedPageParser.page(from: toolkit.renderToSVG(number, false))
+    return Self.withDiscreetChords(page)
   }
 
   /// Which page an element was drawn on.

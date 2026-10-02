@@ -85,6 +85,26 @@ public struct EngravedText: Equatable, Sendable {
   /// Which staff it belongs to, for fading with the hand at rest.
   public let staffNumber: Int?
 
+  /// Whether the run reads as a chord label of rule 149's vocabulary.
+  ///
+  /// The engraver ignores a smaller font asked of plain words, so the
+  /// discreet type is applied on this side — and the vocabulary is ours:
+  /// the importer writes every chord exactly in this grammar.
+  public var isChordLabel: Bool {
+    text.range(
+      of: "^(Dó|Ré|Mi|Fá|Sol|Lá|Si)[♯♭]?( (M|m|7|7M|m7|dim|aum))?$",
+      options: .regularExpression) != nil
+  }
+
+  /// The same run in different type.
+  /// - Parameter fontSize: The new height, in page units.
+  /// - Returns: The run, resized.
+  public func resized(to fontSize: CGFloat) -> EngravedText {
+    EngravedText(
+      text: text, position: position, fontSize: fontSize,
+      isCentered: isCentered, isMusicFont: isMusicFont, staffNumber: staffNumber)
+  }
+
   /// Creates a run of text.
   /// - Parameters:
   ///   - text: The characters.

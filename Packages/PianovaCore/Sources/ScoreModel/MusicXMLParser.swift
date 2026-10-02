@@ -19,6 +19,8 @@ extension MusicXMLImporter {
     var pedal: PedalMark?
     /// A hairpin opening or closing at this note (rule 147).
     var wedge: WedgeMark?
+    /// A chord label at this note, already in solfejo (rule 149).
+    var chord: String?
     /// Whether that pedal is the line style rather than the sign style.
     var pedalLine = false
     /// An octave line starting or stopping at this note.
@@ -94,6 +96,31 @@ extension MusicXMLImporter {
     private var event = RawEvent()
     private var inNote = false
 
+    /// The chord label a `<harmony>` spells, in solfejo (rule 149).
+    ///
+    /// The grammar of Brazilian methods: Dó M, Sol 7, Fá♯ m — the way the
+    /// player's book writes it, not the lead-sheet letter.
+    static func solfejoChord(step: String, alter: Int, kind: String) -> String? {
+      let names = ["C": "Dó", "D": "Ré", "E": "Mi", "F": "Fá", "G": "Sol", "A": "Lá", "B": "Si"]
+      guard let name = names[step] else { return nil }
+      let accidental = alter > 0 ? "♯" : (alter < 0 ? "♭" : "")
+
+      let quality: String
+      switch kind {
+      case "major", "": quality = "M"
+      case "minor": quality = "m"
+      case "dominant", "dominant-seventh": quality = "7"
+      case "major-seventh": quality = "7M"
+      case "minor-seventh": quality = "m7"
+      case "diminished": quality = "dim"
+      case "augmented": quality = "aum"
+      default: quality = ""
+      }
+
+      let suffix = quality.isEmpty ? "" : " " + quality
+      return name + accidental + suffix
+    }
+
     /// One `<direction>` being read: its marks and, at the end, its staff.
     ///
     /// A buffer per direction, folded into the pendings only when it closes —
@@ -118,6 +145,11 @@ extension MusicXMLImporter {
     private var pendingDynamic: (mark: String, staff: Int?)?
     private var pendingWords: (text: String, below: Bool)?
     private var pendingWedge: WedgeMark?
+    private var pendingChord: String?
+    private var inHarmony = false
+    private var harmonyStep = ""
+    private var harmonyAlter = 0
+    private var harmonyKind = ""
     private var inWords = false
     private var inDynamics = false
 
@@ -220,6 +252,11 @@ extension MusicXMLImporter {
       case "direction":
         direction = OpenDirection()
         direction?.below = attributes["placement"] == "below"
+      case "harmony":
+        inHarmony = true
+        harmonyStep = ""
+        harmonyAlter = 0
+        harmonyKind = ""
       case "pedal":
         direction?.pedalLine = attributes["line"] == "yes"
         switch attributes["type"] {
@@ -297,6 +334,19 @@ extension MusicXMLImporter {
         inPartList = false
       case "step":
         step = value
+      case "root-step":
+        harmonyStep = value
+      case "root-alter":
+        harmonyAlter = Int(value) ?? 0
+      case "kind":
+        harmonyKind = value
+      case "harmony":
+        inHarmony = false
+        if let chord = Self.solfejoChord(
+          step: harmonyStep, alter: harmonyAlter, kind: harmonyKind)
+        {
+          pendingChord = chord
+        }
       case "alter":
         alter = Int(value) ?? 0
       case "octave":
@@ -382,6 +432,10 @@ extension MusicXMLImporter {
         if let pending = pendingWedge {
           event.wedge = pending
           pendingWedge = nil
+        }
+        if let pending = pendingChord {
+          event.chord = pending
+          pendingChord = nil
         }
 
         // A chord shares the moment of the note it hangs off, and does not move

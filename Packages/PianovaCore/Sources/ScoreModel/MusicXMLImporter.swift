@@ -268,6 +268,7 @@ public enum MusicXMLImporter {
           beam: struck.compactMap(\.beam).first,
           dynamic: marked.compactMap(\.dynamic).first,
           wedge: marked.compactMap(\.wedge).first,
+          chord: marked.compactMap(\.chord).first,
           words: marked.compactMap(\.words).first,
           wordsBelow: marked.first(where: { $0.words != nil })?.wordsBelow ?? false,
           articulations: marked.reduce(into: Set<Articulation>()) {

@@ -173,6 +173,9 @@ public struct ScoreNote: Equatable, Sendable {
   /// A hairpin opening or closing at this note (rule 147), if any.
   public let wedge: WedgeMark?
 
+  /// A chord label at this note, already in solfejo (rule 149), if any.
+  public let chord: String?
+
   /// A written word at this note — "Andante", "dolce" — if any.
   public let words: String?
 
@@ -204,6 +207,7 @@ public struct ScoreNote: Equatable, Sendable {
   ///   - beam: Where this note stands in its written beam group, if said.
   ///   - dynamic: A dynamic written here, if any.
   ///   - wedge: A hairpin opening or closing here, if any.
+  ///   - chord: A chord label here, already in solfejo, if any.
   ///   - words: A written word here, if any.
   ///   - wordsBelow: Whether the word was written below the staff.
   ///   - articulations: The articulations written on this note.
@@ -214,7 +218,7 @@ public struct ScoreNote: Equatable, Sendable {
     slurStart: Bool = false, slurStop: Bool = false,
     tupletStart: Bool = false, tupletStop: Bool = false,
     beam: BeamMark? = nil,
-    dynamic: String? = nil, wedge: WedgeMark? = nil,
+    dynamic: String? = nil, wedge: WedgeMark? = nil, chord: String? = nil,
     words: String? = nil, wordsBelow: Bool = false,
     articulations: Set<Articulation> = [],
     graces: [GraceNote] = []
@@ -233,6 +237,7 @@ public struct ScoreNote: Equatable, Sendable {
     self.beam = beam
     self.dynamic = dynamic
     self.wedge = wedge
+    self.chord = chord
     self.words = words
     self.wordsBelow = wordsBelow
     self.articulations = articulations

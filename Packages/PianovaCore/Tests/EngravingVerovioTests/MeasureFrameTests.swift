@@ -85,3 +85,32 @@ import Testing
     !firstSystemBars.contains(hit),
     Comment(rawValue: "o toque no sistema 2 achou o compasso \(hit), do sistema 1"))
 }
+
+/// Rule 149 — a cifra sai em corpo menor que a palavra comum.
+@MainActor
+@Test func aChordReadsSmallerThanAWord() async throws {
+  let score = Score(
+    title: "Discreta", composer: "—", timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(
+            pitches: [Pitch(60)], duration: Duration(.quarter), chord: "Dó M"),
+          ScoreNote(
+            pitches: [Pitch(62)], duration: Duration(.quarter), words: "dolce"),
+          ScoreNote(Pitch(64), .quarter),
+        ])
+      ]))
+
+  let controller = EngravedPlayController()
+  controller.load(score, using: Engraver())
+  for _ in 0..<200 where controller.pages.isEmpty {
+    try await Task.sleep(for: .milliseconds(50))
+  }
+
+  let texts = controller.pages.flatMap(\.texts)
+  let chord = try #require(texts.first { $0.text.contains("Dó") })
+  let word = try #require(texts.first { $0.text.contains("dolce") })
+  #expect(chord.fontSize < word.fontSize, "cifra é guia, não manchete")
+}

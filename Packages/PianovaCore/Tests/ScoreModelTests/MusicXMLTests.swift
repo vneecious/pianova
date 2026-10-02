@@ -761,3 +761,35 @@ private let twoVoices = """
   #expect(measures.last?.contains("<bar-style>light-heavy</bar-style>") == true)
   #expect(measures.dropLast().last?.contains("light-heavy") == false, "só a última fecha")
 }
+
+// MARK: - Rule 149: cifras em solfejo, discretas
+
+/// Rule 149 — o harmony vira cifra em solfejo na nota que o segue.
+@Test func aHarmonyBecomesASolfejoChord() throws {
+  let xml = """
+    <score-partwise>
+      <part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
+      <part id="P1"><measure number="1">
+        <attributes><divisions>1</divisions>
+          <time><beats>3</beats><beat-type>4</beat-type></time>
+          <clef><sign>G</sign><line>2</line></clef></attributes>
+        <harmony><root><root-step>C</root-step></root><kind>major</kind></harmony>
+        <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+        <harmony><root><root-step>G</root-step></root><kind>dominant</kind></harmony>
+        <note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+        <harmony><root><root-step>F</root-step><root-alter>1</root-alter></root><kind>minor</kind></harmony>
+        <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      </measure></part>
+    </score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+
+  #expect(score.rightHand.notes[0].chord == "Dó M")
+  #expect(score.rightHand.notes[1].chord == "Sol 7")
+  #expect(score.rightHand.notes[2].chord == "Fá♯ m")
+
+  let out = MusicXMLExporter.musicXML(for: score)
+  #expect(out.contains(">Dó M</words>"))
+  #expect(out.contains("font-size"))
+}
