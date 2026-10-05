@@ -36,7 +36,9 @@ Regras de avanço:
 2. **Acerto** → o cursor avança imediatamente para o próximo item.
 3. Para itens de múltiplas notas, o item só é considerado correto quando **todas**
    as notas exigidas estiverem pressionadas simultaneamente, dentro de uma
-   janela de tolerância.
+   janela de tolerância **generosa (~⅓ de segundo)**: o acorde rolado de um
+   iniciante é acorde, e pelo microfone as duas mãos chegam separadas por
+   natureza — janela apertada era o estudo a duas mãos não sair do lugar.
 4. **Erro** (qualquer nota fora do item esperado) → feedback visual de erro e o
    cursor **fica onde está**, esperando a nota certa. A pauta espera; punir o
    erro fazendo perder chão já conquistado só frustra — a repetição é escolha,

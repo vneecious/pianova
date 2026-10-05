@@ -31,7 +31,7 @@ public struct ExerciseSession {
   ///   - exercise: The exercise to play.
   ///   - simultaneityWindow: Largest gap, in seconds, between presses that
   ///     should still be read as a single chord.
-  public init(exercise: Exercise, simultaneityWindow: TimeInterval = 0.08) {
+  public init(exercise: Exercise, simultaneityWindow: TimeInterval = 0.35) {
     self.exercise = exercise
     self.simultaneityWindow = simultaneityWindow
   }

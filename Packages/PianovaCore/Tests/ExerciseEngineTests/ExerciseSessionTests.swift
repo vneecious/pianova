@@ -164,3 +164,13 @@ private func threeNoteExercise() -> Exercise {
   #expect(cleanC == .incomplete)
   #expect(cleanE == .finished, "a nova tentativa parte de lousa limpa")
 }
+
+/// Rule 3 — a janela padrão é generosa: o acorde rolado do iniciante fecha,
+/// mesmo com as mãos (ou o microfone) separando as notas por ~300 ms.
+@Test func aRolledChordStillCompletesByDefault() {
+  var session = ExerciseSession(
+    exercise: Exercise(items: [ExerciseItem(pitches: [c4, g4])]))
+
+  #expect(session.press(c4, at: 0) == .incomplete)
+  #expect(session.press(g4, at: 0.3) == .finished, "300 ms entre as mãos é rolar, não errar")
+}

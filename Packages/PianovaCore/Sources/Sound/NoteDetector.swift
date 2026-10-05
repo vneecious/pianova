@@ -23,17 +23,28 @@ public final class NoteDetector {
     public let isExpected: Bool
   }
 
-  /// Analysis window: ~170 ms at 48 kHz — low notes need the length.
-  private let window: Int
+  /// Bass analysis window: ~170 ms at 48 kHz — low notes need the length.
+  private let longWindow = 8192
 
-  /// Stride between analyses: ~43 ms at 48 kHz.
-  private let hop: Int
+  /// Treble analysis window: ~85 ms — half the melody's latency.
+  private let shortWindow = 4096
+
+  /// Stride between analyses: ~21 ms at 48 kHz.
+  private let hop = 1024
+
+  /// Below this pitch a candidate is bass and reads the long window.
+  private static let bassBoundary: UInt8 = 60
 
   private let sampleRate: Double
   private var expected: Set<Pitch> = []
   private var candidates: [Pitch] = []
   private var buffer: [Float] = []
-  private let hann: [Float]
+  private let longHann: [Float]
+  private let shortHann: [Float]
+
+  /// Every candidate's score as last measured, across both bands, so the
+  /// harmonic- and neighbour-dominance checks see the whole keyboard.
+  private var recentScores: [UInt8: Double] = [:]
 
   /// Each candidate's score as last seen, for telling attack from sustain.
   private var smoothed: [UInt8: Double] = [:]
@@ -70,10 +81,10 @@ public final class NoteDetector {
   /// - Parameter sampleRate: Samples per second of the incoming audio.
   public init(sampleRate: Double) {
     self.sampleRate = sampleRate
-    window = 8192
-    hop = 2048
-    hann = vDSP.window(
+    longHann = vDSP.window(
       ofType: Float.self, usingSequence: .hanningDenormalized, count: 8192, isHalfWindow: false)
+    shortHann = vDSP.window(
+      ofType: Float.self, usingSequence: .hanningDenormalized, count: 4096, isHalfWindow: false)
   }
 
   /// Tells the detector what the page is waiting for.
@@ -93,8 +104,21 @@ public final class NoteDetector {
     buffer.append(contentsOf: samples)
     var found: [Detection] = []
 
-    while buffer.count >= window {
-      found += analyze(Array(buffer.prefix(window)))
+    while buffer.count >= longWindow {
+      let long = Array(buffer.prefix(longWindow))
+      frameIndex += 1
+
+      // The melody reads a short, fresh window every stride; the bass needs
+      // the long one, and its physics does not hurry — every other stride.
+      found += analyze(
+        Array(long.suffix(shortWindow)), hann: shortHann,
+        band: { $0.midiNoteNumber >= Self.bassBoundary }, stride: 1)
+      if frameIndex % 2 == 0 {
+        found += analyze(
+          long, hann: longHann,
+          band: { $0.midiNoteNumber < Self.bassBoundary }, stride: 2)
+      }
+
       buffer.removeFirst(hop)
     }
     return found
@@ -117,31 +141,39 @@ public final class NoteDetector {
   /// as a jump; a held note only decays, and never comes near it.
   private static let attackRatio = 1.5
 
-  private func analyze(_ frame: [Float]) -> [Detection] {
+  private func analyze(
+    _ frame: [Float], hann: [Float], band: (Pitch) -> Bool, stride: Int
+  ) -> [Detection] {
     var rms: Float = 0
     vDSP_rmsqv(frame, 1, &rms, vDSP_Length(frame.count))
 
-    // Silence resets the past: nothing rings, nothing compares.
-    frameIndex += 1
     // The floor only learns from quiet: creeping up through the music ends
     // with the gate swallowing the piano itself.
     if Double(rms) < noiseFloor * 4 {
       noiseFloor = min(Double(max(rms, 1e-5)), noiseFloor * 1.02)
     }
+
+    // Silence resets this band's past: nothing rings, nothing compares.
     guard Double(rms) > max(2.5 * noiseFloor, 5e-4) else {
-      smoothed = [:]
-      suspicions = [:]
+      for pitch in candidates where band(pitch) {
+        smoothed[pitch.midiNoteNumber] = 0
+        suspicions[pitch.midiNoteNumber] = nil
+      }
       return []
     }
+    let bandCandidates = candidates.filter(band)
 
     let windowed = vDSP.multiply(frame, hann)
-    gauge = max(Double(rms), gauge * 0.98)
+    // Scores are read against the gauge as it stood BEFORE this window: a
+    // re-attack then shows as the jump it is, instead of raising its own
+    // yardstick in the same breath. The decay matches the ~21 ms cadence.
     let level = max(gauge, 1e-3)
+    gauge = max(Double(rms), gauge * 0.99)
 
     // Every candidate's harmonic amplitudes, at exact frequencies.
     var amplitudes: [UInt8: [Double]] = [:]
-    var scores: [UInt8: Double] = [:]
-    for pitch in candidates {
+    var scores = recentScores
+    for pitch in bandCandidates {
       let f0 = frequency(of: pitch)
       var partials: [Double] = []
       for rank in 1...Self.harmonicWeights.count {
@@ -154,9 +186,10 @@ public final class NoteDetector {
       scores[pitch.midiNoteNumber] = weighted / (level + 1e-9)
     }
 
+    defer { recentScores = scores }
     var found: [Detection] = []
     var accused: [Detection] = []
-    for pitch in candidates {
+    for pitch in bandCandidates {
       let midi = pitch.midiNoteNumber
       let score = scores[midi] ?? 0
       let partials = amplitudes[midi] ?? []
@@ -179,13 +212,13 @@ public final class NoteDetector {
         suspicions[midi] = frameIndex
         confirmed = false
       } else {
-        confirmed = sustained && suspicions[midi] == frameIndex - 1
+        confirmed = sustained && suspicions[midi] == frameIndex - stride
       }
       guard confirmed else { continue }
 
       // One attack, one press: the same jump seen by the next overlapping
       // window is still the same finger going down.
-      if let last = lastPress[midi], frameIndex - last < 5 { continue }
+      if let last = lastPress[midi], frameIndex - last < 10 { continue }
 
       // A real note has its own fundamental — the octave above an expected
       // note does not put energy there (rule 151). In the bass the piano
