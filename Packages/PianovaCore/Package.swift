@@ -84,7 +84,10 @@ let package = Package(
       name: "EngravingVerovioTests",
       dependencies: ["EngravingVerovio", "Engraving", "PianovaUI", "ScoreModel"],
       swiftSettings: [.interoperabilityMode(.Cxx)]),
-    .testTarget(name: "SoundTests", dependencies: ["Sound", "ScoreModel"]),
+    .testTarget(
+      name: "SoundTests", dependencies: ["Sound", "ScoreModel"],
+      // O dono tocando as peças de verdade: a bancada do ouvido (regra 153).
+      resources: [.copy("Recordings")]),
     .testTarget(name: "ProgressTests", dependencies: ["Progress", "ScoreModel"]),
   ]
 )

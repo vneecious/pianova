@@ -733,6 +733,9 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      (regra 151): o modelo diz **o que soou**, a partitura decide **o que
      conta**. Medido na bancada: o modelo transcreve tríades e as duas mãos
      do dono; o detector anterior, no mesmo áudio, acendia o teclado todo.
+     E a bancada é o **dono tocando de verdade**: três gravações do piano
+     dele — Can-Can, Capricho, Valsa — vivem nos testes, e nenhuma versão
+     do ouvido vai para o iPad sem reencontrar nelas a melodia escrita.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.
