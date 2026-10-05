@@ -87,12 +87,16 @@ public final class NoteDetector {
       ofType: Float.self, usingSequence: .hanningDenormalized, count: 4096, isHalfWindow: false)
   }
 
-  /// Tells the detector what the page is waiting for.
+  /// Tells the detector what the page is waiting for (rule 151).
   /// - Parameters:
   ///   - pitches: The notes the cursor asks for right now.
+  ///   - next: What the cursor will ask for next, heard with the same zeal
+  ///     so an early note can be kept rather than lost (rule 4).
   ///   - range: Every pitch worth watching — the piece's compass.
-  public func expect(_ pitches: Set<Pitch>, among range: ClosedRange<Pitch>) {
-    expected = pitches
+  public func expect(
+    _ pitches: Set<Pitch>, next: Set<Pitch> = [], among range: ClosedRange<Pitch>
+  ) {
+    expected = pitches.union(next)
     candidates = (range.lowerBound.midiNoteNumber...range.upperBound.midiNoteNumber)
       .map(Pitch.init)
   }

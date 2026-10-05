@@ -36,13 +36,18 @@ Regras de avanço:
 2. **Acerto** → o cursor avança imediatamente para o próximo item.
 3. Para itens de múltiplas notas, o item só é considerado correto quando **todas**
    as notas exigidas estiverem pressionadas simultaneamente, dentro de uma
-   janela de tolerância **generosa (~⅓ de segundo)**: o acorde rolado de um
-   iniciante é acorde, e pelo microfone as duas mãos chegam separadas por
-   natureza — janela apertada era o estudo a duas mãos não sair do lugar.
+   janela de tolerância **generosa, contada da última nota aceita**: o acorde
+   rolado de um iniciante é acorde, e pelo microfone as duas mãos chegam
+   separadas por natureza — cada nota certa renova o prazo das que faltam,
+   e janela apertada era o estudo a duas mãos não sair do lugar.
 4. **Erro** (qualquer nota fora do item esperado) → feedback visual de erro e o
    cursor **fica onde está**, esperando a nota certa. A pauta espera; punir o
    erro fazendo perder chão já conquistado só frustra — a repetição é escolha,
-   não castigo.
+   não castigo. **Exceção: a nota do passo seguinte chegando cedo não é
+   erro — é ansiedade.** Ela espera na mão (por até ~1 s) e conta quando o
+   cursor chegar lá: duas mãos reais nunca são simultâneas de verdade, e
+   sem isso a nota adiantada derrubava o acorde em montagem e travava o
+   estudo a duas mãos.
 5. Repetir de propósito é o botão **voltar ao início**: na peça completa, volta
    ao começo da peça; no estudo de um trecho, ao começo do trecho.
 6. Não há penalidade de tempo nem pontuação. O objetivo é repetir até a resposta
@@ -712,7 +717,11 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      harmônicos, nascendo num ataque. Nota **não** esperada só acusa erro
      com evidência forte, e o harmônico de uma nota certa nunca vira
      acusação — na dúvida, a pauta espera (regra 4). A oitava errada não
-     passa: a de cima não tem o fundamental da esperada.
+     passa: a de cima não tem o fundamental da esperada. E a escuta **olha
+     um passo à frente**: o que o cursor espera agora e o que ele vai
+     esperar em seguida são ambos ouvidos, para a nota adiantada ser
+     guardada (regra 4) em vez de perdida — pelo microfone a mão que se
+     antecipa é a regra, não a exceção.
 152. **O Ouvir cala a escuta**: enquanto o app toca a peça, o microfone
      não julga — para o alto-falante não virar dedo. O clique do metrônomo
      não tem altura nem harmônicos, e não vira nota. Dinâmica e pedal pelo

@@ -121,7 +121,7 @@ struct EngravedPieceView: View {
       mic.onDetection = { [weak controller] detection in
         controller?.play(detection.pitch)
       }
-      mic.expect(controller.waiting, among: compass)
+      mic.expect(controller.waiting, next: controller.comingNext, among: compass)
       hub.setListener(owner: controller) { [controller] event in
         switch event {
         case .pressed(let pitch, _): controller.play(pitch)
@@ -143,7 +143,7 @@ struct EngravedPieceView: View {
       mic.setSuspended(isPlaying)
     }
     .onReceive(controller.$waiting) { waiting in
-      mic.expect(waiting, among: compass)
+      mic.expect(waiting, next: controller.comingNext, among: compass)
     }
   }
 

@@ -95,9 +95,14 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
   /// Tells the ear what the page is waiting for (rule 151).
   /// - Parameters:
   ///   - pitches: The notes the cursor asks for right now.
+  ///   - next: What the cursor will ask for next, so an early note is kept.
   ///   - range: The piece's compass, widened a little.
-  public func expect(_ pitches: Set<Pitch>, among range: ClosedRange<Pitch>) {
-    worker.async { [weak self] in self?.detector?.expect(pitches, among: range) }
+  public func expect(
+    _ pitches: Set<Pitch>, next: Set<Pitch> = [], among range: ClosedRange<Pitch>
+  ) {
+    worker.async { [weak self] in
+      self?.detector?.expect(pitches, next: next, among: range)
+    }
   }
 
   /// Silences judgment while the app itself is sounding (rule 152).

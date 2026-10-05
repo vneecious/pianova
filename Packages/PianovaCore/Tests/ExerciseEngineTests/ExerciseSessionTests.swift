@@ -174,3 +174,46 @@ private func threeNoteExercise() -> Exercise {
   #expect(session.press(c4, at: 0) == .incomplete)
   #expect(session.press(g4, at: 0.3) == .finished, "300 ms entre as mãos é rolar, não errar")
 }
+
+/// Rule 4 — a nota do passo seguinte chegando cedo não é erro: espera na
+/// mão e conta quando o cursor chegar.
+@Test func anEagerNextNoteWaitsInTheHand() {
+  var session = ExerciseSession(
+    exercise: Exercise(items: [ExerciseItem(c4), ExerciseItem(g4)]))
+
+  #expect(session.press(g4, at: 0) == .incomplete, "cedo não é errado")
+  #expect(session.mistakeCount == 0)
+  #expect(session.press(c4, at: 0.2) == .finished, "o Sol guardado completa o passo seguinte")
+}
+
+/// Rule 4 — a nota adiantada não derruba o acorde em montagem.
+@Test func anEagerNoteDoesNotResetTheChordInProgress() {
+  var session = ExerciseSession(
+    exercise: Exercise(items: [ExerciseItem(pitches: [c4, e4]), ExerciseItem(g4)]))
+
+  #expect(session.press(c4, at: 0) == .incomplete)
+  #expect(session.press(g4, at: 0.1) == .incomplete, "o Sol do próximo passo não zera o acorde")
+  #expect(session.press(e4, at: 0.2) == .finished)
+  #expect(session.mistakeCount == 0)
+}
+
+/// Rule 4 — guardada velha demais não vale: ansiedade tem prazo.
+@Test func aStaleEagerNoteExpires() {
+  var session = ExerciseSession(
+    exercise: Exercise(items: [ExerciseItem(c4), ExerciseItem(g4)]))
+
+  #expect(session.press(g4, at: 0) == .incomplete)
+  #expect(session.press(c4, at: 2.0) == .advanced, "o Sol de 2 s atrás já era")
+  #expect(session.press(g4, at: 2.2) == .finished)
+}
+
+/// Rule 3 — cada nota certa renova o prazo: um acorde de três notas chegando
+/// devagar fecha, desde que nenhum intervalo passe da janela.
+@Test func eachRightNoteRefreshesTheChordWindow() {
+  var session = ExerciseSession(
+    exercise: Exercise(items: [ExerciseItem(pitches: [c4, e4, g4])]))
+
+  #expect(session.press(c4, at: 0) == .incomplete)
+  #expect(session.press(e4, at: 0.3) == .incomplete)
+  #expect(session.press(g4, at: 0.6) == .finished, "0,6 s do início, mas 0,3 entre cada")
+}

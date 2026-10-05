@@ -155,3 +155,14 @@ private let rate = 48_000.0
   #expect(decent > 0.5 && decent < 1.0)
   #expect(faint < decent)
 }
+
+/// Rule 151 — a escuta olha um passo à frente: a nota do passo seguinte é
+/// ouvida com o mesmo zelo da atual, para poder ser guardada (regra 4).
+@Test func theEarAlsoWatchesTheNextStep() {
+  let detector = NoteDetector(sampleRate: rate)
+  detector.expect([Pitch(60)], next: [Pitch(67)], among: Pitch(48)...Pitch(84))
+
+  let heard = detector.process(tone(Pitch(67), seconds: 0.5, at: rate))
+
+  #expect(heard.map(\.pitch).contains(Pitch(67)), "o passo seguinte não é um estranho")
+}

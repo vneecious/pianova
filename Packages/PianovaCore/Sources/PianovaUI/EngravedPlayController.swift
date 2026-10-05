@@ -29,6 +29,9 @@ public final class EngravedPlayController: ObservableObject {
   /// verifies exactly these, and treats everything else as suspect.
   @Published public private(set) var waiting: Set<Pitch> = []
 
+  /// What the cursor will wait for next (rule 151), for the ear to watch.
+  @Published public private(set) var comingNext: Set<Pitch> = []
+
   /// Whether an engraving is running right now, for the screen to say so.
   ///
   /// Engraving a long piece takes seconds, and those seconds used to happen
@@ -597,6 +600,10 @@ public final class EngravedPlayController: ObservableObject {
     waiting =
       judged.indices.contains(session.cursorIndex)
       ? judgedPitches[session.cursorIndex] : []
+    // One step ahead, so an early note is kept instead of lost (rule 151).
+    comingNext =
+      judgedPitches.indices.contains(session.cursorIndex + 1)
+      ? judgedPitches[session.cursorIndex + 1] : []
     focus =
       judged.indices.contains(session.cursorIndex)
       ? litElements(of: judged[session.cursorIndex]).first : nil
