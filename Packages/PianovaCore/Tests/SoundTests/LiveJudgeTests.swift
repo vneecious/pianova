@@ -144,3 +144,72 @@ import Testing
     !heard.contains(Pitch(60)),
     "o Ré4 tocado virou o Dó4 esperado: \(Set(heard.map(\.midiNoteNumber)).sorted())")
 }
+
+/// Rule 151 — martelar duas teclas não vence a peça.
+///
+/// O relato do dono: tocando só Si3 e Dó4, ora juntos, ora separados, ele
+/// percorreu o Can-Can inteiro. Harmônico e respingo bastavam para casar
+/// com as outras notas escritas. Duas teclas não são uma peça.
+@Test func twoKeysHammeredDoNotWinThePiece() throws {
+  let rate = 22_050.0
+  func key(_ midi: UInt8, from start: Double, into samples: inout [Float]) {
+    let frequency = 440 * pow(2, (Double(midi) - 69) / 12)
+    let harmonics: [Float] = [1, 0.5, 0.33, 0.2, 0.12]
+    for index in samples.indices {
+      let time = Double(index) / rate
+      guard time >= start, time - start <= 1.5 else { continue }
+      let alive = time - start
+      let envelope = Float(min(alive * 80, 1)) * Float(exp(-alive * 1.1))
+      var value: Float = 0
+      for (rank, weight) in harmonics.enumerated() {
+        value += weight * Float(sin(2 * .pi * frequency * Double(rank + 1) * alive))
+      }
+      samples[index] += 0.3 * envelope * value
+    }
+  }
+
+  // Trinta segundos de Si3 e Dó4, ora sozinhos, ora juntos.
+  var audio = [Float](repeating: 0, count: Int(30 * rate))
+  var when = 0.5
+  var turn = 0
+  while when < 29 {
+    switch turn % 3 {
+    case 0: key(59, from: when, into: &audio)
+    case 1: key(60, from: when, into: &audio)
+    default:
+      key(59, from: when, into: &audio)
+      key(60, from: when, into: &audio)
+    }
+    when += 0.75
+    turn += 1
+  }
+
+  let columns: [[UInt8]] = [
+    [64, 48], [64], [64, 55], [65], [64], [62],
+    [60, 48], [60], [60, 55], [62], [60], [59],
+  ]
+  let ear = try NeuralEar(sampleRate: rate)
+  ear.onsetThreshold = 0.8
+  var session = ExerciseSession(
+    exercise: Exercise(items: columns.map { ExerciseItem(pitches: Set($0.map(Pitch.init))) }))
+
+  func guide() {
+    var wanted = session.currentItem?.pitches ?? []
+    if session.exercise.items.indices.contains(session.cursorIndex + 1) {
+      wanted.formUnion(session.exercise.items[session.cursorIndex + 1].pitches)
+    }
+    ear.lenientPitches = wanted
+  }
+  guide()
+
+  var cursor = 0
+  while cursor + 2048 <= audio.count, !session.isFinished {
+    for hit in ear.hear(Array(audio[cursor..<(cursor + 2048)])) {
+      _ = session.press(hit.pitch, at: hit.time)
+      guide()
+    }
+    cursor += 2048
+  }
+
+  #expect(session.cursorIndex == 0, "Si e Dó andaram \(session.cursorIndex) colunas sozinhos")
+}

@@ -728,7 +728,10 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      escrito. **Mas ouvido aberto não é ouvido crédulo**: silêncio e ruído
      de sala não avançam nada. Só se escuta quando há som acima do ruído
      que a sala vinha fazendo — dizer "você acertou" a quem não tocou é
-     pior do que não ouvir.
+     pior do que não ouvir. E a nota precisa **soar**, não só piscar: o
+     modelo diz onde a tecla foi batida e onde ela está ringindo, e só vale
+     quem faz as duas coisas — harmônico pisca, nota sustenta. Martelar
+     duas teclas não pode vencer a peça.
 152. **O Ouvir cala a escuta**: enquanto o app toca a peça, o microfone
      não julga — para o alto-falante não virar dedo. O clique do metrônomo
      não tem altura nem harmônicos, e não vira nota. Dinâmica e pedal pelo

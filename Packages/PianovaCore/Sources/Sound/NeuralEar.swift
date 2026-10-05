@@ -104,12 +104,27 @@ public final class NeuralEar {
   public var lenientPitches: Set<Pitch> = []
 
   /// How much lower the bar sits for an expected note.
-  public var lenientThreshold = 0.15
+  public var lenientThreshold = 0.35
 
   /// The bar one key has to clear.
   private func threshold(forKey key: Int) -> Double {
     let pitch = Pitch(UInt8(Self.lowestMIDI + key))
     return lenientPitches.contains(pitch) ? lenientThreshold : onsetThreshold
+  }
+
+  /// How strongly the key has to be ringing for its strike to count.
+  public var noteThreshold = 0.3
+
+  /// Whether the key is actually ringing around this frame.
+  ///
+  /// The model's other output: not "was it struck" but "is it sounding".
+  /// A few frames of grace, because the ring settles just after the blow.
+  private func isSounding(key: Int, frame: Int, in notes: [Float]) -> Bool {
+    for ahead in frame...min(Self.frames - 1, frame + 4)
+    where Double(notes[ahead * Self.keys + key]) > noteThreshold {
+      return true
+    }
+    return false
   }
 
   /// How far, in semitones, a note's own peak has to beat its neighbours.
@@ -158,7 +173,7 @@ public final class NeuralEar {
 
     while offset + Self.windowSamples <= audio.count {
       let window = Array(audio[offset..<(offset + Self.windowSamples)])
-      guard let onsets = onsetMatrix(for: window) else { break }
+      guard let (onsets, notes) = matrices(for: window) else { break }
 
       // Edge frames see half a window of context; the middle is where the
       // model is sure, so overlapping windows read only their own middle.
@@ -169,6 +184,7 @@ public final class NeuralEar {
         for key in 0..<Self.keys {
           let value = onsets[frame * Self.keys + key]
           guard Double(value) > threshold(forKey: key),
+            isSounding(key: key, frame: frame, in: notes),
             value >= onsets[(frame - 1) * Self.keys + key],
             value > onsets[(frame + 1) * Self.keys + key]
           else { continue }
@@ -251,7 +267,7 @@ public final class NeuralEar {
       }
       let gate = max(noiseFloor * Self.signalOverNoise, Self.absoluteFloor)
 
-      if let onsets = onsetMatrix(for: window) {
+      if let (onsets, notes) = matrices(for: window) {
         let readable = Self.frames - edgeMargin
         let from = max(1, (reportedUpTo - streamOrigin) / Self.frameHop)
 
@@ -259,6 +275,7 @@ public final class NeuralEar {
           for key in 0..<Self.keys {
             let value = onsets[frame * Self.keys + key]
             guard Double(value) > threshold(forKey: key),
+              isSounding(key: key, frame: frame, in: notes),
               isItsOwnPeak(key: key, frame: frame, in: onsets, value: value),
               value >= onsets[(frame - 1) * Self.keys + key],
               frame + 1 >= Self.frames || value > onsets[(frame + 1) * Self.keys + key],
@@ -310,11 +327,11 @@ public final class NeuralEar {
 
   // MARK: - The model itself
 
-  /// Runs one window and returns its onset matrix, frame-major.
+  /// Runs one window and returns its onset and note matrices, frame-major.
   ///
   /// The row stride is read from the array rather than assumed: it is not
   /// the key count, and assuming it read staircase garbage the first time.
-  private func onsetMatrix(for window: [Float]) -> [Float]? {
+  private func matrices(for window: [Float]) -> (onsets: [Float], notes: [Float])? {
     guard
       let input = try? MLMultiArray(
         shape: [1, NSNumber(value: Self.windowSamples), 1], dataType: .float32)
@@ -328,21 +345,31 @@ public final class NeuralEar {
 
     guard
       let output = try? model.prediction(
-        from: MLDictionaryFeatureProvider(dictionary: ["input_2": input])),
-      let onsets = output.featureValue(for: "Identity_2")?.multiArrayValue
+        from: MLDictionaryFeatureProvider(dictionary: ["input_2": input]))
     else { return nil }
 
-    let rowStride = onsets.strides[1].intValue
-    let keyStride = onsets.strides[2].intValue
-    let source = onsets.dataPointer.bindMemory(to: Float.self, capacity: onsets.count)
+    /// Reads one of the model's matrices out, strides and all.
+    func read(_ name: String) -> [Float]? {
+      guard let array = output.featureValue(for: name)?.multiArrayValue else { return nil }
+      let rowStride = array.strides[1].intValue
+      let keyStride = array.strides[2].intValue
+      let source = array.dataPointer.bindMemory(to: Float.self, capacity: array.count)
 
-    var matrix = [Float](repeating: 0, count: Self.frames * Self.keys)
-    for frame in 0..<Self.frames {
-      for key in 0..<Self.keys {
-        matrix[frame * Self.keys + key] = source[frame * rowStride + key * keyStride]
+      var matrix = [Float](repeating: 0, count: Self.frames * Self.keys)
+      for frame in 0..<Self.frames {
+        for key in 0..<Self.keys {
+          matrix[frame * Self.keys + key] = source[frame * rowStride + key * keyStride]
+        }
       }
+      return matrix
     }
-    return matrix
+
+    // Two outputs, and both matter: `Identity_2` is where a key is struck,
+    // `Identity_1` is where it is ringing. A harmonic flickers an onset; a
+    // note that was really played also holds. Reading only the onset let
+    // two keys hammered walk a whole piece.
+    guard let onsets = read("Identity_2"), let notes = read("Identity_1") else { return nil }
+    return (onsets, notes)
   }
 
   /// Brings audio to the model's own rate.
