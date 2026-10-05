@@ -220,8 +220,13 @@ public final class TonePlayer: ObservableObject {
     }
 
     #if os(iOS)
-    try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-    try? AVAudioSession.sharedInstance().setActive(true)
+    // Never steal the session back from the microphone (rule 150): with
+    // playAndRecord in force, flipping to playback kills the input tap.
+    let audioSession = AVAudioSession.sharedInstance()
+    if audioSession.category != .playAndRecord {
+      try? audioSession.setCategory(.playback, mode: .default)
+    }
+    try? audioSession.setActive(true)
     #endif
 
     let reported = engine.outputNode.inputFormat(forBus: 0)

@@ -51,7 +51,11 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
 
     let input = engine.inputNode
     let format = input.outputFormat(forBus: 0)
-    guard format.sampleRate > 0 else { return }
+    NSLog("MIC listen: rate=%.0f channels=%d", format.sampleRate, format.channelCount)
+    guard format.sampleRate > 0 else {
+      NSLog("MIC listen: dead input format")
+      return
+    }
 
     let fresh = NoteDetector(sampleRate: format.sampleRate)
     worker.sync { detector = fresh }
@@ -63,10 +67,14 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
     }
 
     engine.prepare()
-    guard (try? engine.start()) != nil else {
+    do {
+      try engine.start()
+    } catch {
+      NSLog("MIC listen: engine failed %@", String(describing: error))
       input.removeTap(onBus: 0)
       return
     }
+    NSLog("MIC listen: engine up")
     isListening = true
   }
 
@@ -94,10 +102,20 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
   }
 
   /// Worker-side: feeds the detector and reports upward.
+  private var pumped = 0
+
   private func pump(_ samples: [Float]) {
     guard !suspended, let detector else { return }
+    pumped += 1
+    if pumped % 400 == 1 {
+      let rms = sqrt(samples.reduce(0) { $0 + $1 * $1 } / Float(max(samples.count, 1)))
+      NSLog("MIC pump #%d rms=%.5f", pumped, rms)
+    }
     let found = detector.process(samples)
     guard !found.isEmpty else { return }
+    for hit in found {
+      NSLog("MIC heard midi=%d expected=%d", hit.pitch.midiNoteNumber, hit.isExpected ? 1 : 0)
+    }
     DispatchQueue.main.async { [weak self] in
       for detection in found { self?.onDetection?(detection) }
     }

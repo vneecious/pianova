@@ -41,6 +41,17 @@ public final class NoteDetector {
   /// Which analysis frame is being looked at, for the refractory below.
   private var frameIndex = 0
 
+  /// The room's quietness, crept up on slowly.
+  ///
+  /// Presses are only looked for well above this: at whisper level every
+  /// ratio is noise against noise, and the page blinked red at silence.
+  private var noiseFloor = 1e-3
+
+  /// Accusations waiting for their second look (rule 151): a wrong note has
+  /// to survive two consecutive windows before it is spoken — the click of
+  /// a chair does not.
+  private var suspicions: [UInt8: Int] = [:]
+
   /// The room's recent loudness, decaying slowly.
   ///
   /// Scores are read against this rather than against the frame's own level:
@@ -98,7 +109,7 @@ public final class NoteDetector {
   private static let pressThreshold = 0.1
 
   /// An unexpected note needs stronger evidence than an expected one.
-  private static let accusationThreshold = 0.18
+  private static let accusationThreshold = 0.3
 
   /// An attack is a score jumping past its own recent past.
   ///
@@ -112,8 +123,10 @@ public final class NoteDetector {
 
     // Silence resets the past: nothing rings, nothing compares.
     frameIndex += 1
-    guard rms > 1e-4 else {
+    noiseFloor = min(Double(max(rms, 1e-5)), noiseFloor * 1.02)
+    guard Double(rms) > max(3 * noiseFloor, 1.5e-3) else {
       smoothed = [:]
+      suspicions = [:]
       return []
     }
 
@@ -138,6 +151,7 @@ public final class NoteDetector {
     }
 
     var found: [Detection] = []
+    var accused: [Detection] = []
     for pitch in candidates {
       let midi = pitch.midiNoteNumber
       let score = scores[midi] ?? 0
@@ -148,7 +162,22 @@ public final class NoteDetector {
       let past = smoothed[midi] ?? 0
       defer { smoothed[midi] = max(score, past * 0.8) }
 
-      guard score > threshold, score > past * Self.attackRatio else { continue }
+      let attacked = score > threshold && score > past * Self.attackRatio
+      let sustained = score > threshold
+
+      // A wrong note is only spoken after surviving two consecutive looks
+      // (rule 151): an expected note answers on the attack, a suspicion has
+      // to still be there in the next window.
+      let confirmed: Bool
+      if isExpected {
+        confirmed = attacked
+      } else if attacked {
+        suspicions[midi] = frameIndex
+        confirmed = false
+      } else {
+        confirmed = sustained && suspicions[midi] == frameIndex - 1
+      }
+      guard confirmed else { continue }
 
       // One attack, one press: the same jump seen by the next overlapping
       // window is still the same finger going down.
@@ -171,8 +200,17 @@ public final class NoteDetector {
 
       let velocity = UInt8(max(30, min(95, 30 + score * 45)))
       lastPress[midi] = frameIndex
-      found.append(Detection(pitch: pitch, velocity: velocity, isExpected: isExpected))
+      let detection = Detection(pitch: pitch, velocity: velocity, isExpected: isExpected)
+      if isExpected {
+        found.append(detection)
+      } else {
+        accused.append(detection)
+      }
     }
+
+    // No hand plays five wrong notes at once: a window accusing in bulk
+    // heard a cough or a dropped pencil, and says nothing (rule 151).
+    if accused.count <= 4 { found.append(contentsOf: accused) }
     return found
   }
 
