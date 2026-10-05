@@ -72,6 +72,10 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
       worker.sync { note("listen: the model would not load") }
       return
     }
+    // Live, an accusation has to be loud: the page asking for a note hears
+    // it with an open ear (rule 151), but calling a note wrong on a guess
+    // just paints the score red for nothing.
+    fresh.onsetThreshold = 0.8
     worker.sync { ear = fresh }
 
     input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
@@ -113,6 +117,7 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
     worker.async { [weak self] in
       self?.expected = pitches
       self?.comingNext = next
+      self?.ear?.lenientPitches = pitches.union(next)
     }
   }
 

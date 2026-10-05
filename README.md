@@ -721,7 +721,11 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      um passo à frente**: o que o cursor espera agora e o que ele vai
      esperar em seguida são ambos ouvidos, para a nota adiantada ser
      guardada (regra 4) em vez de perdida — pelo microfone a mão que se
-     antecipa é a regra, não a exceção.
+     antecipa é a regra, não a exceção. E escuta a nota esperada com
+     **ouvido mais aberto** que as outras: deixar passar o que a pauta
+     pede trava o estudo, enquanto um palpite a mais na nota certa só faz
+     o que o dedo já fez — a dúvida se resolve a favor de quem está
+     escrito.
 152. **O Ouvir cala a escuta**: enquanto o app toca a peça, o microfone
      não julga — para o alto-falante não virar dedo. O clique do metrônomo
      não tem altura nem harmônicos, e não vira nota. Dinâmica e pedal pelo

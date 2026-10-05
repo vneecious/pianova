@@ -96,6 +96,22 @@ public final class NeuralEar {
   /// guessing, and a guess is not a finger.
   public var onsetThreshold = 0.5
 
+  /// The notes the score is waiting for, heard with an open ear (rule 151).
+  ///
+  /// Missing what the page asks for stalls the study; an extra guess on the
+  /// right note only repeats what the finger already did. Doubt is settled
+  /// in favour of what is written.
+  public var lenientPitches: Set<Pitch> = []
+
+  /// How much lower the bar sits for an expected note.
+  public var lenientThreshold = 0.15
+
+  /// The bar one key has to clear.
+  private func threshold(forKey key: Int) -> Double {
+    let pitch = Pitch(UInt8(Self.lowestMIDI + key))
+    return lenientPitches.contains(pitch) ? lenientThreshold : onsetThreshold
+  }
+
   /// Hears whatever is in a stretch of audio.
   ///
   /// The audio is resampled, walked window by window, and every onset peak
@@ -123,7 +139,7 @@ public final class NeuralEar {
       for frame in max(first, 1)..<min(last, Self.frames - 1) {
         for key in 0..<Self.keys {
           let value = onsets[frame * Self.keys + key]
-          guard Double(value) > onsetThreshold,
+          guard Double(value) > threshold(forKey: key),
             value >= onsets[(frame - 1) * Self.keys + key],
             value > onsets[(frame + 1) * Self.keys + key]
           else { continue }
@@ -163,7 +179,13 @@ public final class NeuralEar {
   ///
   /// The model sees less to the right of them than it will once more audio
   /// arrives, and a half-informed onset is a ghost. Eight frames ≈ 93 ms.
-  private static let edgeMargin = 8
+  /// Frames at the window's end left for later.
+  ///
+  /// The model sees less to the right of them than it will once more audio
+  /// arrives, and a half-informed onset is a ghost. Twenty frames (~230 ms)
+  /// is where the curve bends: measured on the owner's own playing, recall
+  /// climbs from 77% to 87% there, and barely moves for four times the wait.
+  public var edgeMargin = 20
 
   /// Feeds live audio and returns whatever it newly heard (rule 153).
   ///
@@ -178,13 +200,13 @@ public final class NeuralEar {
     while live.count >= Self.windowSamples {
       let window = Array(live.prefix(Self.windowSamples))
       if let onsets = onsetMatrix(for: window) {
-        let readable = Self.frames - Self.edgeMargin
+        let readable = Self.frames - edgeMargin
         let from = max(1, (reportedUpTo - streamOrigin) / Self.frameHop)
 
         for frame in from..<max(from, readable) {
           for key in 0..<Self.keys {
             let value = onsets[frame * Self.keys + key]
-            guard Double(value) > onsetThreshold,
+            guard Double(value) > threshold(forKey: key),
               value >= onsets[(frame - 1) * Self.keys + key],
               frame + 1 >= Self.frames || value > onsets[(frame + 1) * Self.keys + key]
             else { continue }
