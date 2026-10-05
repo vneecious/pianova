@@ -51,9 +51,9 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
 
     let input = engine.inputNode
     let format = input.outputFormat(forBus: 0)
-    NSLog("MIC listen: rate=%.0f channels=%d", format.sampleRate, format.channelCount)
+    worker.sync { note("listen: rate=\(format.sampleRate) channels=\(format.channelCount)") }
     guard format.sampleRate > 0 else {
-      NSLog("MIC listen: dead input format")
+      worker.sync { note("listen: dead input format") }
       return
     }
 
@@ -70,11 +70,11 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
     do {
       try engine.start()
     } catch {
-      NSLog("MIC listen: engine failed %@", String(describing: error))
+      worker.sync { note("listen: engine failed \(error)") }
       input.removeTap(onBus: 0)
       return
     }
-    NSLog("MIC listen: engine up")
+    worker.sync { note("listen: engine up") }
     isListening = true
   }
 
@@ -101,20 +101,39 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
     worker.async { [weak self] in self?.suspended = silenced }
   }
 
+  /// A diary in Documents, pulled over the cable when a device test needs eyes.
+  ///
+  /// Temporary instrumentation for the microphone's first days.
+  private let diary: URL = {
+    let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+    return (base ?? URL(fileURLWithPath: NSTemporaryDirectory()))
+      .appendingPathComponent("mic-log.txt")
+  }()
+
+  private var diaryLines: [String] = []
+
+  private func note(_ line: String) {
+    NSLog("MIC %@", line)
+    diaryLines.append("\(Date()) \(line)")
+    if diaryLines.count % 20 == 0 || line.hasPrefix("heard") || line.hasPrefix("listen") {
+      try? diaryLines.joined(separator: "\n").write(to: diary, atomically: true, encoding: .utf8)
+    }
+  }
+
   /// Worker-side: feeds the detector and reports upward.
   private var pumped = 0
 
   private func pump(_ samples: [Float]) {
     guard !suspended, let detector else { return }
     pumped += 1
-    if pumped % 400 == 1 {
+    if pumped % 100 == 1 {
       let rms = sqrt(samples.reduce(0) { $0 + $1 * $1 } / Float(max(samples.count, 1)))
-      NSLog("MIC pump #%d rms=%.5f", pumped, rms)
+      note("pump #\(pumped) rms=\(String(format: "%.5f", rms))")
     }
     let found = detector.process(samples)
     guard !found.isEmpty else { return }
     for hit in found {
-      NSLog("MIC heard midi=%d expected=%d", hit.pitch.midiNoteNumber, hit.isExpected ? 1 : 0)
+      note("heard midi=\(hit.pitch.midiNoteNumber) expected=\(hit.isExpected ? 1 : 0)")
     }
     DispatchQueue.main.async { [weak self] in
       for detection in found { self?.onDetection?(detection) }

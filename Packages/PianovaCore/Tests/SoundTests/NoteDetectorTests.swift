@@ -125,3 +125,18 @@ private let rate = 48_000.0
     ]))
   #expect(restruck.count == 2, "o segundo ataque é outro pressionamento")
 }
+
+/// Rule 151 — dobra de oitava entre as mãos: a esquerda soa Mi3 enquanto a
+/// partitura espera Mi4; o esperado não é engolido como harmônico do grave.
+@Test func anOctaveDoublingStillHearsTheExpectedNote() {
+  let detector = NoteDetector(sampleRate: rate)
+  detector.expect([Pitch(64)], among: Pitch(48)...Pitch(84))
+
+  let audio = mixed([
+    tone(Pitch(52), seconds: 0.6, at: rate),
+    tone(Pitch(64), seconds: 0.6, at: rate),
+  ])
+  let heard = detector.process(audio)
+
+  #expect(heard.contains { $0.pitch == Pitch(64) && $0.isExpected })
+}

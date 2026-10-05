@@ -123,8 +123,12 @@ public final class NoteDetector {
 
     // Silence resets the past: nothing rings, nothing compares.
     frameIndex += 1
-    noiseFloor = min(Double(max(rms, 1e-5)), noiseFloor * 1.02)
-    guard Double(rms) > max(3 * noiseFloor, 1.5e-3) else {
+    // The floor only learns from quiet: creeping up through the music ends
+    // with the gate swallowing the piano itself.
+    if Double(rms) < noiseFloor * 4 {
+      noiseFloor = min(Double(max(rms, 1e-5)), noiseFloor * 1.02)
+    }
+    guard Double(rms) > max(2.5 * noiseFloor, 5e-4) else {
       smoothed = [:]
       suspicions = [:]
       return []
@@ -184,19 +188,31 @@ public final class NoteDetector {
       if let last = lastPress[midi], frameIndex - last < 5 { continue }
 
       // A real note has its own fundamental — the octave above an expected
-      // note does not put energy there (rule 151).
-      guard let fundamental = partials.first,
-        fundamental >= 0.25 * (partials.max() ?? 0)
-      else { continue }
+      // note does not put energy there (rule 151). In the bass the piano
+      // itself barely sounds the fundamental, so the third partial vouches
+      // instead: the octave-ghost only ever has the even ones.
+      let strongest = partials.max() ?? 0
+      let fundamental = partials.first ?? 0
+      let oddPartial = partials.count > 2 ? partials[2] : 0
+      let speaksForItself =
+        fundamental >= 0.25 * strongest
+        || (fundamental >= 0.05 * strongest && oddPartial >= 0.25 * strongest)
+      guard speaksForItself else { continue }
 
-      // A harmonic of something louder is not a note of its own: never
-      // accuse the overtones of a right note (rule 151).
-      if dominatedByLowerNote(pitch, scores: scores) { continue }
+      // The ghost guards protect against false ACCUSATIONS; the note the
+      // score waits for answers for itself (rule 151). Without this, the
+      // left hand's real E3 swallowed the melody's expected E4 as "just a
+      // harmonic" — and octave doubling between hands is music, not noise.
+      if !isExpected {
+        // A harmonic of something louder is not a note of its own: never
+        // accuse the overtones of a right note.
+        if dominatedByLowerNote(pitch, scores: scores) { continue }
 
-      // The attack's click spills energy onto the semitone neighbours; a
-      // candidate dwarfed by one right beside it is that skirt, not a key.
-      let neighbours = [-2, -1, 1, 2].compactMap { scores[UInt8(Int(midi) + $0)] }
-      if let loudest = neighbours.max(), loudest > score * 2 { continue }
+        // The attack's click spills energy onto the semitone neighbours; a
+        // candidate dwarfed by one right beside it is that skirt, not a key.
+        let neighbours = [-2, -1, 1, 2].compactMap { scores[UInt8(Int(midi) + $0)] }
+        if let loudest = neighbours.max(), loudest > score * 2 { continue }
+      }
 
       let velocity = UInt8(max(30, min(95, 30 + score * 45)))
       lastPress[midi] = frameIndex
