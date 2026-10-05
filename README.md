@@ -726,6 +726,13 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      não julga — para o alto-falante não virar dedo. O clique do metrônomo
      não tem altura nem harmônicos, e não vira nota. Dinâmica e pedal pelo
      microfone não são julgados: as regras 140 e 141 são do cabo.
+153. **O ouvido é uma rede neural**: quem transcreve o áudio é o modelo
+     **Basic Pitch** (Spotify, Apache-2.0) rodando em Core ML no próprio
+     aparelho — treinado em milhares de horas, acerta acordes e duas mãos
+     onde análise espectral artesanal se perde. A partitura segue mandando
+     (regra 151): o modelo diz **o que soou**, a partitura decide **o que
+     conta**. Medido na bancada: o modelo transcreve tríades e as duas mãos
+     do dono; o detector anterior, no mesmo áudio, acendia o teclado todo.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

@@ -23,8 +23,15 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
   private let worker = DispatchQueue(label: "pianova.microphone")
 
   // Worker-confined state.
-  private var detector: NoteDetector?
+  private var ear: NeuralEar?
   private var suspended = false
+
+  /// What the cursor waits for, and what it will wait for next (rule 151).
+  ///
+  /// The model says what sounded; this says what counts. Everything else
+  /// the room offers is heard and let go.
+  private var expected: Set<Pitch> = []
+  private var comingNext: Set<Pitch> = []
 
   /// Creates a silent microphone; ``start()`` asks permission and listens.
   public init() {}
@@ -61,8 +68,11 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
       return
     }
 
-    let fresh = NoteDetector(sampleRate: format.sampleRate)
-    worker.sync { detector = fresh }
+    guard let fresh = try? NeuralEar(sampleRate: format.sampleRate) else {
+      worker.sync { note("listen: the model would not load") }
+      return
+    }
+    worker.sync { ear = fresh }
 
     input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in
       guard let self, let channel = buffer.floatChannelData?.pointee else { return }
@@ -87,7 +97,7 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
     guard isListening else { return }
     engine.inputNode.removeTap(onBus: 0)
     engine.stop()
-    worker.sync { detector = nil }
+    worker.sync { ear = nil }
     isListening = false
     level = 0
   }
@@ -101,7 +111,8 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
     _ pitches: Set<Pitch>, next: Set<Pitch> = [], among range: ClosedRange<Pitch>
   ) {
     worker.async { [weak self] in
-      self?.detector?.expect(pitches, next: next, among: range)
+      self?.expected = pitches
+      self?.comingNext = next
     }
   }
 
@@ -146,7 +157,7 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
   private var pumped = 0
 
   private func pump(_ samples: [Float]) {
-    guard !suspended, let detector else { return }
+    guard !suspended, let ear else { return }
     pumped += 1
     let rms = sqrt(samples.reduce(0) { $0 + $1 * $1 } / Float(max(samples.count, 1)))
     if pumped % 100 == 1 {
@@ -159,7 +170,18 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
       let reading = Self.meter(rms: Double(rms))
       DispatchQueue.main.async { [weak self] in self?.level = reading }
     }
-    let found = detector.process(samples)
+    // The model lists what sounded; the score decides what counts
+    // (rules 151 and 153). A note the page is not waiting for either way
+    // is still reported, so a wrong note can be shown as wrong.
+    let wanted = expected.union(comingNext)
+    let found = ear.hear(samples)
+      .map {
+        NoteDetector.Detection(
+          pitch: $0.pitch,
+          velocity: UInt8(max(30, min(100, 30 + $0.confidence * 70))),
+          isExpected: expected.contains($0.pitch))
+      }
+
     guard !found.isEmpty else { return }
     for hit in found {
       note("heard midi=\(hit.pitch.midiNoteNumber) expected=\(hit.isExpected ? 1 : 0)")

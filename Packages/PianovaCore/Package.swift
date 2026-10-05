@@ -45,8 +45,9 @@ let package = Package(
       name: "Sound",
       dependencies: ["MIDIInput", "ScoreModel"],
       // Copied as a folder so a clone without any bank still builds: the app
-      // simply finds nothing and falls back to the synthesiser.
-      resources: [.copy("SoundBanks")]),
+      // simply finds nothing and falls back to the synthesiser. The neural
+      // ear's model travels the same way (rule 153).
+      resources: [.copy("SoundBanks"), .copy("Models")]),
     .target(name: "Progress", dependencies: ["ScoreModel"]),
     .target(
       name: "PianovaUI",
