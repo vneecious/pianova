@@ -100,3 +100,47 @@ import Testing
 
   #expect(session.cursorIndex == 0, "a sala vazia andou \(session.cursorIndex) colunas sozinha")
 }
+
+/// Rule 151 — a nota errada não vale pela esperada.
+///
+/// O relato do dono: tocou errado e o cursor andou assim mesmo. O ouvido
+/// aberto da regra 151 é desempate, não cheque em branco — quando outra
+/// tecla é claramente a que soou, a esperada não pode se servir do som
+/// dela.
+@Test func aWrongKeyDoesNotPassForTheExpectedOne() throws {
+  let rate = 22_050.0
+  func key(_ midi: UInt8, seconds: Double, from start: Double, total: Double) -> [Float] {
+    let frequency = 440 * pow(2, (Double(midi) - 69) / 12)
+    var samples = [Float](repeating: 0, count: Int(total * rate))
+    let harmonics: [Float] = [1, 0.5, 0.33, 0.2, 0.12]
+    for index in samples.indices {
+      let time = Double(index) / rate
+      guard time >= start, time - start <= seconds else { continue }
+      let alive = time - start
+      let envelope = Float(min(alive * 80, 1)) * Float(exp(-alive * 1.1))
+      var value: Float = 0
+      for (rank, weight) in harmonics.enumerated() {
+        value += weight * Float(sin(2 * .pi * frequency * Double(rank + 1) * alive))
+      }
+      samples[index] += 0.3 * envelope * value
+    }
+    return samples
+  }
+
+  // A página espera Dó4. O dedo toca Ré4 — um tom acima, o erro clássico.
+  let ear = try NeuralEar(sampleRate: rate)
+  ear.onsetThreshold = 0.8
+  ear.lenientPitches = [Pitch(60)]
+
+  var heard: [Pitch] = []
+  let audio = key(62, seconds: 2, from: 0.4, total: 3.5)
+  var cursor = 0
+  while cursor + 2048 <= audio.count {
+    heard += ear.hear(Array(audio[cursor..<(cursor + 2048)])).map(\.pitch)
+    cursor += 2048
+  }
+
+  #expect(
+    !heard.contains(Pitch(60)),
+    "o Ré4 tocado virou o Dó4 esperado: \(Set(heard.map(\.midiNoteNumber)).sorted())")
+}

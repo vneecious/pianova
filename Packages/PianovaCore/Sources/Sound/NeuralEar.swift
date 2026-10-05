@@ -112,6 +112,35 @@ public final class NeuralEar {
     return lenientPitches.contains(pitch) ? lenientThreshold : onsetThreshold
   }
 
+  /// How far, in semitones, a note's own peak has to beat its neighbours.
+  ///
+  /// Energy spills onto the keys next door: play D4 and C4 lights up a
+  /// little too. For a note the page is waiting for — heard with an open
+  /// ear — that spill was enough to pass as the real thing, and the owner
+  /// played a wrong note while the cursor walked on.
+  private static let leakageSpan = 2
+
+  /// Whether a key is its own peak, or merely a neighbour's skirt.
+  ///
+  /// Only asked of the notes being heard leniently: a detection that
+  /// cleared the full bar on its own has nothing to prove.
+  private func isItsOwnPeak(
+    key: Int, frame: Int, in onsets: [Float], value: Float
+  ) -> Bool {
+    guard lenientPitches.contains(Pitch(UInt8(Self.lowestMIDI + key))) else { return true }
+
+    let frames = (max(0, frame - 5)...min(Self.frames - 1, frame + 5))
+    for neighbour in (key - Self.leakageSpan)...(key + Self.leakageSpan)
+    where neighbour != key && neighbour >= 0 && neighbour < Self.keys {
+      // A neighbour the page also waits for is a chord, not a skirt.
+      guard !lenientPitches.contains(Pitch(UInt8(Self.lowestMIDI + neighbour))) else { continue }
+      for other in frames where onsets[other * Self.keys + neighbour] > value {
+        return false
+      }
+    }
+    return true
+  }
+
   /// Hears whatever is in a stretch of audio.
   ///
   /// The audio is resampled, walked window by window, and every onset peak
@@ -230,6 +259,7 @@ public final class NeuralEar {
           for key in 0..<Self.keys {
             let value = onsets[frame * Self.keys + key]
             guard Double(value) > threshold(forKey: key),
+              isItsOwnPeak(key: key, frame: frame, in: onsets, value: value),
               value >= onsets[(frame - 1) * Self.keys + key],
               frame + 1 >= Self.frames || value > onsets[(frame + 1) * Self.keys + key],
               energy(of: window, around: frame) > gate
