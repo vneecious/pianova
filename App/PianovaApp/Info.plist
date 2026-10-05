@@ -32,6 +32,9 @@
   <key>LSSupportsOpeningDocumentsInPlace</key>
   <true/>
 
+  <key>NSMicrophoneUsageDescription</key>
+  <string>O Pianova ouve o piano para reconhecer as notas que você toca.</string>
+
   <key>UIApplicationSceneManifest</key>
   <dict>
     <key>UIApplicationSupportsMultipleScenes</key>

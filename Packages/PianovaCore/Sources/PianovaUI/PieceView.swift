@@ -25,6 +25,9 @@ struct PieceView: View {
   /// What is being worked at, which also decides what the preview plays.
   @StateObject private var session = StudySession()
 
+  /// The microphone as a keyboard (rule 150), off until asked.
+  @StateObject private var mic = Microphone()
+
   /// Where the preview begins, chosen by tapping a bar.
   @State private var startFrom = 0
 
@@ -53,10 +56,14 @@ struct PieceView: View {
         hub: hub, score: score, session: session, onFinished: onFinished,
         onPickStart: { startFrom = $0 },
         startColumn: startFrom,
+        mic: mic,
         annotationsEpoch: annotationsEpoch,
         restartEpoch: restartEpoch)
     }
-    .onDisappear { preview.stop() }
+    .onDisappear {
+      preview.stop()
+      mic.stop()
+    }
     // What is being studied changed, so whatever is sounding is no longer it.
     .onChange(of: session.study) { _, _ in preview.stop() }
     // A passage in study overrules the focus (rule 143): choosing one lets
@@ -112,6 +119,7 @@ struct PieceView: View {
     switch session.phase {
     case .browsing:
       HStack(spacing: 12) {
+        micToggle
         annotateMenu
         fingeringToggle
         pedalToggle
@@ -172,6 +180,21 @@ struct PieceView: View {
 
   /// The tool the pencil holds, remembered between sessions.
   @AppStorage("pianova.annotationTool") private var annotationTool = "pen"
+
+  /// Turns the microphone keyboard on and off (rule 150).
+  private var micToggle: some View {
+    Button {
+      mic.isListening ? mic.stop() : mic.start()
+    } label: {
+      Image(systemName: mic.isListening ? "mic.fill" : "mic")
+        .font(.system(size: 17))
+        .frame(width: 34, height: 34)
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(mic.isListening ? Theme.accent : .secondary)
+    .help(mic.isListening ? "Parar de ouvir pelo microfone" : "Ouvir pelo microfone")
+  }
 
   /// Shows or hides the written fingering — stages of studying the same piece.
   private var fingeringToggle: some View {

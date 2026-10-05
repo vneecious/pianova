@@ -31,6 +31,9 @@ struct EngravedPieceView: View {
   /// The focused column the run starts at (rule 143), owned by the parent.
   var startColumn = 0
 
+  /// The microphone keyboard (rule 150), owned by the parent.
+  @ObservedObject var mic: Microphone
+
   /// Bumped by the owner when annotations are cleared, rebirthing canvases.
   var annotationsEpoch = 0
 
@@ -113,6 +116,12 @@ struct EngravedPieceView: View {
       controller.showsTexts = showsFingering
       controller.judgesPedal = judgesPedal
       reload()
+      // The microphone feeds the very same judgment a MIDI key reaches
+      // (rule 150); the ear is told what the cursor waits for (rule 151).
+      mic.onDetection = { [weak controller] detection in
+        controller?.play(detection.pitch)
+      }
+      mic.expect(controller.waiting, among: compass)
       hub.setListener(owner: controller) { [controller] event in
         switch event {
         case .pressed(let pitch, _): controller.play(pitch)
@@ -130,7 +139,20 @@ struct EngravedPieceView: View {
     }
     .onChange(of: preview.isPlaying) { _, isPlaying in
       if !isPlaying { controller.restoreCursor() }
+      // The app's own sound must not become a finger (rule 152).
+      mic.setSuspended(isPlaying)
     }
+    .onReceive(controller.$waiting) { waiting in
+      mic.expect(waiting, among: compass)
+    }
+  }
+
+  /// The piece's compass, widened a little — all the ear has to watch.
+  private var compass: ClosedRange<Pitch> {
+    let pitches = score.columns.flatMap(\.pitches)
+    let low = Int(pitches.min()?.midiNoteNumber ?? 48)
+    let high = Int(pitches.max()?.midiNoteNumber ?? 84)
+    return Pitch(UInt8(max(21, low - 5)))...Pitch(UInt8(min(108, high + 5)))
   }
 
   /// The system the page is currently showing.

@@ -174,7 +174,8 @@ public struct LessonView: View {
 
         EngravedPieceView(
           hub: hub, score: song, session: songStudy,
-          onFinished: { controller.completeStep() })
+          onFinished: { controller.completeStep() },
+          mic: lessonMic)
       }
 
     case .technique(let exercise):
@@ -185,6 +186,9 @@ public struct LessonView: View {
         onFinished: { controller.completeStep() })
     }
   }
+
+  /// The piece screen asks for a microphone; the lesson keeps one off.
+  @StateObject private var lessonMic = Microphone()
 
   private static func exercise(
     clef: Clef, range: ClosedRange<UInt8>, length: Int

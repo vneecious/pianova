@@ -694,6 +694,25 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      export carrega o tied do começo ao fim, não só o som da regra 142 —
      e a última barra da peça é a **barra final** (fina-grossa), como toda
      edição fecha. Partitura que termina em barra simples parece rasgada.
+149. **Cifras são lidas e desenhadas discretas**: o `<harmony>` do arquivo
+     vira cifra em **solfejo** (Dó M, Sol 7, Fá♯ m) — a grafia dos métodos
+     brasileiros — entre as pautas, em corpo menor que o texto comum.
+     Cifra é guia de harmonia, não manchete.
+150. **O microfone é um teclado**: sem instrumento plugado, o app pode
+     ouvir pelo microfone — escolha explícita, um botão — e cada nota
+     reconhecida vale um pressionamento: mesmo julgamento, mesmas regras.
+     O cabo MIDI segue sendo o padrão-ouro; quando ele está presente, é
+     ele que manda.
+151. **A escuta é guiada pela partitura**: o avanço só vem com a nota
+     esperada confirmada no espectro — energia no fundamental e nos
+     harmônicos, nascendo num ataque. Nota **não** esperada só acusa erro
+     com evidência forte, e o harmônico de uma nota certa nunca vira
+     acusação — na dúvida, a pauta espera (regra 4). A oitava errada não
+     passa: a de cima não tem o fundamental da esperada.
+152. **O Ouvir cala a escuta**: enquanto o app toca a peça, o microfone
+     não julga — para o alto-falante não virar dedo. O clique do metrônomo
+     não tem altura nem harmônicos, e não vira nota. Dinâmica e pedal pelo
+     microfone não são julgados: as regras 140 e 141 são do cabo.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

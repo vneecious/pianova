@@ -114,3 +114,29 @@ import Testing
   let word = try #require(texts.first { $0.text.contains("dolce") })
   #expect(chord.fontSize < word.fontSize, "cifra é guia, não manchete")
 }
+
+/// Rule 150 — o que o cursor espera é publicado: é o que a escuta verifica,
+/// e o pressionamento ouvido avança o mesmo julgamento do MIDI.
+@MainActor
+@Test func theCursorPublishesWhatItWaitsFor() async throws {
+  let score = Score(
+    title: "Espera", composer: "—", timeSignature: .threeFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(Pitch(60), .quarter), ScoreNote(Pitch(64), .quarter),
+          ScoreNote(Pitch(67), .quarter),
+        ])
+      ]))
+
+  let controller = EngravedPlayController()
+  controller.load(score, using: Engraver())
+  for _ in 0..<200 where controller.pages.isEmpty {
+    try await Task.sleep(for: .milliseconds(50))
+  }
+
+  #expect(controller.waiting == [Pitch(60)])
+  controller.play(Pitch(60))
+  #expect(controller.waiting == [Pitch(64)], "o acerto move a espera adiante")
+}

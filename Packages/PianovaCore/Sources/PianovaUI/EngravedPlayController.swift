@@ -23,6 +23,12 @@ public final class EngravedPlayController: ObservableObject {
   /// Which staff is not being practised, so the page can fade it.
   @Published public private(set) var quietStaff: Int?
 
+  /// The pitches the cursor waits for right now (rules 150-151).
+  ///
+  /// What a microphone listener needs to know: the score-informed ear
+  /// verifies exactly these, and treats everything else as suspect.
+  @Published public private(set) var waiting: Set<Pitch> = []
+
   /// Whether an engraving is running right now, for the screen to say so.
   ///
   /// Engraving a long piece takes seconds, and those seconds used to happen
@@ -588,6 +594,9 @@ public final class EngravedPlayController: ObservableObject {
     }
 
     highlights = marks
+    waiting =
+      judged.indices.contains(session.cursorIndex)
+      ? judgedPitches[session.cursorIndex] : []
     focus =
       judged.indices.contains(session.cursorIndex)
       ? litElements(of: judged[session.cursorIndex]).first : nil

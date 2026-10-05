@@ -31,3 +31,10 @@ public struct Pitch: Hashable, Sendable {
     "\(Self.noteNames[Int(midiNoteNumber) % 12])\(octaveNumber)"
   }
 }
+
+extension Pitch: Comparable {
+  /// Keyboard order: left to right.
+  public static func < (lhs: Pitch, rhs: Pitch) -> Bool {
+    lhs.midiNoteNumber < rhs.midiNoteNumber
+  }
+}
