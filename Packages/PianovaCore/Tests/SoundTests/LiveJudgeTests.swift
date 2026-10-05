@@ -58,3 +58,45 @@ import Testing
   #expect(session.isFinished, "parou na coluna \(session.cursorIndex) de \(columns.count)")
   #expect(session.mistakeCount < 40, "sem chover vermelho: \(session.mistakeCount) acusações")
 }
+
+/// Rule 151 — a sala do dono, sem ninguém tocando, não anda um passo.
+///
+/// Mede o que o teste de recall não mede: o quanto o ouvido INVENTA. Baixar
+/// o limiar da nota esperada sem este contrapeso fez o app concluir a peça
+/// sozinho, com tudo verde, enquanto o dono só olhava.
+@Test func theEmptyRoomAdvancesNothing() throws {
+  let url = try #require(
+    Bundle.module.url(forResource: "ref-sala", withExtension: "wav", subdirectory: "Recordings"))
+  let raw = try Data(contentsOf: url)
+  let found = try #require(raw.range(of: Data("data".utf8)))
+  let payload = raw.subdata(in: (found.upperBound + 4)..<raw.count)
+  var pcm = [Int16](repeating: 0, count: payload.count / 2)
+  _ = pcm.withUnsafeMutableBytes { payload.copyBytes(to: $0) }
+  let samples = pcm.map { Float($0) / 32768 }
+
+  let columns: [[UInt8]] = [[64, 48], [64], [64, 55], [65], [64], [62]]
+  let ear = try NeuralEar(sampleRate: 22_050)
+  ear.onsetThreshold = 0.8
+  var session = ExerciseSession(
+    exercise: Exercise(items: columns.map { ExerciseItem(pitches: Set($0.map(Pitch.init))) }))
+
+  func guide() {
+    var wanted = session.currentItem?.pitches ?? []
+    if session.exercise.items.indices.contains(session.cursorIndex + 1) {
+      wanted.formUnion(session.exercise.items[session.cursorIndex + 1].pitches)
+    }
+    ear.lenientPitches = wanted
+  }
+  guide()
+
+  var cursor = 0
+  while cursor + 2048 <= samples.count {
+    for hit in ear.hear(Array(samples[cursor..<(cursor + 2048)])) {
+      _ = session.press(hit.pitch, at: hit.time)
+      guide()
+    }
+    cursor += 2048
+  }
+
+  #expect(session.cursorIndex == 0, "a sala vazia andou \(session.cursorIndex) colunas sozinha")
+}

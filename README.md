@@ -725,7 +725,10 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      **ouvido mais aberto** que as outras: deixar passar o que a pauta
      pede trava o estudo, enquanto um palpite a mais na nota certa só faz
      o que o dedo já fez — a dúvida se resolve a favor de quem está
-     escrito.
+     escrito. **Mas ouvido aberto não é ouvido crédulo**: silêncio e ruído
+     de sala não avançam nada. Só se escuta quando há som acima do ruído
+     que a sala vinha fazendo — dizer "você acertou" a quem não tocou é
+     pior do que não ouvir.
 152. **O Ouvir cala a escuta**: enquanto o app toca a peça, o microfone
      não julga — para o alto-falante não virar dedo. O clique do metrônomo
      não tem altura nem harmônicos, e não vira nota. Dinâmica e pedal pelo

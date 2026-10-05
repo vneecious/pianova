@@ -163,6 +163,20 @@ public final class NeuralEar {
   /// Audio waiting to be looked at, already at the model's rate.
   private var live: [Float] = []
 
+  /// How quiet the room gets when nobody plays.
+  ///
+  /// Learned only from quiet — creeping up through the music would end with
+  /// the gate swallowing the piano. Without this, rule 151's open ear let
+  /// room noise walk the cursor through a whole piece, all green, while the
+  /// owner just watched.
+  private var noiseFloor = 1e-3
+
+  /// How much louder than the room a frame must be to hold a note.
+  private static let signalOverNoise = 3.0
+
+  /// Below this nothing is ever a note, however quiet the room is.
+  private static let absoluteFloor = 2e-3
+
   /// How much of `live` has already been reported on, in samples.
   private var reportedUpTo = 0
 
@@ -199,6 +213,15 @@ public final class NeuralEar {
 
     while live.count >= Self.windowSamples {
       let window = Array(live.prefix(Self.windowSamples))
+
+      // The room, measured before anything is claimed about it.
+      var windowRMS: Float = 0
+      vDSP_rmsqv(window, 1, &windowRMS, vDSP_Length(window.count))
+      if Double(windowRMS) < noiseFloor * 4 {
+        noiseFloor = min(Double(max(windowRMS, 1e-5)), noiseFloor * 1.05)
+      }
+      let gate = max(noiseFloor * Self.signalOverNoise, Self.absoluteFloor)
+
       if let onsets = onsetMatrix(for: window) {
         let readable = Self.frames - edgeMargin
         let from = max(1, (reportedUpTo - streamOrigin) / Self.frameHop)
@@ -208,7 +231,8 @@ public final class NeuralEar {
             let value = onsets[frame * Self.keys + key]
             guard Double(value) > threshold(forKey: key),
               value >= onsets[(frame - 1) * Self.keys + key],
-              frame + 1 >= Self.frames || value > onsets[(frame + 1) * Self.keys + key]
+              frame + 1 >= Self.frames || value > onsets[(frame + 1) * Self.keys + key],
+              energy(of: window, around: frame) > gate
             else { continue }
 
             heard.append(
@@ -228,11 +252,30 @@ public final class NeuralEar {
     return heard.sorted { $0.time < $1.time }
   }
 
+  /// How loud the audio is right where a frame sits.
+  ///
+  /// A note has a body: the model may hint at one anywhere, but no key was
+  /// struck where the air did not move.
+  private func energy(of window: [Float], around frame: Int) -> Double {
+    let centre = frame * Self.frameHop
+    let from = max(0, centre - Self.frameHop * 2)
+    let to = min(window.count, centre + Self.frameHop * 2)
+    guard to > from else { return 0 }
+
+    var rms: Float = 0
+    window.withUnsafeBufferPointer { buffer in
+      guard let base = buffer.baseAddress else { return }
+      vDSP_rmsqv(base + from, 1, &rms, vDSP_Length(to - from))
+    }
+    return Double(rms)
+  }
+
   /// Forgets the live stream — a fresh run starts deaf to the last one.
   public func reset() {
     live.removeAll()
     reportedUpTo = 0
     streamOrigin = 0
+    noiseFloor = 1e-3
   }
 
   // MARK: - The model itself
