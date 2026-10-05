@@ -140,3 +140,18 @@ private let rate = 48_000.0
 
   #expect(heard.contains { $0.pitch == Pitch(64) && $0.isExpected })
 }
+
+// MARK: - Rule 150: o nível que chega é visível
+
+/// Rule 150 — o medidor mapeia RMS em 0...1: silêncio no chão, voz de
+/// gravação no alto, e o meio — onde o piano costuma chegar — no meio.
+@Test func theLevelMeterReadsTheRoom() {
+  #expect(Microphone.meter(rms: 0.0001) == 0)
+  #expect(Microphone.meter(rms: 0.1) == 1)
+
+  let faint = Microphone.meter(rms: 0.002)
+  let decent = Microphone.meter(rms: 0.02)
+  #expect(faint > 0.1 && faint < 0.5)
+  #expect(decent > 0.5 && decent < 1.0)
+  #expect(faint < decent)
+}

@@ -704,7 +704,9 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      ouvir pelo microfone — escolha explícita, um botão — e cada nota
      reconhecida vale um pressionamento: mesmo julgamento, mesmas regras.
      O cabo MIDI segue sendo o padrão-ouro; quando ele está presente, é
-     ele que manda.
+     ele que manda. E o botão **mostra o nível** que chega ao microfone:
+     sinal fraco é problema de posição e volume — e só se conserta o que
+     se vê.
 151. **A escuta é guiada pela partitura**: o avanço só vem com a nota
      esperada confirmada no espectro — energia no fundamental e nos
      harmônicos, nascendo num ataque. Nota **não** esperada só acusa erro

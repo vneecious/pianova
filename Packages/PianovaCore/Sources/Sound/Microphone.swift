@@ -12,6 +12,10 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
   /// Whether the microphone is on and judging.
   @Published public private(set) var isListening = false
 
+  /// How much signal is arriving, 0...1 (rule 150): weak is a position and
+  /// volume problem, and only what is seen gets fixed.
+  @Published public private(set) var level: Double = 0
+
   /// Called on the main thread with every note heard.
   public var onDetection: ((NoteDetector.Detection) -> Void)?
 
@@ -85,6 +89,7 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
     engine.stop()
     worker.sync { detector = nil }
     isListening = false
+    level = 0
   }
 
   /// Tells the ear what the page is waiting for (rule 151).
@@ -120,15 +125,34 @@ public final class Microphone: ObservableObject, @unchecked Sendable {
     }
   }
 
+  /// Maps an RMS reading onto the 0...1 meter (rule 150).
+  ///
+  /// Logarithmic, like hearing: the floor sits at whisper-quiet, the top at
+  /// recording-level loud, and a decently mic'd piano lands past the middle.
+  public static func meter(rms: Double) -> Double {
+    guard rms > 0 else { return 0 }
+    let decibels = 20 * log10(rms)
+    return min(1, max(0, (decibels - (-70)) / ((-20) - (-70))))
+  }
+
+  private var lastMeterPush = Date.distantPast
+
   /// Worker-side: feeds the detector and reports upward.
   private var pumped = 0
 
   private func pump(_ samples: [Float]) {
     guard !suspended, let detector else { return }
     pumped += 1
+    let rms = sqrt(samples.reduce(0) { $0 + $1 * $1 } / Float(max(samples.count, 1)))
     if pumped % 100 == 1 {
-      let rms = sqrt(samples.reduce(0) { $0 + $1 * $1 } / Float(max(samples.count, 1)))
       note("pump #\(pumped) rms=\(String(format: "%.5f", rms))")
+    }
+
+    // The meter, throttled: ten honest readings a second beat a stream.
+    if Date().timeIntervalSince(lastMeterPush) > 0.1 {
+      lastMeterPush = Date()
+      let reading = Self.meter(rms: Double(rms))
+      DispatchQueue.main.async { [weak self] in self?.level = reading }
     }
     let found = detector.process(samples)
     guard !found.isEmpty else { return }

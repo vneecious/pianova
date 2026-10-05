@@ -190,6 +190,16 @@ struct PieceView: View {
         .font(.system(size: 17))
         .frame(width: 34, height: 34)
         .contentShape(Rectangle())
+        .overlay(alignment: .bottom) {
+          // O nível que chega (regra 150): sinal fraco se conserta com
+          // volume e posição — desde que dê para ver.
+          if mic.isListening {
+            Capsule()
+              .fill(mic.level > 0.35 ? Theme.accent : Color.orange)
+              .frame(width: max(3, 22 * mic.level), height: 3)
+              .animation(.linear(duration: 0.1), value: mic.level)
+          }
+        }
     }
     .buttonStyle(.plain)
     .foregroundStyle(mic.isListening ? Theme.accent : .secondary)
