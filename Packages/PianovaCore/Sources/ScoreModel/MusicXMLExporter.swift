@@ -167,6 +167,10 @@ public enum MusicXMLExporter {
       body +=
         "<barline location=\"right\"><bar-style>light-heavy</bar-style>"
         + "<repeat direction=\"backward\"/></barline>"
+    } else if bar.sectionEnd {
+      // A virada de seção (regra 155): duas linhas finas, nem repetição
+      // nem fim.
+      body += "<barline location=\"right\"><bar-style>light-light</bar-style></barline>"
     } else if index == score.rightHand.measures.count - 1 {
       // The piece closes with the final barline (rule 148) — a score ending
       // on a plain line looks torn off.

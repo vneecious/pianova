@@ -917,3 +917,38 @@ private let twoVoices = """
   #expect(out.contains("<step>F</step><octave>4</octave>"), "Fá natural")
   #expect(!out.contains("<step>E</step><alter>1</alter>"), "nunca Mi♯")
 }
+
+// MARK: - Rule 155: a barra dupla marca a virada de seção
+
+/// Rule 155 — a barra dupla sobrevive à leitura e volta na escrita.
+@Test func aDoubleBarlineMarksTheSection() throws {
+  let xml = """
+    <score-partwise>
+      <part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
+      <part id="P1">
+        <measure number="1">
+          <attributes><divisions>1</divisions>
+            <time><beats>3</beats><beat-type>4</beat-type></time>
+            <clef><sign>G</sign><line>2</line></clef></attributes>
+          <note><pitch><step>C</step><octave>4</octave></pitch><duration>3</duration>
+            <type>half</type><dot/></note>
+          <barline location="right"><bar-style>light-light</bar-style></barline>
+        </measure>
+        <measure number="2">
+          <note><pitch><step>D</step><octave>4</octave></pitch><duration>3</duration>
+            <type>half</type><dot/></note>
+        </measure>
+      </part>
+    </score-partwise>
+    """
+
+  let score = try MusicXMLImporter.score(from: Data(xml.utf8))
+
+  #expect(score.rightHand.measures[0].sectionEnd, "a virada está no primeiro compasso")
+  #expect(!score.rightHand.measures[1].sectionEnd)
+
+  let out = MusicXMLExporter.musicXML(for: score)
+  #expect(out.contains("<bar-style>light-light</bar-style>"))
+  // E a última barra continua sendo a final, não uma dupla.
+  #expect(out.components(separatedBy: "<measure").last?.contains("light-heavy") == true)
+}

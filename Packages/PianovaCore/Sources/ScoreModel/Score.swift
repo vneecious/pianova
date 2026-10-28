@@ -290,15 +290,27 @@ public struct Measure: Equatable, Sendable {
   /// through remains linear. Expanding repeats in judging is its own subject.
   public let repeatEnd: Bool
 
+  /// Whether a section turns at this bar's final barline (rule 155).
+  ///
+  /// The double thin line editions draw where the theme ends and the
+  /// variation begins. Neither a repeat nor an ending: the comma of the
+  /// form, and without it the player cannot see where one part stops.
+  public let sectionEnd: Bool
+
   /// Creates a bar.
   /// - Parameters:
   ///   - notes: The events, in order.
   ///   - repeatStart: Whether a repeat begins at the opening barline.
   ///   - repeatEnd: Whether a repeat closes at the final barline.
-  public init(_ notes: [ScoreNote], repeatStart: Bool = false, repeatEnd: Bool = false) {
+  ///   - sectionEnd: Whether a section turns at the final barline.
+  public init(
+    _ notes: [ScoreNote], repeatStart: Bool = false, repeatEnd: Bool = false,
+    sectionEnd: Bool = false
+  ) {
     self.notes = notes
     self.repeatStart = repeatStart
     self.repeatEnd = repeatEnd
+    self.sectionEnd = sectionEnd
   }
 
   /// How many beats the bar actually holds.

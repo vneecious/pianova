@@ -67,6 +67,8 @@ extension MusicXMLImporter {
     var repeatStart = false
     /// Whether a repeat closes at this bar's final barline.
     var repeatEnd = false
+    /// Whether a section turns at this bar's final barline (rule 155).
+    var sectionEnd = false
   }
 
   /// Pulls the handful of MusicXML elements the course needs out of the file.
@@ -449,6 +451,10 @@ extension MusicXMLImporter {
         }
 
         measure.events.append(event)
+      case "bar-style":
+        // A dupla fina é virada de seção (regra 155); a fina-grossa é o
+        // fim da peça, que o exportador já escreve por conta própria.
+        if value == "light-light" { measure.sectionEnd = true }
       case "measure":
         measures.append(measure)
         measuresByPart[max(partIndex, 0), default: []].append(measure)

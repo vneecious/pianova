@@ -137,7 +137,8 @@ public enum MusicXMLImporter {
       right.append(
         try measure(
           from: staffOne, parser: parser, number: index + 1,
-          repeatStart: raw.repeatStart, repeatEnd: raw.repeatEnd))
+          repeatStart: raw.repeatStart, repeatEnd: raw.repeatEnd,
+          sectionEnd: raw.sectionEnd))
       if !staffTwo.isEmpty {
         left.append(try measure(from: staffTwo, parser: parser, number: index + 1))
       }
@@ -172,7 +173,8 @@ public enum MusicXMLImporter {
     parser: Parser,
     number: Int,
     repeatStart: Bool = false,
-    repeatEnd: Bool = false
+    repeatEnd: Bool = false,
+    sectionEnd: Bool = false
   ) throws -> Measure {
     let sounding = events.filter { !$0.pitches.isEmpty && !$0.isGrace }
 
@@ -277,7 +279,8 @@ public enum MusicXMLImporter {
           graces: ornaments))
     }
 
-    return Measure(notes, repeatStart: repeatStart, repeatEnd: repeatEnd)
+    return Measure(
+      notes, repeatStart: repeatStart, repeatEnd: repeatEnd, sectionEnd: sectionEnd)
   }
 
   /// Whether the opening bar is short, which is what an upbeat is.

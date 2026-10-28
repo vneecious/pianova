@@ -759,6 +759,10 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      ser cobrada. O som já sabia disso (regra 142); o julgamento também
      precisa saber, senão a pauta fica esperando por uma tecla que a mão
      não tem como tocar sem soltar a que está presa.
+155. **A barra dupla marca a virada de seção**: onde a edição divide a peça
+     em partes — o fim do tema e o começo da variação — a página desenha
+     duas linhas finas. Não é repetição nem fim: é a vírgula da forma, e
+     sem ela o aluno não vê onde uma parte acaba e a outra começa.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.
