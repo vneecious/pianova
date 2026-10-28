@@ -28,6 +28,13 @@ public struct KeySignature: Equatable, Sendable {
   /// Whether the accidentals are sharps.
   public var usesSharps: Bool { fifths > 0 }
 
+  /// Whether the signature is written with flats.
+  ///
+  /// Decides how a black key is named: B♭ in one piece, A♯ in another, same
+  /// key under the finger (rule 133). No signature reads as sharps, which
+  /// is what C major and A minor do.
+  public var usesFlats: Bool { fifths < 0 }
+
   /// The letters that carry an accidental, in the order they are written.
   ///
   /// The order is fixed by convention and never varies: sharps go F C G D A E

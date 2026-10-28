@@ -45,7 +45,12 @@ public enum MusicXMLExporter {
     private var inForce: [String: Int] = [:]
     private let fromKey: [String: Int]
 
+    /// The signature in force, which also decides how pitches are named
+    /// (rule 133).
+    let key: KeySignature
+
     init(key: KeySignature) {
+      self.key = key
       let alter = key.usesSharps ? 1 : -1
       fromKey = Dictionary(
         uniqueKeysWithValues: key.alteredLetters.map {
@@ -283,7 +288,7 @@ public enum MusicXMLExporter {
 
     for (index, pitch) in event.pitches.enumerated() {
       let chord = index == 0 ? "" : "<chord/>"
-      let spelled = self.spelled(pitch)
+      let spelled = self.spelled(pitch, in: accidentals.key)
       let accidental =
         accidentals.accidental(
           letter: spelled.letter, octave: spelled.octave, alter: spelled.alter
@@ -416,7 +421,7 @@ public enum MusicXMLExporter {
 
       // A grace reads like any note: it prints the accidental it needs, and
       // the note it decorates then need not repeat it.
-      let spelled = self.spelled(grace.pitch)
+      let spelled = self.spelled(grace.pitch, in: accidentals.key)
       let accidental =
         accidentals.accidental(
           letter: spelled.letter, octave: spelled.octave, alter: spelled.alter
@@ -491,14 +496,36 @@ public enum MusicXMLExporter {
   ///
   /// The model carries sounding keys, not spellings, so black keys are spelt
   /// as sharps — the reading every key signature this app teaches implies.
-  private static func spelled(_ pitch: Pitch) -> (letter: String, alter: Int, octave: Int) {
-    let letters = ["C", "C", "D", "D", "E", "F", "F", "G", "G", "A", "A", "B"]
-    let sharps = [false, true, false, true, false, false, true, false, true, false, true, false]
-
+  /// How a pitch is written down, as the key signature would write it.
+  ///
+  /// The model keeps height, not name: the same black key is A♯ in one piece
+  /// and B♭ in another, and only the key signature knows which. Spelling a
+  /// D minor piece with sharps misnames every note AND litters the page with
+  /// accidentals the signature never asked for (rule 133).
+  /// - Parameters:
+  ///   - pitch: The key.
+  ///   - key: The piece's signature.
+  /// - Returns: Letter, alteration and octave, ready for `<pitch>`.
+  private static func spelled(
+    _ pitch: Pitch, in key: KeySignature
+  )
+    -> (letter: String, alter: Int, octave: Int)
+  {
     let number = Int(pitch.midiNoteNumber)
     let index = number % 12
+    let octave = number / 12 - 1
 
-    return (letters[index], sharps[index] ? 1 : 0, number / 12 - 1)
+    let sharpLetters = ["C", "C", "D", "D", "E", "F", "F", "G", "G", "A", "A", "B"]
+    let sharpAlters = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
+    // The flat reading of the same twelve: the black key borrows the letter
+    // above it instead of the one below.
+    let flatLetters = ["C", "D", "D", "E", "E", "F", "G", "G", "A", "A", "B", "B"]
+    let flatAlters = [0, -1, 0, -1, 0, 0, -1, 0, -1, 0, -1, 0]
+
+    if key.usesFlats {
+      return (flatLetters[index], flatAlters[index], octave)
+    }
+    return (sharpLetters[index], sharpAlters[index], octave)
   }
 
   private static func pitchXML(_ spelled: (letter: String, alter: Int, octave: Int)) -> String {

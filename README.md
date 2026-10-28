@@ -616,7 +616,10 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      compasso mandam. Um sustenido fora da armadura é impresso; a repetição
      dele no mesmo compasso não é; o cancelamento imprime bequadro. Sem o
      acidente escrito o gravador não imprime nada, e um sol sustenido se lê
-     como sol.
+     como sol. E a **armadura escolhe a grafia**: o modelo guarda altura,
+     não nome — a mesma tecla é Lá♯ ou Si♭ conforme a tonalidade, e numa
+     peça em Ré menor escrever Lá♯ é errar a leitura e ainda sujar a
+     página com um sustenido que a armadura não pediu.
 134. As **quiálteras são desenhadas como escritas**: a figura, a razão
      (3 no tempo de 2, 5 no tempo de 4) e o colchete com o número atravessam
      o cano, e a duração real entra no modelo — um terço do tempo é um terço

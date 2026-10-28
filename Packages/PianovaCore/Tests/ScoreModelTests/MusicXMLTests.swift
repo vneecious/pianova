@@ -840,3 +840,40 @@ private let twoVoices = """
 
   #expect(score.columnSustained[1] == [Pitch(72), Pitch(48)])
 }
+
+// MARK: - Rule 133: a armadura escolhe a grafia
+
+/// Rule 133 — em tonalidade bemol, a tecla preta é bemol, não sustenido.
+@Test func aFlatKeySpellsBlackKeysAsFlats() {
+  let score = Score(
+    title: "Em ré menor", composer: "—", key: KeySignature(fifths: -1),
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(Pitch(70), .quarter),  // Si♭4, a nota da armadura
+          ScoreNote(Pitch(68), .quarter),  // Lá♭4, fora dela
+          ScoreNote(Pitch(60), .half),
+        ])
+      ]))
+
+  let out = MusicXMLExporter.musicXML(for: score)
+
+  #expect(out.contains("<step>B</step><alter>-1</alter>"), "Si♭, não Lá♯")
+  #expect(out.contains("<step>A</step><alter>-1</alter>"), "Lá♭, não Sol♯")
+  // O Si♭ está na armadura: não leva acidente impresso.
+  let notes = out.components(separatedBy: "<note>").dropFirst()
+  let siBemol = notes.first { $0.contains("<step>B</step>") } ?? ""
+  #expect(!siBemol.contains("<accidental>"), "a armadura já disse que o Si é bemol")
+}
+
+/// Rule 133 — em tonalidade sustenido, a mesma tecla é sustenido.
+@Test func aSharpKeySpellsBlackKeysAsSharps() {
+  let score = Score(
+    title: "Em sol maior", composer: "—", key: KeySignature(fifths: 1),
+    rightHand: Part(
+      clef: .treble,
+      measures: [Measure([ScoreNote(Pitch(66), .whole)])]))  // Fá♯4
+
+  #expect(MusicXMLExporter.musicXML(for: score).contains("<step>F</step><alter>1</alter>"))
+}
