@@ -793,3 +793,50 @@ private let twoVoices = """
   #expect(out.contains(">Dó M</words>"))
   #expect(out.contains("font-size"))
 }
+
+// MARK: - Rule 154: a ligadura de prolongamento não se toca duas vezes
+
+/// Rule 154 — a nota que continua uma ligadura já está soando.
+@Test func aTiedContinuationIsAlreadySounding() {
+  let score = Score(
+    title: "Presa", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(Pitch(60), .quarter),
+          ScoreNote(pitches: [Pitch(64)], duration: Duration(.half), isTiedToNext: true),
+        ]),
+        Measure([
+          ScoreNote(pitches: [Pitch(64)], duration: Duration(.half)),
+          ScoreNote(Pitch(67), .quarter),
+        ]),
+      ]))
+
+  let held = score.columnSustained
+
+  #expect(held[0].isEmpty, "o Dó é atacado")
+  #expect(held[1].isEmpty, "o Mi é atacado")
+  #expect(held[2] == [Pitch(64)], "o Mi do segundo compasso é continuação")
+  #expect(held[3].isEmpty, "o Sol é atacado")
+}
+
+/// Rule 154 — a mão esquerda também segura.
+@Test func bothHandsHoldTheirTies() {
+  let score = Score(
+    title: "Duas presas", composer: "—",
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([ScoreNote(pitches: [Pitch(72)], duration: Duration(.whole), isTiedToNext: true)]),
+        Measure([ScoreNote(pitches: [Pitch(72)], duration: Duration(.whole))]),
+      ]),
+    leftHand: Part(
+      clef: .bass,
+      measures: [
+        Measure([ScoreNote(pitches: [Pitch(48)], duration: Duration(.whole), isTiedToNext: true)]),
+        Measure([ScoreNote(pitches: [Pitch(48)], duration: Duration(.whole))]),
+      ]))
+
+  #expect(score.columnSustained[1] == [Pitch(72), Pitch(48)])
+}

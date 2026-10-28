@@ -140,3 +140,36 @@ import Testing
   controller.play(Pitch(60))
   #expect(controller.waiting == [Pitch(64)], "o acerto move a espera adiante")
 }
+
+/// Rule 154 — o cursor não pede de novo a nota presa pela ligadura.
+@MainActor
+@Test func theCursorDoesNotAskForATiedNoteTwice() async throws {
+  let score = Score(
+    title: "Segurada", composer: "—", timeSignature: .fourFour,
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(Pitch(60), .half),
+          ScoreNote(pitches: [Pitch(64)], duration: Duration(.half), isTiedToNext: true),
+        ]),
+        Measure([
+          ScoreNote(pitches: [Pitch(64)], duration: Duration(.half)),
+          ScoreNote(Pitch(67), .half),
+        ]),
+      ]))
+
+  let controller = EngravedPlayController()
+  controller.load(score, using: Engraver())
+  for _ in 0..<200 where controller.pages.isEmpty {
+    try await Task.sleep(for: .milliseconds(50))
+  }
+
+  #expect(controller.waiting == [Pitch(60)])
+  controller.play(Pitch(60))
+  #expect(controller.waiting == [Pitch(64)], "o Mi é atacado uma vez")
+  controller.play(Pitch(64))
+  #expect(
+    controller.waiting == [Pitch(67)],
+    "a continuação da ligadura é pulada: o dedo ainda está no Mi")
+}

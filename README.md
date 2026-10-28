@@ -746,6 +746,12 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      E a bancada é o **dono tocando de verdade**: três gravações do piano
      dele — Can-Can, Capricho, Valsa — vivem nos testes, e nenhuma versão
      do ouvido vai para o iPad sem reencontrar nelas a melodia escrita.
+154. **A ligadura de prolongamento não se toca duas vezes**: a nota que
+     continua uma ligadura já está soando — o dedo está segurando. O cursor
+     não a pede de novo; se a coluna inteira for continuação, ela passa sem
+     ser cobrada. O som já sabia disso (regra 142); o julgamento também
+     precisa saber, senão a pauta fica esperando por uma tecla que a mão
+     não tem como tocar sem soltar a que está presa.
 
 > **Quem desenha o quê.** Partitura de verdade — peças, estudo, preview — é o
 > **Verovio** (regras 94–97), com o SVG interpretado e desenhado nativamente.

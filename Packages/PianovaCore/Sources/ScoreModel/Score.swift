@@ -514,6 +514,30 @@ public struct Score: Equatable, Sendable {
       }
   }
 
+  /// The pitches already ringing at each column, held by a tie (rule 154).
+  ///
+  /// A tie's continuation is not a new key press — the finger never left.
+  /// Asking for it again stops the cursor at a note the hand cannot play
+  /// without first letting go of the one it is holding.
+  public var columnSustained: [Set<Pitch>] {
+    var held: [Double: Set<Pitch>] = [:]
+
+    for part in [rightHand, leftHand].compactMap({ $0 }) {
+      var elapsed = 0.0
+      var carried: Set<Pitch> = []
+      for note in part.notes {
+        // The same quantised grid the columns use, so the keys meet.
+        let time = (elapsed * 720).rounded() / 720
+        let continuing = carried.intersection(note.pitches)
+        if !continuing.isEmpty { held[time, default: []].formUnion(continuing) }
+        carried = note.isTiedToNext ? Set(note.pitches) : []
+        elapsed += note.beats
+      }
+    }
+
+    return columns.map { held[$0.beats] ?? [] }
+  }
+
   /// The ornament pitches decorating each column (rule 127).
   ///
   /// Judging uses this in reverse: an ornament is never demanded, and played

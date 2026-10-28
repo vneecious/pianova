@@ -73,6 +73,9 @@ public final class EngravedPlayController: ObservableObject {
   /// (rule 127): played, a grace neither advances nor punishes.
   private var gracesOfColumn: [[Pitch]] = []
 
+  /// Pitches already ringing at each column, held by a tie (rule 154).
+  private var sustainedOfColumn: [Set<Pitch>] = []
+
   /// The pedal mark at each column, for the optional pedal judging.
   private var pedalOfColumn: [PedalMark?] = []
 
@@ -147,6 +150,7 @@ public final class EngravedPlayController: ObservableObject {
     var upperOfColumn: [Set<Pitch>]
     var lowerOfColumn: [Set<Pitch>]
     var gracesOfColumn: [[Pitch]]
+    var sustainedOfColumn: [Set<Pitch>]
     var pedalOfColumn: [PedalMark?]
     var staffOfElement: [String: Int]
     var barOfColumn: [Int]
@@ -235,6 +239,7 @@ public final class EngravedPlayController: ObservableObject {
     let columns = score.columns
     let upperOfColumn = columns.map { Set($0.upper) }
     let gracesOfColumn = score.columnGraces
+    let sustainedOfColumn = score.columnSustained
     let pedalOfColumn = score.columnPedals
     let lowerOfColumn = columns.map { Set($0.lower) }
 
@@ -276,6 +281,7 @@ public final class EngravedPlayController: ObservableObject {
       upperOfColumn: upperOfColumn,
       lowerOfColumn: lowerOfColumn,
       gracesOfColumn: gracesOfColumn,
+      sustainedOfColumn: sustainedOfColumn,
       pedalOfColumn: pedalOfColumn,
       staffOfElement: staffOfElement,
       barOfColumn: barOfColumn,
@@ -298,6 +304,7 @@ public final class EngravedPlayController: ObservableObject {
     upperOfColumn = engraved.upperOfColumn
     lowerOfColumn = engraved.lowerOfColumn
     gracesOfColumn = engraved.gracesOfColumn
+    sustainedOfColumn = engraved.sustainedOfColumn
     pedalOfColumn = engraved.pedalOfColumn
     staffOfElement = engraved.staffOfElement
     barOfColumn = engraved.barOfColumn
@@ -465,10 +472,17 @@ public final class EngravedPlayController: ObservableObject {
 
       // Note by note, never event by event: where the hands play together,
       // the studied hand answers for its own notes only.
-      let asked = hands.sounding(
+      var asked = hands.sounding(
         of: Set(events[index].pitches),
         upper: upperOfColumn.indices.contains(column) ? upperOfColumn[column] : [],
         lower: lowerOfColumn.indices.contains(column) ? lowerOfColumn[column] : [])
+
+      // A tie's continuation is already under the finger (rule 154): asking
+      // for it again stops the cursor at a key the hand cannot press without
+      // first releasing the one it is holding.
+      if sustainedOfColumn.indices.contains(column) {
+        asked.subtract(sustainedOfColumn[column])
+      }
       guard !asked.isEmpty else { continue }
 
       judged.append(index)
