@@ -10,6 +10,8 @@
 		19474765D1D531B11C408371 /* ScoreModel in Frameworks */ = {isa = PBXBuildFile; productRef = 3BF29AAB4C4714776F7E7A16 /* ScoreModel */; };
 		2D39F07BB4F8D98CEF27FADD /* MIDIInput in Frameworks */ = {isa = PBXBuildFile; productRef = D83D30D53A62A7527A4DCB28 /* MIDIInput */; };
 		3CF9B73B38E75FBAA0C83767 /* PianovaUI in Frameworks */ = {isa = PBXBuildFile; productRef = D865B90016D3FC78C4D09CCD /* PianovaUI */; };
+		4089273D30914BD300D56C2D /* Engraving in Frameworks */ = {isa = PBXBuildFile; productRef = A11CF61D0000000000000010 /* Engraving */; };
+		4089273E30914BD300D56C2D /* EngravingVerovio in Frameworks */ = {isa = PBXBuildFile; productRef = A11CF61D0000000000000011 /* EngravingVerovio */; };
 		5A6BFF4F76B7F3C39BCD2305 /* Course in Frameworks */ = {isa = PBXBuildFile; productRef = F01653B789EB3F22B880EDCB /* Course */; };
 		649404DEE637E4612341D66F /* Sound in Frameworks */ = {isa = PBXBuildFile; productRef = 0F7133BC89BFD4FCB8366A1B /* Sound */; };
 		6911F7CFCBF52565FC5C4477 /* PianovaApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 049449ABB884E3391B0552F0 /* PianovaApp.swift */; };
@@ -20,9 +22,9 @@
 
 /* Begin PBXFileReference section */
 		049449ABB884E3391B0552F0 /* PianovaApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PianovaApp.swift; sourceTree = "<group>"; };
-		BFB533D0BE2E3514E642598C /* Pianova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pianova.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A11CF61D0000000000000001 /* Local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Local.xcconfig; sourceTree = "<group>"; };
 		A5510C0000000000000000A1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BFB533D0BE2E3514E642598C /* Pianova.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Pianova.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -30,6 +32,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4089273E30914BD300D56C2D /* EngravingVerovio in Frameworks */,
+				4089273D30914BD300D56C2D /* Engraving in Frameworks */,
 				3CF9B73B38E75FBAA0C83767 /* PianovaUI in Frameworks */,
 				2D39F07BB4F8D98CEF27FADD /* MIDIInput in Frameworks */,
 				649404DEE637E4612341D66F /* Sound in Frameworks */,
@@ -163,14 +167,15 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A11CF61D0000000000000001 /* Local.xcconfig */;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2AJG45V7LV;
 				GENERATE_INFOPLIST_FILE = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = PianovaApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.pianova.app;
+				PRODUCT_BUNDLE_IDENTIFIER = br.com.pianova.app;
 				PRODUCT_NAME = Pianova;
 				SWIFT_OBJC_INTEROP_MODE = objcxx;
 				SWIFT_VERSION = 5.0;
@@ -199,14 +204,15 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A11CF61D0000000000000001 /* Local.xcconfig */;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2AJG45V7LV;
 				GENERATE_INFOPLIST_FILE = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				INFOPLIST_FILE = PianovaApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.pianova.app;
+				PRODUCT_BUNDLE_IDENTIFIER = br.com.pianova.app;
 				PRODUCT_NAME = Pianova;
 				SWIFT_OBJC_INTEROP_MODE = objcxx;
 				SWIFT_VERSION = 5.0;
@@ -276,6 +282,14 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = ScoreModel;
 		};
+		A11CF61D0000000000000010 /* Engraving */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Engraving;
+		};
+		A11CF61D0000000000000011 /* EngravingVerovio */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = EngravingVerovio;
+		};
 		C2ACA18C19FDC14E1C6F2058 /* Progress */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Progress;
@@ -291,14 +305,6 @@
 		F01653B789EB3F22B880EDCB /* Course */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Course;
-		};
-		A11CF61D0000000000000010 /* Engraving */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = Engraving;
-		};
-		A11CF61D0000000000000011 /* EngravingVerovio */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = EngravingVerovio;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

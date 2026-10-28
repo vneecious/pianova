@@ -6,6 +6,12 @@ SWIFT_PATHS := $(wildcard Packages/*/Package.swift Packages/*/Sources Packages/*
 PACKAGE := Packages/PianovaCore
 
 IPAD := 9A198D1D-47F0-56DD-9CDC-DE91D15D593D
+
+# O identificador do app. Mudou de com.pianova.app para br.com.pianova.app
+# e o antigo ficou no Makefile: o launch dizia "não está instalado" e a
+# cópia de partituras falhava com ContainerLookupError, as duas sem dizer
+# por quê. Um lugar só para essa string.
+BUNDLE = br.com.pianova.app
 APP := $(HOME)/Library/Developer/Xcode/DerivedData/Pianova-egvzptomtwyroifikvadsgmlsyxx/Build/Products/Debug-iphoneos/Pianova.app
 
 .PHONY: format lint test check ipad
@@ -28,4 +34,4 @@ ipad:
 		-destination "id=$(IPAD)" -configuration Debug \
 		-allowProvisioningUpdates build
 	xcrun devicectl device install app --device $(IPAD) "$(APP)"
-	xcrun devicectl device process launch --device $(IPAD) com.pianova.app
+	xcrun devicectl device process launch --device $(IPAD) $(BUNDLE)
