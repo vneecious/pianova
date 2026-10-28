@@ -619,7 +619,11 @@ servir ao segundo e permitir o primeiro, e não o contrário.
      como sol. E a **armadura escolhe a grafia**: o modelo guarda altura,
      não nome — a mesma tecla é Lá♯ ou Si♭ conforme a tonalidade, e numa
      peça em Ré menor escrever Lá♯ é errar a leitura e ainda sujar a
-     página com um sustenido que a armadura não pediu.
+     página com um sustenido que a armadura não pediu. Mas armadura bemol
+     **não quer dizer tudo bemol**: a nota da escala leva o nome que a
+     escala lhe dá, e a nota de fora é a alteração mais barata de um grau
+     vizinho — por isso a sensível de Ré menor é **Dó♯**, que puxa para
+     cima, e não Ré♭, que diria o contrário com a mesma tecla.
 134. As **quiálteras são desenhadas como escritas**: a figura, a razão
      (3 no tempo de 2, 5 no tempo de 4) e o colchete com o número atravessam
      o cano, e a duração real entra no modelo — um terço do tempo é um terço

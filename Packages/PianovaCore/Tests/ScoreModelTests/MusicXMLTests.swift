@@ -852,7 +852,7 @@ private let twoVoices = """
       measures: [
         Measure([
           ScoreNote(Pitch(70), .quarter),  // Si♭4, a nota da armadura
-          ScoreNote(Pitch(68), .quarter),  // Lá♭4, fora dela
+          ScoreNote(Pitch(68), .quarter),  // a tecla preta entre Sol e Lá
           ScoreNote(Pitch(60), .half),
         ])
       ]))
@@ -860,7 +860,10 @@ private let twoVoices = """
   let out = MusicXMLExporter.musicXML(for: score)
 
   #expect(out.contains("<step>B</step><alter>-1</alter>"), "Si♭, não Lá♯")
-  #expect(out.contains("<step>A</step><alter>-1</alter>"), "Lá♭, não Sol♯")
+  // Fora da escala, vale o grau elevado que a música usa: em Ré menor essa
+  // tecla é a quarta aumentada do dominante secundário, Sol♯ — não Lá♭,
+  // que seria uma quinta diminuta que ninguém escreve aqui.
+  #expect(out.contains("<step>G</step><alter>1</alter>"), "Sol♯, não Lá♭")
   // O Si♭ está na armadura: não leva acidente impresso.
   let notes = out.components(separatedBy: "<note>").dropFirst()
   let siBemol = notes.first { $0.contains("<step>B</step>") } ?? ""
@@ -876,4 +879,41 @@ private let twoVoices = """
       measures: [Measure([ScoreNote(Pitch(66), .whole)])]))  // Fá♯4
 
   #expect(MusicXMLExporter.musicXML(for: score).contains("<step>F</step><alter>1</alter>"))
+}
+
+/// Rule 133 — a sensível sobe, mesmo em tonalidade bemol.
+@Test func theLeadingToneIsSharpEvenInAFlatKey() {
+  let score = Score(
+    title: "Em ré menor", composer: "—", key: KeySignature(fifths: -1),
+    rightHand: Part(
+      clef: .treble,
+      measures: [
+        Measure([
+          ScoreNote(Pitch(61), .quarter),  // a sensível: Dó♯5, não Ré♭5
+          ScoreNote(Pitch(71), .quarter),  // Si♮4 — bequadro sobre o Si♭ da armadura
+          ScoreNote(Pitch(70), .half),  // Si♭4, da própria armadura
+        ])
+      ]))
+
+  let out = MusicXMLExporter.musicXML(for: score)
+
+  #expect(out.contains("<step>C</step><alter>1</alter>"), "sensível é Dó♯")
+  #expect(!out.contains("<step>D</step><alter>-1</alter>"), "nunca Ré♭")
+  #expect(out.contains("<step>B</step><octave>4</octave>"), "Si natural, sem alteração")
+  #expect(out.contains("<step>B</step><alter>-1</alter>"), "e o Si♭ da armadura segue bemol")
+}
+
+/// Rule 133 — em tonalidade sustenido, o grau rebaixado leva bequadro, não
+/// um Mi♯ enarmônico.
+@Test func aNaturalBeatsADoubleAlteration() {
+  let score = Score(
+    title: "Em sol maior", composer: "—", key: KeySignature(fifths: 1),
+    rightHand: Part(
+      clef: .treble,
+      measures: [Measure([ScoreNote(Pitch(65), .whole)])])  // Fá♮4, a armadura tem Fá♯
+  )
+
+  let out = MusicXMLExporter.musicXML(for: score)
+  #expect(out.contains("<step>F</step><octave>4</octave>"), "Fá natural")
+  #expect(!out.contains("<step>E</step><alter>1</alter>"), "nunca Mi♯")
 }

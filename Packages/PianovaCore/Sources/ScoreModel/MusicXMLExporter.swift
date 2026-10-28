@@ -496,12 +496,16 @@ public enum MusicXMLExporter {
   ///
   /// The model carries sounding keys, not spellings, so black keys are spelt
   /// as sharps — the reading every key signature this app teaches implies.
-  /// How a pitch is written down, as the key signature would write it.
+  /// How a pitch is written down, as the key would write it (rule 133).
   ///
   /// The model keeps height, not name: the same black key is A♯ in one piece
-  /// and B♭ in another, and only the key signature knows which. Spelling a
-  /// D minor piece with sharps misnames every note AND litters the page with
-  /// accidentals the signature never asked for (rule 133).
+  /// and B♭ in another. The scale answers first — a note of the key takes the
+  /// name the key gives it. A note from outside is the **cheapest alteration
+  /// of a neighbouring degree**: that is why D minor's leading tone is C♯,
+  /// which pulls upward, and not D♭, which would say the opposite with the
+  /// same key under the finger. A tie goes to the sharp, because the raised
+  /// degrees — leading tone, raised fourth — are what minor music actually
+  /// uses.
   /// - Parameters:
   ///   - pitch: The key.
   ///   - key: The piece's signature.
@@ -512,20 +516,52 @@ public enum MusicXMLExporter {
     -> (letter: String, alter: Int, octave: Int)
   {
     let number = Int(pitch.midiNoteNumber)
-    let index = number % 12
-    let octave = number / 12 - 1
+    let target = number % 12
 
-    let sharpLetters = ["C", "C", "D", "D", "E", "F", "F", "G", "G", "A", "A", "B"]
-    let sharpAlters = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
-    // The flat reading of the same twelve: the black key borrows the letter
-    // above it instead of the one below.
-    let flatLetters = ["C", "D", "D", "E", "E", "F", "G", "G", "A", "A", "B", "B"]
-    let flatAlters = [0, -1, 0, -1, 0, 0, -1, 0, -1, 0, -1, 0]
+    // The seven letters as this key sounds them.
+    let letters = ["C", "D", "E", "F", "G", "A", "B"]
+    let naturals = [0, 2, 4, 5, 7, 9, 11]
+    let altered = Set(key.alteredLetters.map { String(describing: $0).uppercased() })
+    let keyAlter = key.usesSharps ? 1 : -1
 
-    if key.usesFlats {
-      return (flatLetters[index], flatAlters[index], octave)
+    var best: (letter: String, alter: Int, cost: Int, prefersSharp: Bool)?
+    for (index, letter) in letters.enumerated() {
+      let diatonic = naturals[index] + (altered.contains(letter) ? keyAlter : 0)
+      // Distance on the circle of twelve, the short way round.
+      var step = (target - diatonic + 12) % 12
+      if step > 6 { step -= 12 }
+      guard abs(step) <= 1 else { continue }
+
+      let alter = (altered.contains(letter) ? keyAlter : 0) + step
+      guard abs(alter) <= 1 else { continue }
+
+      // Cheapest first: a note of the scale as written, then a plain
+      // natural, then a single accidental. Ties go to the sharp.
+      let cost = abs(step) * 2 + abs(alter)
+      let better =
+        best.map {
+          cost < $0.cost || (cost == $0.cost && step > 0 && !$0.prefersSharp)
+        } ?? true
+      if better { best = (letter, alter, cost, step > 0) }
     }
-    return (sharpLetters[index], sharpAlters[index], octave)
+
+    guard let chosen = best else {
+      // Nothing within a semitone of any degree cannot happen in twelve
+      // notes, but a spelling has to come out either way.
+      let fallback = ["C", "C", "D", "D", "E", "F", "F", "G", "G", "A", "A", "B"]
+      let sharps = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0]
+      return (fallback[target], sharps[target], number / 12 - 1)
+    }
+
+    // The octave follows the letter, not the pitch: B♯ belongs to the octave
+    // below its sounding C, and C♭ to the one above its sounding B.
+    let letterIndex = letters.firstIndex(of: chosen.letter) ?? 0
+    let sounding = naturals[letterIndex] + chosen.alter
+    var octave = number / 12 - 1
+    if sounding < 0 { octave += 1 }
+    if sounding > 11 { octave -= 1 }
+
+    return (chosen.letter, chosen.alter, octave)
   }
 
   private static func pitchXML(_ spelled: (letter: String, alter: Int, octave: Int)) -> String {
